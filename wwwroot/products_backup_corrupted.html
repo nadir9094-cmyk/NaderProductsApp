@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <title>‘«‘… «·„‰ Ã«  - NaderProductsApp</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- „ﬂ »«  «·»«—ﬂÊœ Ê«·‹ QR -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background: #1f2933;
+            color: #fff;
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        button,
+        .btn {
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .btn-primary {
+            background-color: #2563eb;
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background-color: #4b5563;
+            color: #fff;
+        }
+
+        .btn-danger {
+            background-color: #dc2626;
+            color: #fff;
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid #d1d5db;
+            color: #111827;
+        }
+
+        main {
+            padding: 12px 18px 40px;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .toolbar input[type="text"],
+        .toolbar input[type="number"],
+        .toolbar select {
+            padding: 5px 8px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            font-size: 12px;
+        }
+
+        .card {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        thead {
+            background-color: #e5e7eb;
+        }
+
+        th,
+        td {
+            padding: 6px 4px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: center;
+        }
+
+        th {
+            font-weight: 600;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 999px;
+            font-size: 11px;
+        }
+
+        .badge-green {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .badge-yellow {
+            background-color: #fef9c3;
+            color: #854d0e;
+        }
+
+        .badge-red {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .badge-blue {
+            background-color: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        /* Modal ⁄«„ */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        .modal {
+            background: #fff;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 14px 18px 18px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 8px 10px;
+            margin-bottom: 8px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            color: #374151;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group input[type="date"],
+        .form-group select {
+            padding: 5px 7px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            font-size: 12px;
+        }
+
+        .form-group input[type="checkbox"] {
+            transform: scale(1.05);
+            margin-left: 3px;
+        }
+
+        .form-inline {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .section-title {
+            margin-top: 10px;
+            margin-bottom: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-start;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .small-text {
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        /* „‰ÿﬁ… ÿ»«⁄… «·»«—ﬂÊœ */
+        #barcodePrintArea {
+            display: none;
+            padding: 10px;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .barcode-label {
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+
+        .barcode-store-name {
+            font-size: 10px;
+            margin-bottom: 2px;
+        }
+
+        .barcode-product-name {
+            font-size: 9px;
+            margin-top: 2px;
+            text-align: center;
+        }
+
+        .barcode-price {
+            font-size: 10px;
+            margin-top: 2px;
+            font-weight: 600;
+        }
+
+        /* «·ÿ»«⁄… */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            #barcodePrintArea,
+            #barcodePrintArea * {
+                visibility: visible;
+            }
+
+            #barcodePrintArea {
+                display: flex !important;
+            }
+
+            header,
+            main {
+                display: none !important;
+            }
+        }
+
+        @media (max-width: 700px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>≈œ«—… «·„‰ Ã« </h1>
+    <div class="header-actions">
+        <button class="btn btn-secondary" onclick="goHome()">«·⁄Êœ… ··—∆Ì”Ì…</button>
+        <button class="btn btn-primary" onclick="openNewProductModal()">+ „‰ Ã ÃœÌœ</button>
+    </div>
+</header>
+
+<main>
+    <div class="toolbar">
+        <input id="searchText" type="text" placeholder="»ÕÀ »«·»«—ﬂÊœ √Ê «”„ «·„‰ Ã..." oninput="applyFilters()" />
+        <input id="supplierSearch" type="text" placeholder="»ÕÀ »«”„ «·„Ê—œ..." oninput="applyFilters()" />
+        <input id="remainingMin" type="number" placeholder="√œ‰Ï ﬂ„Ì… „ »ﬁÌ…" oninput="applyFilters()" style="max-width:120px;" />
+        <input id="remainingMax" type="number" placeholder="√⁄·Ï ﬂ„Ì… „ »ﬁÌ…" oninput="applyFilters()" style="max-width:120px;" />
+
+        <select id="stockFilter" onchange="applyFilters()">
+            <option value="all">Õ«·… «·„Œ“Ê‰: «·ﬂ·</option>
+            <option value="available">„ Ê›—</option>
+            <option value="low">„‰Œ›÷</option>
+            <option value="out">‰«›œ</option>
+        </select>
+
+        <select id="expiryFilter" onchange="applyFilters()">
+            <option value="all">«·’·«ÕÌ…: «·ﬂ·</option>
+            <option value="expired">„‰ ÂÌ</option>
+            <option value="near">ﬁ—Ì» «·«‰ Â«¡</option>
+            <option value="valid">”«—Ì</option>
+            <option value="noexpiry">»œÊ‰ ’·«ÕÌ…</option>
+        </select>
+
+        <button class="btn btn-outline" onclick="loadProducts()"> ÕœÌÀ «·ﬁ«∆„…</button>
+        <button class="btn btn-outline" onclick="printProducts()">?? ÿ»«⁄… «·‰ «∆Ã</button>
+        <button class="btn btn-outline" onclick="openBarcodePrint()">?? ÿ»«⁄… »«—ﬂÊœ</button>
+        <button class="btn btn-secondary" onclick="openSettingsModal()">?? ≈⁄œ«œ«  «·‘«‘…</button>
+    </div>
+
+    <div class="card">
+        <table>
+            <thead>
+            <tr>
+                <th>«·»«—ﬂÊœ</th>
+                <th>«”„ «·„‰ Ã</th>
+                <th>«·„Ê—œ</th>
+                <th>«· ’‰Ì›</th>
+                <th>«·ﬂ„Ì…</th>
+                <th>„»«⁄</th>
+                <th>«·„ »ﬁÌ</th>
+                <th>Õ«·… «·„Œ“Ê‰</th>
+                <th> «—ÌŒ «·’·«ÕÌ…</th>
+                <th>Õ«·… «·’·«ÕÌ…</th>
+                <th>”⁄— «·‘—«¡</th>
+                <th>”⁄— «·»Ì⁄</th>
+                <th>«·÷—Ì»…</th>
+                <th>«·⁄—÷</th>
+                <th>≈Ã—«¡« </th>
+            </tr>
+            </thead>
+            <tbody id="productsBody">
+            <!-- «·’›Ê›  ⁄»√ »«·Ã«›«”ﬂ—»  -->
+            </tbody>
+        </table>
+    </div>
+</main>
+
+<!-- „‰ÿﬁ… ÿ»«⁄… «·»«—ﬂÊœ -->
+<div id="barcodePrintArea"></div>
+
+<!-- Modal «·„‰ Ã -->
+<div id="productModalBackdrop" class="modal-backdrop">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="modalTitle">„‰ Ã ÃœÌœ</h2>
+            <button class="modal-close" onclick="closeProductModal()">&times;</button>
+        </div>
+
+        <form id="productForm">
+            <input type="hidden" id="productId" />
+
+            <div class="section-title">«·»Ì«‰«  «·√”«”Ì…</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="Barcode">«·»«—ﬂÊœ</label>
+                    <input type="text" id="Barcode" required />
+                </div>
+                <div class="form-group">
+                    <label for="Name">«”„ «·„‰ Ã</label>
+                    <input type="text" id="Name" required />
+                </div>
+                <div class="form-group">
+                    <label for="SupplierName">«”„ «·„Ê—œ</label>
+                    <input type="text" id="SupplierName" />
+                </div>
+                <div class="form-group">
+                    <label for="Category">«· ’‰Ì›</label>
+                    <input type="text" id="Category" />
+                </div>
+                <div class="form-group">
+                    <label for="Quantity">«·ﬂ„Ì… ›Ì «·„Œ“Ê‰</label>
+                    <input type="number" id="Quantity" min="0" value="0" />
+                </div>
+                <div class="form-group">
+                    <label for="MinQuantity">Õœ √œ‰Ï ·· ‰»ÌÂ</label>
+                    <input type="number" id="MinQuantity" min="0" value="0" />
+                </div>
+                <div class="form-group">
+                    <label for="SoldQuantity">«·ﬂ„Ì… «·„»«⁄… («Œ Ì«—Ì)</label>
+                    <input type="number" id="SoldQuantity" min="0" value="0" />
+                </div>
+                <div class="form-group">
+                    <label for="PurchasePrice">”⁄— «·‘—«¡</label>
+                    <input type="number" id="PurchasePrice" step="0.01" min="0" value="0" />
+                </div>
+                <div class="form-group">
+                    <label for="SalePrice">”⁄— «·»Ì⁄</label>
+                    <input type="number" id="SalePrice" step="0.01" min="0" value="0" />
+                </div>
+                <div class="form-group">
+                    <label>«·÷—Ì»… ⁄·Ï ”⁄— «·»Ì⁄</label>
+                    <div class="form-inline">
+                        <input type="checkbox" id="IsVatIncluded" checked />
+                        <label for="IsVatIncluded">«·”⁄— ‘«„· «·÷—Ì»…</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="ExpiryDate"> «—ÌŒ «‰ Â«¡ «·’·«ÕÌ…</label>
+                    <input type="date" id="ExpiryDate" />
+                    <span class="small-text">« —ﬂÂ ›«—€« ·Ê ·« ÌÊÃœ ’·«ÕÌ…</span>
+                </div>
+            </div>
+
+            <div class="section-title">»Ì«‰«  «·⁄—÷ (Offer)</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label> ›⁄Ì· «·⁄—÷</label>
+                    <div class="form-inline">
+                        <input type="checkbox" id="OfferEnabled" />
+                        <label for="OfferEnabled">ÌÊÃœ ⁄—÷ ⁄·Ï Â–« «·„‰ Ã</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="OfferName">«”„ «·⁄—÷</label>
+                    <input type="text" id="OfferName" />
+                </div>
+                <div class="form-group">
+                    <label for="OfferPrice">”⁄— «·⁄—÷</label>
+                    <input type="number" id="OfferPrice" step="0.01" min="0" value="0" />
+                </div>
+                <div class="form-group">
+                    <label>«·÷—Ì»… ⁄·Ï ”⁄— «·⁄—÷</label>
+                    <div class="form-inline">
+                        <input type="checkbox" id="OfferVatIncluded" checked />
+                        <label for="OfferVatIncluded">”⁄— «·⁄—÷ ‘«„· «·÷—Ì»…</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="OfferStart">»œ«Ì… «·⁄—÷</label>
+                    <input type="date" id="OfferStart" />
+                </div>
+                <div class="form-group">
+                    <label for="OfferEnd">‰Â«Ì… «·⁄—÷</label>
+                    <input type="date" id="OfferEnd" />
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Õ›Ÿ</button>
+                <button type="button" class="btn btn-secondary" onclick="closeProductModal()">≈·€«¡</button>
+            </div>
+        </form>
+
+        <p class="small-text">
+            ≈–« ›⁄¯·  «·⁄—÷° ÌÃ»  ⁄»∆…: «”„ «·⁄—÷° ”⁄— «·⁄—÷°  «—ÌŒ «·»œ«Ì… Ê«·‰Â«Ì… · ›«œÌ √Œÿ«¡ 500 „‰ «·”Ì—›—.
+        </p>
+    </div>
+</div>
+
+<!-- Modal ≈⁄œ«œ«  «·‘«‘… -->
+<div id="settingsModalBackdrop" class="modal-backdrop">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>≈⁄œ«œ«  «·‘«‘… Ê«·»«—ﬂÊœ</h2>
+            <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+        </div>
+
+        <div class="section-title">≈⁄œ«œ«  «·÷—Ì»…</div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="VatRate">‰”»… «·÷—Ì»… %</label>
+                <input type="number" id="VatRate" step="0.01" min="0" max="100" />
+                <span class="small-text"> ” Œœ„ ›Ì Õ”«» «·”⁄— „⁄ «·÷—Ì»… Êÿ»«⁄… «·»«—ﬂÊœ »«·”⁄— «·’ÕÌÕ.</span>
+            </div>
+            <div class="form-group">
+                <label for="ExpiryNearDays">⁄œœ «·√Ì«„ ·«⁄ »«— «·„‰ Ã "ﬁ—Ì» «·«‰ Â«¡"</label>
+                <input type="number" id="ExpiryNearDays" min="1" />
+            </div>
+        </div>
+
+        <div class="section-title"> €ÌÌ— √”⁄«— Ã„Ì⁄ «·„‰ Ã«  (Õ”» «·‰ «∆Ã «·Õ«·Ì…)</div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="BulkDirection">«·« Ã«Â</label>
+                <select id="BulkDirection">
+                    <option value="up">“Ì«œ…</option>
+                    <option value="down">‰ﬁ’</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="BulkMode">ÿ—Ìﬁ… «· €ÌÌ—</label>
+                <select id="BulkMode">
+                    <option value="percent">‰”»… „∆ÊÌ… %</option>
+                    <option value="amount">„»·€ À«» </option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="BulkValue">«·ﬁÌ„…</label>
+                <input type="number" id="BulkValue" step="0.01" />
+            </div>
+            <div class="form-group">
+                <label> ÿ»Ìﬁ ⁄·Ï:</label>
+                <div class="form-inline">
+                    <input type="checkbox" id="BulkAffectSale" checked />
+                    <label for="BulkAffectSale">”⁄— «·»Ì⁄</label>
+                    <input type="checkbox" id="BulkAffectPurchase" />
+                    <label for="BulkAffectPurchase">”⁄— «·‘—«¡</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-title">≈⁄œ«œ«  ÿ»«⁄… «·»«—ﬂÊœ</div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="StoreName">«”„ «·„ Ã— ›Ì «·»«—ﬂÊœ</label>
+                <input type="text" id="StoreName" />
+            </div>
+            <div class="form-group">
+                <label for="PrinterName">«”„ «·ÿ«»⁄… (·· –ﬂÌ—)</label>
+                <input type="text" id="PrinterName" />
+                <span class="small-text">«·„ ’›Õ ·« ÌŒ «— «·ÿ«»⁄…  ·ﬁ«∆Ì«° ·ﬂ‰ ÌŸÂ— ·ﬂ «·«”„ ›Ì ’›Õ… «·ÿ»«⁄….</span>
+            </div>
+            <div class="form-group">
+                <label for="BarcodeType">‰Ê⁄ «·ﬂÊœ</label>
+                <select id="BarcodeType">
+                    <option value="barcode">»«—ﬂÊœ (CODE128)</option>
+                    <option value="qr">QR</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="LabelWidth">⁄—÷ «·„·’ﬁ (px)</label>
+                <input type="number" id="LabelWidth" min="50" />
+            </div>
+            <div class="form-group">
+                <label for="LabelHeight">«— ›«⁄ «·„·’ﬁ (px)</label>
+                <input type="number" id="LabelHeight" min="30" />
+            </div>
+            <div class="form-group">
+                <label>ÿ»«⁄… «·”⁄— ⁄·Ï «·„·’ﬁ</label>
+                <div class="form-inline">
+                    <input type="checkbox" id="BarcodeShowPrice" checked />
+                    <label for="BarcodeShowPrice">≈ŸÂ«— «·”⁄—</label>
+                </div>
+                <select id="BarcodePriceMode">
+                    <option value="withVat">”⁄— »⁄œ «·÷—Ì»…</option>
+                    <option value="withoutVat">”⁄— ﬁ»· «·÷—Ì»…</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="saveSettings()">Õ›Ÿ «·≈⁄œ«œ« </button>
+            <button class="btn btn-outline" onclick="applyBulkPriceChange()"> ÿ»Ìﬁ  €ÌÌ— «·√”⁄«— «·¬‰</button>
+            <button class="btn btn-secondary" onclick="closeSettingsModal()">≈€·«ﬁ</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let allProducts = [];
+    let filteredProducts = [];
+    let screenSettings = {
+        vatRate: 15,
+        expiryNearDays: 30,
+        labelWidth: 180,
+        labelHeight: 90,
+        storeName: "",
+        printerName: "",
+        barcodeType: "barcode",
+        showPrice: true,
+        priceMode: "withVat"
+    };
+
+    function goHome() {
+        window.location.href = "index.html";
+    }
+
+    function loadSettingsFromStorage() {
+        try {
+            const raw = localStorage.getItem("productsScreenSettings");
+            if (raw) {
+                const obj = JSON.parse(raw);
+                screenSettings = Object.assign(screenSettings, obj);
+            }
+        } catch {
+            //  Ã«Â· √Ì Œÿ√
+        }
+    }
+
+    function fillSettingsForm() {
+        document.getElementById("VatRate").value = screenSettings.vatRate;
+        document.getElementById("ExpiryNearDays").value = screenSettings.expiryNearDays;
+        document.getElementById("StoreName").value = screenSettings.storeName || "";
+        document.getElementById("PrinterName").value = screenSettings.printerName || "";
+        document.getElementById("BarcodeType").value = screenSettings.barcodeType;
+        document.getElementById("LabelWidth").value = screenSettings.labelWidth;
+        document.getElementById("LabelHeight").value = screenSettings.labelHeight;
+        document.getElementById("BarcodeShowPrice").checked = !!screenSettings.showPrice;
+        document.getElementById("BarcodePriceMode").value = screenSettings.priceMode;
+    }
+
+    function openSettingsModal() {
+        fillSettingsForm();
+        document.getElementById("settingsModalBackdrop").style.display = "flex";
+    }
+
+    function closeSettingsModal() {
+        document.getElementById("settingsModalBackdrop").style.display = "none";
+    }
+
+    function saveSettings() {
+        const vat = parseFloat(document.getElementById("VatRate").value || "15");
+        const near = parseInt(document.getElementById("ExpiryNearDays").value || "30", 10);
+        const storeName = document.getElementById("StoreName").value.trim();
+        const printerName = document.getElementById("PrinterName").value.trim();
+        const barcodeType = document.getElementById("BarcodeType").value;
+        const labelWidth = parseInt(document.getElementById("LabelWidth").value || "180", 10);
+        const labelHeight = parseInt(document.getElementById("LabelHeight").value || "90", 10);
+        const showPrice = document.getElementById("BarcodeShowPrice").checked;
+        const priceMode = document.getElementById("BarcodePriceMode").value;
+
+        screenSettings.vatRate = isNaN(vat) ? 15 : vat;
+        screenSettings.expiryNearDays = isNaN(near) ? 30 : near;
+        screenSettings.storeName = storeName;
+        screenSettings.printerName = printerName;
+        screenSettings.barcodeType = barcodeType;
+        screenSettings.labelWidth = labelWidth;
+        screenSettings.labelHeight = labelHeight;
+        screenSettings.showPrice = showPrice;
+        screenSettings.priceMode = priceMode;
+
+        localStorage.setItem("productsScreenSettings", JSON.stringify(screenSettings));
+        alert(" „ Õ›Ÿ «·≈⁄œ«œ« .");
+        applyFilters();
+    }
+
+    function openNewProductModal() {
+        document.getElementById("modalTitle").textContent = "„‰ Ã ÃœÌœ";
+        document.getElementById("productId").value = "";
+
+        document.getElementById("Barcode").value = "";
+        document.getElementById("Name").value = "";
+        document.getElementById("SupplierName").value = "";
+        document.getElementById("Category").value = "";
+        document.getElementById("Quantity").value = 0;
+        document.getElementById("MinQuantity").value = 0;
+        document.getElementById("SoldQuantity").value = 0;
+        document.getElementById("PurchasePrice").value = 0;
+        document.getElementById("SalePrice").value = 0;
+        document.getElementById("IsVatIncluded").checked = true;
+        document.getElementById("ExpiryDate").value = "";
+
+        document.getElementById("OfferEnabled").checked = false;
+        document.getElementById("OfferName").value = "";
+        document.getElementById("OfferPrice").value = 0;
+        document.getElementById("OfferVatIncluded").checked = true;
+        document.getElementById("OfferStart").value = "";
+        document.getElementById("OfferEnd").value = "";
+
+        showProductModal();
+    }
+
+    function openEditProduct(id) {
+        const product = allProducts.find(p => p.Id === id);
+        if (!product) {
+            alert(" ⁄–— «·⁄ÀÊ— ⁄·Ï Â–« «·„‰ Ã.");
+            return;
+        }
+
+        document.getElementById("modalTitle").textContent = " ⁄œÌ· „‰ Ã";
+        document.getElementById("productId").value = product.Id;
+
+        document.getElementById("Barcode").value = product.Barcode || "";
+        document.getElementById("Name").value = product.Name || "";
+        document.getElementById("SupplierName").value = product.SupplierName || "";
+        document.getElementById("Category").value = product.Category || "";
+        document.getElementById("Quantity").value = product.Quantity ?? 0;
+        document.getElementById("MinQuantity").value = product.MinQuantity ?? 0;
+        document.getElementById("SoldQuantity").value = product.SoldQuantity ?? 0;
+        document.getElementById("PurchasePrice").value = product.PurchasePrice ?? 0;
+        document.getElementById("SalePrice").value = product.SalePrice ?? 0;
+        document.getElementById("IsVatIncluded").checked = product.IsVatIncluded ?? true;
+
+        document.getElementById("ExpiryDate").value =
+            product.ExpiryDate ? product.ExpiryDate.substring(0, 10) : "";
+
+        document.getElementById("OfferEnabled").checked = product.OfferEnabled ?? false;
+        document.getElementById("OfferName").value = product.OfferName || "";
+        document.getElementById("OfferPrice").value = product.OfferPrice ?? 0;
+        document.getElementById("OfferVatIncluded").checked = product.OfferVatIncluded ?? true;
+        document.getElementById("OfferStart").value =
+            product.OfferStart ? product.OfferStart.substring(0, 10) : "";
+        document.getElementById("OfferEnd").value =
+            product.OfferEnd ? product.OfferEnd.substring(0, 10) : "";
+
+        showProductModal();
+    }
+
+    function showProductModal() {
+        document.getElementById("productModalBackdrop").style.display = "flex";
+    }
+
+    function closeProductModal() {
+        document.getElementById("productModalBackdrop").style.display = "none";
+    }
+
+    async function loadProducts() {
+        try {
+            const res = await fetch("/api/products");
+            if (!res.ok) {
+                console.error("Œÿ√ ›Ì Ã·» «·„‰ Ã« ", await res.text());
+                alert("ÕœÀ Œÿ√ ›Ì «·« ’«· »«·”Ì—›— √À‰«¡  Õ„Ì· «·„‰ Ã« .");
+                return;
+            }
+
+            allProducts = await res.json();
+            applyFilters();
+        } catch (e) {
+            console.error(e);
+            alert(" ⁄–— «·« ’«· »«·”Ì—›—.");
+        }
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return "";
+        try {
+            return dateString.substring(0, 10);
+        } catch {
+            return "";
+        }
+    }
+
+    function getRemaining(product) {
+        const q = product.Quantity ?? 0;
+        const sold = product.SoldQuantity ?? 0;
+        const remaining = product.RemainingQuantity != null ? product.RemainingQuantity : (q - sold);
+        return remaining;
+    }
+
+    function getStockBadge(product) {
+        const remaining = getRemaining(product);
+        const min = product.MinQuantity || 0;
+
+        if (remaining <= 0) {
+            return '<span class="badge badge-red">‰«›œ</span>';
+        } else if (remaining <= min) {
+            return '<span class="badge badge-yellow">„‰Œ›÷</span>';
+        } else {
+            return '<span class="badge badge-green">„ Ê›—</span>';
+        }
+    }
+
+    function getExpiryStatus(product) {
+        if (!product.ExpiryDate) {
+            return "noexpiry";
+        }
+        const d = new Date(product.ExpiryDate);
+        if (isNaN(d)) return "noexpiry";
+
+        const now = new Date();
+        const diffMs = d - now;
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+        if (diffDays < 0) return "expired";
+        if (diffDays <= screenSettings.expiryNearDays) return "near";
+        return "valid";
+    }
+
+    function getExpiryBadge(product) {
+        const status = getExpiryStatus(product);
+        if (status === "expired") return '<span class="badge badge-red">„‰ ÂÌ</span>';
+        if (status === "near") return '<span class="badge badge-yellow">ﬁ—Ì» «·«‰ Â«¡</span>';
+        if (status === "valid") return '<span class="badge badge-green">”«—Ì</span>';
+        return '<span class="badge">»œÊ‰ ’·«ÕÌ…</span>';
+    }
+
+    function getOfferStatusBadge(product) {
+        if (!product.OfferEnabled) {
+            return '<span class="badge">·« ÌÊÃœ ⁄—÷</span>';
+        }
+
+        const now = new Date();
+        const start = product.OfferStart ? new Date(product.OfferStart) : null;
+        const end = product.OfferEnd ? new Date(product.OfferEnd) : null;
+
+        if (start && now < start) {
+            return '<span class="badge badge-blue">⁄—÷ ·„ Ì»œ√</span>';
+        }
+        if (end && now > end) {
+            return '<span class="badge badge-red">⁄—÷ „‰ ÂÌ</span>';
+        }
+        return '<span class="badge badge-green">⁄—÷ ”«—Ì</span>';
+    }
+
+    function applyFilters() {
+        const search = document.getElementById("searchText").value.trim().toLowerCase();
+        const supplierSearch = document.getElementById("supplierSearch").value.trim().toLowerCase();
+        const stockFilter = document.getElementById("stockFilter").value;
+        const expiryFilter = document.getElementById("expiryFilter").value;
+        const remainingMinVal = document.getElementById("remainingMin").value;
+        const remainingMaxVal = document.getElementById("remainingMax").value;
+
+        const remainingMin = remainingMinVal ? parseFloat(remainingMinVal) : null;
+        const remainingMax = remainingMaxVal ? parseFloat(remainingMaxVal) : null;
+
+        const tbody = document.getElementById("productsBody");
+        tbody.innerHTML = "";
+
+        const now = new Date();
+
+        filteredProducts = allProducts.filter(p => {
+            // »ÕÀ ‰’Ì
+            if (search) {
+                const text = ((p.Barcode || "") + " " + (p.Name || "")).toLowerCase();
+                if (!text.includes(search)) return false;
+            }
+
+            // »ÕÀ »«”„ «·„Ê—œ
+            if (supplierSearch) {
+                const s = (p.SupplierName || "").toLowerCase();
+                if (!s.includes(supplierSearch)) return false;
+            }
+
+            const remaining = getRemaining(p);
+
+            // ›· — «·ﬂ„Ì… «·„ »ﬁÌ…
+            if (remainingMin != null && remaining < remainingMin) return false;
+            if (remainingMax != null && remaining > remainingMax) return false;
+
+            // ›· — «·„Œ“Ê‰
+            const min = p.MinQuantity || 0;
+            if (stockFilter === "available" && !(remaining > min)) return false;
+            if (stockFilter === "low" && !(remaining > 0 && remaining <= min)) return false;
+            if (stockFilter === "out" && !(remaining <= 0)) return false;
+
+            // ›· — «·’·«ÕÌ…
+            const expStatus = getExpiryStatus(p);
+            if (expiryFilter !== "all" && expStatus !== expiryFilter) return false;
+
+            return true;
+        });
+
+        filteredProducts.forEach(p => {
+            const remaining = getRemaining(p);
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${p.Barcode || ""}</td>
+                <td>${p.Name || ""}</td>
+                <td>${p.SupplierName || ""}</td>
+                <td>${p.Category || ""}</td>
+                <td>${p.Quantity ?? 0}</td>
+                <td>${p.SoldQuantity ?? 0}</td>
+                <td>${remaining}</td>
+                <td>${getStockBadge(p)}</td>
+                <td>${formatDate(p.ExpiryDate)}</td>
+                <td>${getExpiryBadge(p)}</td>
+                <td>${p.PurchasePrice ?? 0}</td>
+                <td>${p.SalePrice ?? 0}</td>
+                <td>${(p.IsVatIncluded ?? true) ? "‘«„·" : "€Ì— ‘«„·"}</td>
+                <td>${getOfferStatusBadge(p)}</td>
+                <td>
+                    <button class="btn btn-outline" onclick="openEditProduct(${p.Id})"> ⁄œÌ·</button>
+                    <button class="btn btn-danger" onclick="deleteProduct(${p.Id})">Õ–›</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function deleteProduct(id) {
+        if (!confirm("Â· √‰  „ √ﬂœ „‰ Õ–› Â–« «·„‰ Ãø")) return;
+
+        try {
+            const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+            if (!res.ok) {
+                console.error("Delete error", await res.text());
+                alert("ÕœÀ Œÿ√ √À‰«¡ Õ–› «·„‰ Ã.");
+                return;
+            }
+            await loadProducts();
+        } catch (e) {
+            console.error(e);
+            alert(" ⁄–— «·« ’«· »«·”Ì—›—.");
+        }
+    }
+
+    async function saveProduct(event) {
+        event.preventDefault();
+
+        const id = document.getElementById("productId").value;
+
+        const Barcode = document.getElementById("Barcode").value.trim();
+        const Name = document.getElementById("Name").value.trim();
+        const SupplierName = document.getElementById("SupplierName").value.trim();
+        const Category = document.getElementById("Category").value.trim();
+        const Quantity = parseInt(document.getElementById("Quantity").value || "0", 10);
+        const MinQuantity = parseInt(document.getElementById("MinQuantity").value || "0", 10);
+        const SoldQuantity = parseInt(document.getElementById("SoldQuantity").value || "0", 10);
+        const PurchasePrice = parseFloat(document.getElementById("PurchasePrice").value || "0");
+        const SalePrice = parseFloat(document.getElementById("SalePrice").value || "0");
+        const IsVatIncluded = document.getElementById("IsVatIncluded").checked;
+
+        const ExpiryDateVal = document.getElementById("ExpiryDate").value;
+
+        const OfferEnabled = document.getElementById("OfferEnabled").checked;
+        const OfferName = document.getElementById("OfferName").value.trim();
+        const OfferPriceVal = document.getElementById("OfferPrice").value;
+        const OfferPrice = OfferPriceVal ? parseFloat(OfferPriceVal) : null;
+        const OfferVatIncluded = document.getElementById("OfferVatIncluded").checked;
+        const OfferStartVal = document.getElementById("OfferStart").value;
+        const OfferEndVal = document.getElementById("OfferEnd").value;
+
+        if (!Barcode || !Name) {
+            alert("«·»«—ﬂÊœ Ê«”„ «·„‰ Ã ÕﬁÊ· ≈·“«„Ì….");
+            return;
+        }
+
+        if (OfferEnabled) {
+            if (!OfferName || !OfferStartVal || !OfferEndVal || !OfferPriceVal || isNaN(OfferPrice)) {
+                alert("≈–« ›⁄¯·  «·⁄—÷ ÌÃ»  ⁄»∆…: «”„ «·⁄—÷° ”⁄— «·⁄—÷°  «—ÌŒ «·»œ«Ì… Ê«·‰Â«Ì….");
+                return;
+            }
+        }
+
+        const productData = {
+            Barcode,
+            Name,
+            SupplierName,
+            Category,
+            Quantity,
+            MinQuantity,
+            SoldQuantity,
+            PurchasePrice,
+            SalePrice,
+            IsVatIncluded,
+            ExpiryDate: ExpiryDateVal ? ExpiryDateVal : null,
+            OfferEnabled,
+            OfferName,
+            OfferPrice: OfferPrice,
+            OfferStart: OfferStartVal ? OfferStartVal : null,
+            OfferEnd: OfferEndVal ? OfferEndVal : null,
+            OfferVatIncluded
+        };
+
+        if (id) {
+            productData.Id = parseInt(id, 10);
+        }
+
+        const url = id ? `/api/products/${id}` : "/api/products";
+        const method = id ? "PUT" : "POST";
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(productData)
+            });
+
+            if (!res.ok) {
+                console.error("Save error", await res.text());
+                alert("ÕœÀ Œÿ√ √À‰«¡ Õ›Ÿ «·„‰ Ã.  √ﬂœ „‰ «·»Ì«‰«  Œ«’… «· Ê«—ÌŒ Ê«·⁄—÷.");
+                return;
+            }
+
+            closeProductModal();
+            await loadProducts();
+        } catch (e) {
+            console.error(e);
+            alert(" ⁄–— «·« ’«· »«·”Ì—›— √À‰«¡ Õ›Ÿ «·„‰ Ã.");
+        }
+    }
+
+    async function applyBulkPriceChange() {
+        if (!filteredProducts || filteredProducts.length === 0) {
+            alert("·«  ÊÃœ „‰ Ã«  „ÿ»ﬁ… ⁄·ÌÂ« «·›·« — «·Õ«·Ì….");
+            return;
+        }
+
+        const direction = document.getElementById("BulkDirection").value;
+        const mode = document.getElementById("BulkMode").value;
+        const valueRaw = document.getElementById("BulkValue").value;
+        const affectSale = document.getElementById("BulkAffectSale").checked;
+        const affectPurchase = document.getElementById("BulkAffectPurchase").checked;
+
+        const value = parseFloat(valueRaw || "0");
+        if (!affectSale && !affectPurchase) {
+            alert("«Œ — ⁄·Ï «·√ﬁ· ‰Ê⁄ ”⁄— Ê«Õœ · ÿ»Ìﬁ «· €ÌÌ— (»Ì⁄/‘—«¡).");
+            return;
+        }
+        if (isNaN(value) || value <= 0) {
+            alert("√œŒ· ﬁÌ„… ’ÕÌÕ… √ﬂ»— „‰ ’›—.");
+            return;
+        }
+
+        if (!confirm("”Ì „  ⁄œÌ· √”⁄«— Ã„Ì⁄ «·„‰ Ã«  «·Ÿ«Â—… ›Ì «·»ÕÀ «·Õ«·Ì. Â· √‰  „ √ﬂœø")) {
+            return;
+        }
+
+        for (const p of filteredProducts) {
+            const updated = Object.assign({}, p);
+
+            function calcNew(oldVal) {
+                let v = oldVal || 0;
+                if (mode === "percent") {
+                    const factor = value / 100;
+                    if (direction === "up") {
+                        v = v * (1 + factor);
+                    } else {
+                        v = v * (1 - factor);
+                    }
+                } else {
+                    if (direction === "up") {
+                        v = v + value;
+                    } else {
+                        v = v - value;
+                    }
+                }
+                return Math.max(0, parseFloat(v.toFixed(2)));
+            }
+
+            if (affectSale) {
+                updated.SalePrice = calcNew(p.SalePrice || 0);
+            }
+            if (affectPurchase) {
+                updated.PurchasePrice = calcNew(p.PurchasePrice || 0);
+            }
+
+            try {
+                const res = await fetch(`/api/products/${p.Id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(updated)
+                });
+                if (!res.ok) {
+                    console.error("Bulk update error for product", p.Id, await res.text());
+                }
+            } catch (e) {
+                console.error("Bulk update exception for product", p.Id, e);
+            }
+        }
+
+        alert(" „  ‰›Ì–  €ÌÌ— «·√”⁄«— ⁄·Ï «·„‰ Ã«  «·Ÿ«Â—….");
+        await loadProducts();
+    }
+
+    function printProducts() {
+        window.print();
+    }
+
+    function openBarcodePrint() {
+        if (!filteredProducts || filteredProducts.length === 0) {
+            alert("·«  ÊÃœ „‰ Ã«  „ÿ»ﬁ… ⁄·ÌÂ« «·›·« — «·Õ«·Ì….");
+            return;
+        }
+
+        const area = document.getElementById("barcodePrintArea");
+        area.innerHTML = "";
+
+        area.style.gap = "6px";
+
+        filteredProducts.forEach(p => {
+            const label = document.createElement("div");
+            label.className = "barcode-label";
+            label.style.width = screenSettings.labelWidth + "px";
+            label.style.height = screenSettings.labelHeight + "px";
+
+            if (screenSettings.storeName) {
+                const s = document.createElement("div");
+                s.className = "barcode-store-name";
+                s.textContent = screenSettings.storeName;
+                label.appendChild(s);
+            }
+
+            let codeContainer;
+            if (screenSettings.barcodeType === "barcode") {
+                const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                label.appendChild(svg);
+                if (p.Barcode) {
+                    try {
+                        JsBarcode(svg, p.Barcode, {
+                            format: "CODE128",
+                            displayValue: false,
+                            margin: 0,
+                            fontSize: 10
+                        });
+                    } catch (e) {
+                        console.error("JsBarcode error", e);
+                    }
+                }
+                codeContainer = svg;
+            } else {
+                const canvas = document.createElement("canvas");
+                label.appendChild(canvas);
+                if (p.Barcode || p.Name) {
+                    try {
+                        const qr = new QRious({
+                            element: canvas,
+                            value: p.Barcode || p.Name,
+                            size: Math.min(screenSettings.labelWidth - 10, screenSettings.labelHeight - 20)
+                        });
+                    } catch (e) {
+                        console.error("QR error", e);
+                    }
+                }
+                codeContainer = canvas;
+            }
+
+            const nameDiv = document.createElement("div");
+            nameDiv.className = "barcode-product-name";
+            nameDiv.textContent = (p.Name || "").substring(0, 24);
+            label.appendChild(nameDiv);
+
+            if (screenSettings.showPrice) {
+                let basePrice = p.SalePrice || 0;
+                let priceToShow = basePrice;
+                if (screenSettings.priceMode === "withVat") {
+                    const rate = screenSettings.vatRate || 15;
+                    const factor = 1 + (rate / 100);
+                    priceToShow = basePrice * factor;
+                }
+                const priceDiv = document.createElement("div");
+                priceDiv.className = "barcode-price";
+                priceDiv.textContent = priceToShow.toFixed(2) + " —.”";
+                label.appendChild(priceDiv);
+            }
+
+            area.appendChild(label);
+        });
+
+        window.print();
+    }
+
+    document.getElementById("productForm").addEventListener("submit", saveProduct);
+
+    window.addEventListener("DOMContentLoaded", () => {
+        loadSettingsFromStorage();
+        loadProducts();
+    });
+</script>
+</body>
+</html>

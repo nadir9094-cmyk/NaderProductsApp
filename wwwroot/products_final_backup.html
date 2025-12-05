@@ -33,7 +33,6 @@
 
         .header-actions {
             display: flex;
-            flex-wrap: wrap;
             gap: 6px;
         }
 
@@ -53,10 +52,6 @@
             background-color: transparent;
             border: 1px solid #d1d5db;
             color: #111827;
-        }
-        .btn-xs {
-            padding: 3px 6px;
-            font-size: 11px;
         }
 
         main {
@@ -86,22 +81,6 @@
             box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
             padding: 10px;
             overflow: hidden;
-        }
-
-        .table-header-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-bottom: 6px;
-            font-size: 12px;
-        }
-
-        .table-header-info .pager {
-            display: flex;
-            align-items: center;
-            gap: 4px;
         }
 
         table {
@@ -231,8 +210,17 @@
             color: #6b7280;
         }
 
+        /* منطقة طباعة الباركود (تستخدم كحاوية مؤقتة، مخفية) */
         #barcodePrintArea {
             display: none;
+        }
+
+        @media (max-width: 700px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
         }
 
         .barcode-label {
@@ -262,31 +250,6 @@
             margin-top: 2px;
             font-weight: 600;
         }
-
-        .old-price {
-            text-decoration: line-through;
-            color: #9ca3af;
-            font-size: 11px;
-        }
-
-        .new-price {
-            color: #b91c1c;
-            font-weight: 700;
-            font-size: 12px;
-        }
-
-        .offer-info {
-            color: #1d4ed8;
-            font-size: 10px;
-        }
-
-        @media (max-width: 700px) {
-            header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 6px;
-            }
-        }
     </style>
 </head>
 <body>
@@ -295,9 +258,7 @@
     <div class="header-actions">
         <button class="btn btn-secondary" onclick="goHome()">العودة للرئيسية</button>
         <button class="btn btn-primary" onclick="openNewProductModal()">+ منتج جديد</button>
-        <button id="printBtn" class="btn btn-secondary" onclick="printProducts()">🖨 طباعة النتائج</button>
-        <button class="btn btn-outline" onclick="exportProducts()">⬇️ تصدير المنتجات</button>
-        <button class="btn btn-outline" onclick="triggerImport()">⬆️ استيراد المنتجات</button>
+        <button class="btn btn-outline" onclick="printProducts()">🖨 طباعة النتائج</button>
         <button class="btn btn-secondary" onclick="openSettingsModal()">⚙️ إعدادات الشاشة</button>
     </div>
 </header>
@@ -328,28 +289,6 @@
     </div>
 
     <div class="card">
-        <div class="table-header-info">
-            <div>
-                إجمالي المنتجات: <span id="totalCountInfo">0</span>
-                &nbsp;|&nbsp;
-                المعروضة حسب البحث: <span id="filteredCountInfo">0</span>
-            </div>
-            <div class="pager">
-                <label for="pageSizeSelect">صفوف في الصفحة:</label>
-                <select id="pageSizeSelect" onchange="changePageSize()">
-                    <option value="50" selected>50</option>
-                    <option value="100">100</option>
-                    <option value="200">200</option>
-                    <option value="500">500</option>
-                </select>
-                <button class="btn btn-outline btn-xs" onclick="goFirstPage()">الأول</button>
-                <button class="btn btn-outline btn-xs" onclick="goPrevPage()">السابق</button>
-                <span id="pageInfo">1 / 1</span>
-                <button class="btn btn-outline btn-xs" onclick="goNextPage()">التالي</button>
-                <button class="btn btn-outline btn-xs" onclick="goLastPage()">الأخير</button>
-            </div>
-        </div>
-
         <table>
             <thead>
             <tr>
@@ -364,7 +303,7 @@
                 <th>تاريخ الصلاحية</th>
                 <th>حالة الصلاحية</th>
                 <th>سعر الشراء</th>
-                <th>سعر البيع / العرض</th>
+                <th>سعر البيع</th>
                 <th>الضريبة</th>
                 <th>العرض</th>
                 <th>إجراءات</th>
@@ -377,7 +316,6 @@
 </main>
 
 <div id="barcodePrintArea"></div>
-<input type="file" id="importFileInput" accept="application/json" style="display:none" />
 
 <!-- Modal المنتج -->
 <div id="productModalBackdrop" class="modal-backdrop">
@@ -589,9 +527,6 @@
 <script>
     let allProducts = [];
     let filteredProducts = [];
-    let currentPage = 1;
-    let pageSize = 50;
-
     let screenSettings = {
         vatRate: 15,
         expiryNearDays: 30,
@@ -612,8 +547,8 @@
         try {
             var raw = localStorage.getItem("productsScreenSettings");
             if (raw) {
-                var obj = JSON.parse(raw);
-                screenSettings = Object.assign(screenSettings, obj);
+            var obj = JSON.parse(raw);
+            screenSettings = Object.assign(screenSettings, obj);
             }
         } catch (e) {}
     }
@@ -818,62 +753,6 @@
         return '<span class="badge badge-green">عرض ساري</span>';
     }
 
-    function getOfferPriceHtml(product) {
-        var sale = product.salePrice != null ? product.salePrice : (product.SalePrice || 0);
-        var offerEnabled = product.offerEnabled != null ? product.offerEnabled : (product.OfferEnabled || false);
-        var offerPrice = product.offerPrice != null ? product.offerPrice : (product.OfferPrice != null ? product.OfferPrice : null);
-        var start = product.offerStart || product.OfferStart || null;
-        var end = product.offerEnd || product.OfferEnd || null;
-
-        if (!offerEnabled || offerPrice == null || isNaN(parseFloat(offerPrice))) {
-            return '<span>' + sale + '</span>';
-        }
-
-        var now = new Date();
-        var startDate = start ? new Date(start) : null;
-        var endDate = end ? new Date(end) : null;
-
-        var status = "active";
-        if (startDate && now < startDate) status = "notstarted";
-        if (endDate && now > endDate) status = "ended";
-
-        var remainingText = "";
-        var durationText = "";
-
-        if (startDate && endDate) {
-            var totalDays = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-            if (totalDays < 0) totalDays = 0;
-            durationText = "مدة العرض " + totalDays + " يوم";
-        }
-
-        if (endDate) {
-            var diffMs = endDate - now;
-            var remDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-            if (remDays < 0) remDays = 0;
-            remainingText = "متبقي " + remDays + " يوم";
-        }
-
-        var info = "";
-        if (status === "active") {
-            if (remainingText) info = remainingText;
-            if (durationText) {
-                if (info) info += " من " + durationText.replace("مدة العرض ", "");
-                else info = durationText;
-            }
-        } else if (status === "notstarted") {
-            info = "عرض لم يبدأ بعد";
-        } else if (status === "ended") {
-            info = "عرض منتهي";
-        }
-
-        var html = '<span class="old-price">' + sale + '</span><br>'
-                 + '<span class="new-price">' + offerPrice + '</span>';
-        if (info) {
-            html += '<br><span class="offer-info">' + info + '</span>';
-        }
-        return html;
-    }
-
     function applyFilters() {
         var search = document.getElementById("searchText").value.trim().toLowerCase();
         var supplierSearch = document.getElementById("supplierSearch").value.trim().toLowerCase();
@@ -884,6 +763,9 @@
 
         var remainingMin = remainingMinVal ? parseFloat(remainingMinVal) : null;
         var remainingMax = remainingMaxVal ? parseFloat(remainingMaxVal) : null;
+
+        var tbody = document.getElementById("productsBody");
+        tbody.innerHTML = "";
 
         filteredProducts = allProducts.filter(function (p) {
             if (search) {
@@ -912,44 +794,10 @@
             return true;
         });
 
-        currentPage = 1;
-        updateCountsAndRender();
-    }
-
-    function updateCountsAndRender() {
-        var totalSpan = document.getElementById("totalCountInfo");
-        var filteredSpan = document.getElementById("filteredCountInfo");
-        if (totalSpan) totalSpan.textContent = allProducts.length || 0;
-        if (filteredSpan) filteredSpan.textContent = filteredProducts.length || 0;
-        renderProductsTable();
-    }
-
-    function renderProductsTable() {
-        var tbody = document.getElementById("productsBody");
-        tbody.innerHTML = "";
-
-        var total = filteredProducts.length;
-        if (total === 0) {
-            var trEmpty = document.createElement("tr");
-            trEmpty.innerHTML = '<td colspan="15">لا توجد منتجات.</td>';
-            tbody.appendChild(trEmpty);
-
-            var pageInfo = document.getElementById("pageInfo");
-            if (pageInfo) pageInfo.textContent = "1 / 1";
-            return;
-        }
-
-        var totalPages = Math.max(1, Math.ceil(total / pageSize));
-        if (currentPage > totalPages) currentPage = totalPages;
-        if (currentPage < 1) currentPage = 1;
-
-        var startIndex = (currentPage - 1) * pageSize;
-        var endIndex = Math.min(startIndex + pageSize, total);
-        var pageItems = filteredProducts.slice(startIndex, endIndex);
-
-        pageItems.forEach(function (p) {
+        filteredProducts.forEach(function (p) {
             var remaining = getRemaining(p);
             var purchase = p.purchasePrice != null ? p.purchasePrice : (p.PurchasePrice || 0);
+            var sale = p.salePrice != null ? p.salePrice : (p.SalePrice || 0);
             var isVatIncluded = (p.isVatIncluded != null ? p.isVatIncluded : (p.IsVatIncluded != null ? p.IsVatIncluded : true));
 
             var tr = document.createElement("tr");
@@ -965,7 +813,7 @@
                 "<td>" + formatDate(p.expiryDate || p.ExpiryDate) + "</td>" +
                 "<td>" + getExpiryBadge(p) + "</td>" +
                 "<td>" + purchase + "</td>" +
-                "<td>" + getOfferPriceHtml(p) + "</td>" +
+                "<td>" + sale + "</td>" +
                 "<td>" + (isVatIncluded ? "شامل" : "غير شامل") + "</td>" +
                 "<td>" + getOfferStatusBadge(p) + "</td>" +
                 "<td>" +
@@ -975,44 +823,6 @@
                 "</td>";
             tbody.appendChild(tr);
         });
-
-        var pageInfo = document.getElementById("pageInfo");
-        if (pageInfo) pageInfo.textContent = currentPage + " / " + totalPages;
-    }
-
-    function changePageSize() {
-        var sel = document.getElementById("pageSizeSelect");
-        var val = parseInt(sel.value || "50", 10);
-        if (isNaN(val) || val <= 0) val = 50;
-        pageSize = val;
-        currentPage = 1;
-        renderProductsTable();
-    }
-
-    function goFirstPage() {
-        currentPage = 1;
-        renderProductsTable();
-    }
-
-    function goPrevPage() {
-        if (currentPage > 1) {
-            currentPage--;
-            renderProductsTable();
-        }
-    }
-
-    function goNextPage() {
-        var totalPages = Math.max(1, Math.ceil((filteredProducts.length || 0) / pageSize));
-        if (currentPage < totalPages) {
-            currentPage++;
-            renderProductsTable();
-        }
-    }
-
-    function goLastPage() {
-        var totalPages = Math.max(1, Math.ceil((filteredProducts.length || 0) / pageSize));
-        currentPage = totalPages;
-        renderProductsTable();
     }
 
     async function deleteProduct(id) {
@@ -1341,100 +1151,10 @@
         await loadProducts();
     }
 
-    function exportProducts() {
-        if (!allProducts || allProducts.length === 0) {
-            alert("لا توجد منتجات لتصديرها.");
-            return;
-        }
-
-        try {
-            var dataStr = JSON.stringify(allProducts, null, 2);
-            var blob = new Blob([dataStr], { type: "application/json" });
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement("a");
-            var today = new Date().toISOString().slice(0, 10);
-            a.href = url;
-            a.download = "products_export_" + today + ".json";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        } catch (e) {
-            console.error(e);
-            alert("حدث خطأ أثناء تصدير المنتجات.");
-        }
-    }
-
-    function triggerImport() {
-        var input = document.getElementById("importFileInput");
-        if (input) input.click();
-    }
-
-    async function handleImportFile(event) {
-        var file = event.target.files[0];
-        event.target.value = "";
-        if (!file) return;
-        try {
-            var text = await file.text();
-            var items = JSON.parse(text);
-            if (!Array.isArray(items)) {
-                alert("ملف غير صحيح. يجب أن يكون بصيغة قائمة منتجات.");
-                return;
-            }
-            if (!confirm("سيتم استيراد " + items.length + " منتجاً. هل أنت متأكد؟")) return;
-
-            for (const p of items) {
-                var productData = {
-                    barcode: p.barcode || p.Barcode || "",
-                    name: p.name || p.Name || "",
-                    supplierName: p.supplierName || p.SupplierName || "",
-                    category: p.category || p.Category || "",
-                    quantity: p.quantity != null ? p.quantity : (p.Quantity || 0),
-                    minQuantity: p.minQuantity != null ? p.minQuantity : (p.MinQuantity || 0),
-                    soldQuantity: p.soldQuantity != null ? p.soldQuantity : (p.SoldQuantity || 0),
-                    purchasePrice: p.purchasePrice != null ? p.purchasePrice : (p.PurchasePrice || 0),
-                    salePrice: p.salePrice != null ? p.salePrice : (p.SalePrice || 0),
-                    isVatIncluded: p.isVatIncluded != null ? p.isVatIncluded : (p.IsVatIncluded != null ? p.IsVatIncluded : true),
-                    expiryDate: p.expiryDate || p.ExpiryDate || null,
-                    offerEnabled: p.offerEnabled != null ? p.offerEnabled : (p.OfferEnabled || false),
-                    offerName: p.offerName || p.OfferName || "",
-                    offerPrice: p.offerPrice != null ? p.offerPrice : (p.OfferPrice != null ? p.OfferPrice : null),
-                    offerStart: p.offerStart || p.OfferStart || null,
-                    offerEnd: p.offerEnd || p.OfferEnd || null,
-                    offerVatIncluded: p.offerVatIncluded != null ? p.offerVatIncluded : (p.OfferVatIncluded != null ? p.OfferVatIncluded : true)
-                };
-                try {
-                    var res = await fetch("/api/products", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(productData)
-                    });
-                    if (!res.ok) {
-                        console.error("Import error", await res.text());
-                    }
-                } catch (e2) {
-                    console.error("Import exception", e2);
-                }
-            }
-
-            alert("تم استيراد المنتجات (مع تجاهل المنتجات التي فشل استيرادها).");
-            await loadProducts();
-        } catch (e) {
-            console.error(e);
-            alert("حدث خطأ أثناء قراءة ملف الاستيراد.");
-        }
-    }
-
     document.getElementById("productForm").addEventListener("submit", saveProduct);
 
     window.addEventListener("DOMContentLoaded", function () {
         loadSettingsFromStorage();
-        var importInput = document.getElementById("importFileInput");
-        if (importInput) {
-            importInput.addEventListener("change", handleImportFile);
-        }
-        var pageSel = document.getElementById("pageSizeSelect");
-        if (pageSel) pageSel.value = String(pageSize);
         loadProducts();
     });
 </script>
