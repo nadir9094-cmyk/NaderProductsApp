@@ -4,77 +4,87 @@ using NaderProductsApp.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// قراءة نوع قاعدة البيانات واتصالها من متغيرات البيئة
+var dbProvider = builder.Configuration["DB_PROVIDER"];      // postgres أو sqlite
+var dbConnection = builder.Configuration["DB_CONNECTION"];  // تستخدم مع postgres
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseSqlite("Data Source=products.db");
-});
-
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
+    if (!string.IsNullOrWhiteSpace(dbProvider) &&
+        dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase) &&
+        !string.IsNullOrWhiteSpace(dbConnection))
     {
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
-    });
+        // استخدام PostgreSQL (مثلاً على Render)
+        options.UseNpgsql(dbConnection);
+    }
+    else
+    {
+        // الوضع الافتراضي: SQLite ملف products.db (محليًا)
+        options.UseSqlite("Data Source=products.db");
+    }
 });
 
 var app = builder.Build();
 
+// ضمان إنشاء قاعدة البيانات/الجداول (يعمل مع SQLite و PostgreSQL)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
 }
 
-app.UseCors();
-app.UseDefaultFiles();
-app.UseStaticFiles();
-
+// API للمنتجات
 app.MapGet("/api/products", async (AppDbContext db) =>
-{
-    var products = await db.Products.OrderBy(p => p.Id).ToListAsync();
-    return Results.Ok(products);
-});
+    await db.Products.ToListAsync());
 
-app.MapPost("/api/products", async (AppDbContext db, Product product) =>
+app.MapGet("/api/products/{id:int}", async (AppDbContext db, int id) =>
+    await db.Products.FindAsync(id) is Product p ? Results.Ok(p) : Results.NotFound());
+
+app.MapPost("/api/products", async (AppDbContext db, Product p) =>
 {
-    db.Products.Add(product);
+    db.Products.Add(p);
     await db.SaveChangesAsync();
-    return Results.Created($"/api/products/{product.Id}", product);
+    return Results.Created($"/api/products/{p.Id}", p);
 });
 
-app.MapPut("/api/products/{id:int}", async (int id, AppDbContext db, Product updated) =>
+app.MapPut("/api/products/{id:int}", async (AppDbContext db, int id, Product updated) =>
 {
-    var product = await db.Products.FindAsync(id);
-    if (product is null) return Results.NotFound();
+    var p = await db.Products.FindAsync(id);
+    if (p is null) return Results.NotFound();
 
-    product.Barcode = updated.Barcode;
-    product.Name = updated.Name;
-    product.SupplierName = updated.SupplierName;
-    product.Category = updated.Category;
-    product.Quantity = updated.Quantity;
-    product.MinQuantity = updated.MinQuantity;
-    product.SoldQuantity = updated.SoldQuantity;
-    product.PurchasePrice = updated.PurchasePrice;
-    product.SalePrice = updated.SalePrice;
-    product.IsVatIncluded = updated.IsVatIncluded;
-    product.ExpiryDate = updated.ExpiryDate;
-    product.OfferEnabled = updated.OfferEnabled;
-    product.OfferStart = updated.OfferStart;
-    product.OfferEnd = updated.OfferEnd;
-    product.OfferPrice = updated.OfferPrice;
+    p.Barcode          = updated.Barcode;
+    p.Name             = updated.Name;
+    p.SupplierName     = updated.SupplierName;
+    p.Category         = updated.Category;
+    p.Quantity         = updated.Quantity;
+    p.MinQuantity      = updated.MinQuantity;
+    p.SoldQuantity     = updated.SoldQuantity;
+    p.PurchasePrice    = updated.PurchasePrice;
+    p.SalePrice        = updated.SalePrice;
+    p.IsVatIncluded    = updated.IsVatIncluded;
+    p.ExpiryDate       = updated.ExpiryDate;
+    p.OfferEnabled     = updated.OfferEnabled;
+    p.OfferName        = updated.OfferName;
+    p.OfferPrice       = updated.OfferPrice;
+    p.OfferStart       = updated.OfferStart;
+    p.OfferEnd         = updated.OfferEnd;
+    p.OfferVatIncluded = updated.OfferVatIncluded;
 
     await db.SaveChangesAsync();
-    return Results.Ok(product);
+    return Results.Ok(p);
 });
 
-app.MapDelete("/api/products/{id:int}", async (int id, AppDbContext db) =>
+app.MapDelete("/api/products/{id:int}", async (AppDbContext db, int id) =>
 {
-    var product = await db.Products.FindAsync(id);
-    if (product is null) return Results.NotFound();
-
-    db.Products.Remove(product);
+    var p = await db.Products.FindAsync(id);
+    if (p is null) return Results.NotFound();
+    db.Products.Remove(p);
     await db.SaveChangesAsync();
     return Results.NoContent();
 });
+
+// الملفات الثابتة (الواجهة products.html وغيره)
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.Run();
