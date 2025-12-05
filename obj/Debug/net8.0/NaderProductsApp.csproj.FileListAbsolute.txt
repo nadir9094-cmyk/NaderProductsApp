@@ -58,3 +58,5 @@ C:\Users\turai\Desktop\NaderProductsApp\obj\Debug\net8.0\refint\NaderProductsApp
 C:\Users\turai\Desktop\NaderProductsApp\obj\Debug\net8.0\NaderProductsApp.pdb
 C:\Users\turai\Desktop\NaderProductsApp\obj\Debug\net8.0\NaderProductsApp.genruntimeconfig.cache
 C:\Users\turai\Desktop\NaderProductsApp\obj\Debug\net8.0\ref\NaderProductsApp.dll
+C:\Users\turai\Desktop\NaderProductsApp\bin\Debug\net8.0\Npgsql.dll
+C:\Users\turai\Desktop\NaderProductsApp\bin\Debug\net8.0\Npgsql.EntityFrameworkCore.PostgreSQL.dll

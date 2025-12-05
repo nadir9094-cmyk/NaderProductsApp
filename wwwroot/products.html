@@ -53,6 +53,20 @@
 <body>
 <div class="page">
     <header>
+<a href="/index.html" 
+   style="
+        display:inline-block;
+        padding:10px 20px;
+        background:#007bff;
+        color:white;
+        text-decoration:none;
+        border-radius:8px;
+        font-size:18px;
+        font-weight:bold;
+        margin-bottom:20px;
+   ">
+   ⬅ العودة للرئيسية
+</a>
         <h2>شاشة المنتجات</h2>
         <div>
             <button id="btnPrintList" class="btn btn-secondary btn-icon">🖨️ طباعة القائمة</button>
@@ -676,7 +690,71 @@ document.addEventListener("DOMContentLoaded", function(){
         offerSummary.style.display="block";
     }
 
-    async function saveProduct(evt){
+    async function saveProduct(event) {
+    event.preventDefault();
+
+    const id = document.getElementById('productId').value;
+    const offerEnabled = document.getElementById('offerEnabled').checked;
+    const offerStart = document.getElementById('offerStart').value;
+    const offerEnd = document.getElementById('offerEnd').value;
+
+    // 🔥 التحقق الإجباري من التاريخ عند تفعيل العرض
+    if (offerEnabled && (!offerStart || !offerEnd)) {
+        alert("حدد تاريخ بداية ونهاية العرض");
+        return;
+    }
+
+    const product = {
+        id: id ? parseInt(id) : 0,
+        barcode: document.getElementById('barcode').value.trim(),
+        name: document.getElementById('name').value.trim(),
+        supplierName: document.getElementById('supplierName').value.trim(),
+        category: document.getElementById('category').value.trim(),
+        quantity: parseInt(document.getElementById('quantity').value || '0'),
+        minQuantity: parseInt(document.getElementById('minQuantity').value || '0'),
+        soldQuantity: parseInt(document.getElementById('soldQuantity').value || '0'),
+        purchasePrice: parseFloat(document.getElementById('purchasePrice').value || '0'),
+        salePrice: parseFloat(document.getElementById('salePrice').value || '0'),
+        isVatIncluded: document.getElementById('isVatIncluded').checked,
+        expiryDate: document.getElementById('expiryDate').value || null,
+        offerEnabled: offerEnabled,
+        offerName: document.getElementById('offerName').value.trim(),
+        offerPrice: document.getElementById('offerPrice').value ? parseFloat(document.getElementById('offerPrice').value) : null,
+        offerStart: offerStart || null,
+        offerEnd: offerEnd || null,
+        offerVatIncluded: document.getElementById('offerVatIncluded').checked
+    };
+
+    const isEdit = !!id;
+    const url = isEdit ? `/api/products/${id}` : '/api/products';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    try {
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(product)
+        });
+
+        if (!res.ok) throw new Error('فشل حفظ المنتج');
+
+        const saved = await res.json();
+
+        if (isEdit) {
+            const index = products.findIndex(p => p.id === saved.id);
+            if (index !== -1) products[index] = saved;
+        } else {
+            products.push(saved);
+        }
+
+        renderProducts();
+        resetForm();
+    } catch (err) {
+        alert("تعذر حفظ المنتج");
+        console.error(err);
+    }
+}
+(evt){
         evt.preventDefault();
         const body = {
             id: id.value ? parseInt(id.value) : 0,
