@@ -34,7 +34,6 @@ namespace NaderProductsApp
         DateTime? InvoiceDate
     );
 
-    // نستخدم كلاس بدل record في الدفع لتفادي أي مشاكل في الربط/الـ JSON
     public class CustomerPaymentInput
     {
         public decimal Amount { get; set; }
@@ -70,8 +69,10 @@ namespace NaderProductsApp
             // Configure database provider (PostgreSQL on Render, SQLite locally by default)
             var provider = Environment.GetEnvironmentVariable("DB_PROVIDER");
             var conn = Environment.GetEnvironmentVariable("DB_CONNECTION");
+            var isPostgres = string.Equals(provider, "postgres", StringComparison.OrdinalIgnoreCase)
+                             && !string.IsNullOrWhiteSpace(conn);
 
-            if (string.Equals(provider, "postgres", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(conn))
+            if (isPostgres)
             {
                 builder.Services.AddDbContext<AppDbContext>(opt =>
                     opt.UseNpgsql(conn));
@@ -92,11 +93,47 @@ namespace NaderProductsApp
 
             var app = builder.Build();
 
-            // Ensure database and tables are created (Products + Customers + Invoices + Payments)
+            // Ensure database and tables are created
             using (var scope = app.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                // يضمن وجود products.db محلياً + جدول Products
                 db.Database.EnsureCreated();
+
+                // على Render (PostgreSQL) ننشئ جداول العملاء إذا كانت غير موجودة
+                if (isPostgres)
+                {
+                    var sql = @"
+CREATE TABLE IF NOT EXISTS ""Customers"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""Name"" VARCHAR(200) NOT NULL,
+    ""Phone"" TEXT NULL,
+    ""Address"" TEXT NULL,
+    ""Notes"" TEXT NULL,
+    ""Status"" VARCHAR(32) NOT NULL,
+    ""CreatedAt"" TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ""CustomerInvoices"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""CustomerId"" INT NOT NULL REFERENCES ""Customers""(""Id"") ON DELETE CASCADE,
+    ""InvoiceDate"" TIMESTAMPTZ NOT NULL,
+    ""Description"" VARCHAR(500) NOT NULL,
+    ""Amount"" NUMERIC(18,2) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""CustomerId"" INT NOT NULL REFERENCES ""Customers""(""Id"") ON DELETE CASCADE,
+    ""PaymentDate"" TIMESTAMPTZ NOT NULL,
+    ""Amount"" NUMERIC(18,2) NOT NULL,
+    ""Method"" VARCHAR(50) NOT NULL,
+    ""Note"" TEXT NULL
+);
+";
+                    db.Database.ExecuteSqlRaw(sql);
+                }
             }
 
             app.UseDefaultFiles();
@@ -357,7 +394,6 @@ namespace NaderProductsApp
                     db.CustomerPayments.Add(payment);
                     await db.SaveChangesAsync();
 
-                    // نرجّع JSON بسيط بدون علاقات عشان ما يصير دوران في الـ JSON
                     return Results.Ok(new
                     {
                         success = true,
