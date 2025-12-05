@@ -1,0 +1,12 @@
+﻿services:
+  - type: web
+    name: nader-products-app
+    env: docker
+    plan: free
+    autoDeploy: true
+    rootDir: .
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /products.html
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production

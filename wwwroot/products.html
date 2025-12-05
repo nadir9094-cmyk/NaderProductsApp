@@ -1,0 +1,985 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <title>شاشة المنتجات</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <style>
+        body{font-family:system-ui,"Segoe UI",Tahoma,sans-serif;background:#f5f6fa;margin:0;direction:rtl;}
+        .page{max-width:1200px;margin:20px auto;background:#fff;border-radius:12px;padding:16px;box-shadow:0 4px 10px rgba(0,0,0,.05);}
+        header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+        h2{margin:0;}
+        .btn{border:none;border-radius:8px;padding:4px 10px;margin-left:4px;cursor:pointer;font-size:12px;}
+        .btn-primary{background:#2563eb;color:#fff;}
+        .btn-secondary{background:#6b7280;color:#fff;}
+        .btn-danger{background:#dc2626;color:#fff;}
+        .btn-icon{padding:4px 6px;}
+        table{width:100%;border-collapse:collapse;font-size:13px;}
+        th,td{padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;vertical-align:top;}
+        thead{background:#f3f4f6;}
+        .badge{padding:2px 8px;border-radius:999px;font-size:11px;}
+        .status-ok{background:#dcfce7;color:#166534;}
+        .status-low{background:#fef3c7;color:#92400e;}
+        .status-out{background:#fee2e2;color:#991b1b;}
+        .offer-badge{background:#e0f2fe;color:#075985;}
+        .search-row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+        .search-row input,.search-row select{padding:4px 6px;border-radius:6px;border:1px solid #d1d5db;font-size:12px;}
+        .search-row .flex-1{flex:1;}
+        .settings-panel{margin-top:8px;padding:10px;border-radius:10px;background:#f9fafb;border:1px solid #e5e7eb;display:none;font-size:12px;}
+        .settings-grid{display:flex;flex-wrap:wrap;gap:10px;}
+        .settings-group{flex:1;min-width:240px;display:flex;flex-direction:column;gap:4px;}
+        .settings-group input,.settings-group select{padding:4px 6px;border-radius:6px;border:1px solid #d1d5db;font-size:12px;}
+        .form-group-inline{display:flex;align-items:center;gap:4px;margin-top:2px;}
+        .barcode-preview-box{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:6px;display:flex;justify-content:center;align-items:center;min-height:60px;margin-top:4px;}
+        .barcode-preview-box svg{max-width:100%;}
+        .form-modal-back{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:20;}
+        .form-modal{background:#fff;border-radius:12px;padding:14px 18px;max-width:900px;width:96%;max-height:90vh;overflow:auto;box-shadow:0 10px 25px rgba(0,0,0,.25);}
+        .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+        .modal-header h3{margin:0;font-size:16px;}
+        .form-row{display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;}
+        .form-group{flex:1;min-width:180px;display:flex;flex-direction:column;font-size:12px;}
+        .form-group label{margin-bottom:2px;}
+        .form-group input,.form-group select{padding:4px 6px;border-radius:6px;border:1px solid #d1d5db;font-size:12px;}
+        .form-actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;}
+        .offer-summary{margin-top:4px;font-size:11px;color:#0f172a;background:#eff6ff;padding:4px 6px;border-radius:6px;border:1px dashed #bfdbfe;}
+        del{color:#6b7280;margin-left:4px;}
+        .offer-text{font-size:11px;color:#0f172a;display:block;margin-top:3px;}
+        .table-footer{margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;font-size:12px;color:#4b5563;}
+        .footer-left{display:flex;gap:12px;align-items:center;margin-bottom:4px;}
+        .footer-right{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+        .footer-right select{padding:3px 6px;border-radius:6px;border:1px solid #d1d5db;font-size:12px;}
+    </style>
+</head>
+<body>
+<div class="page">
+    <header>
+        <h2>شاشة المنتجات</h2>
+        <div>
+            <button id="btnPrintList" class="btn btn-secondary btn-icon">🖨️ طباعة القائمة</button>
+            <button id="btnSettings" class="btn btn-secondary btn-icon">⚙️ إعدادات</button>
+            <button id="btnAdd" class="btn btn-primary">➕ منتج جديد</button>
+        </div>
+    </header>
+
+    <div class="search-row">
+        <input id="searchText" class="flex-1" placeholder="بحث بالاسم أو الباركود...">
+        <input id="searchSupplier" style="min-width:160px;" placeholder="بحث عن المورد...">
+        <select id="filterStatus" style="min-width:140px;">
+            <option value="">كل الحالات</option>
+            <option value="متوفر">متوفر</option>
+            <option value="منخفض">منخفض</option>
+            <option value="نافد">نافد</option>
+        </select>
+        <select id="filterOffer" style="min-width:160px;">
+            <option value="">كل العروض</option>
+            <option value="بدون">بدون عرض</option>
+            <option value="قادم">عرض لم يبدأ</option>
+            <option value="نشط">عرض نشط</option>
+            <option value="منتهي">عرض منتهي</option>
+        </select>
+    </div>
+
+    <div id="settingsPanel" class="settings-panel">
+        <div class="settings-grid">
+            <div class="settings-group">
+                <strong>إعدادات الباركود</strong>
+                <label>اسم المحل</label>
+                <input id="setStoreName" type="text" placeholder="مثال: أسواق نادر">
+                <label>عدد الملصقات الافتراضي</label>
+                <input id="setLabelCount" type="number" min="1" value="1">
+                <label>عرض الملصق (ملم)</label>
+                <input id="setLabelWidth" type="number" min="10" value="40">
+                <label>ارتفاع الملصق (ملم)</label>
+                <input id="setLabelHeight" type="number" min="10" value="25">
+                <div class="form-group-inline">
+                    <input id="setShowStoreName" type="checkbox" checked>
+                    <label for="setShowStoreName">إظهار اسم المحل</label>
+                </div>
+                <div class="form-group-inline">
+                    <input id="setShowProductName" type="checkbox" checked>
+                    <label for="setShowProductName">إظهار اسم المنتج</label>
+                </div>
+                <div class="form-group-inline">
+                    <input id="setShowPrice" type="checkbox" checked>
+                    <label for="setShowPrice">إظهار السعر</label>
+                </div>
+                <div class="form-group-inline">
+                    <input id="setPriceDisplayIncludeVat" type="checkbox" checked>
+                    <label for="setPriceDisplayIncludeVat">السعر في الملصق شامل الضريبة</label>
+                </div>
+                <label style="margin-top:6px;">معاينة باركود (تجريبي)</label>
+                <input id="setPreviewBarcode" placeholder="اكتب رقم باركود للتجربة">
+                <div class="barcode-preview-box">
+                    <svg id="settingsBarcodePreview"></svg>
+                </div>
+                <small style="font-size:11px;color:#6b7280;">CODE128 – قابل للقراءة بقارئ الباركود.</small>
+            </div>
+
+            <div class="settings-group">
+                <strong>إعدادات الضريبة</strong>
+                <label>نسبة الضريبة %</label>
+                <input id="setTaxPercent" type="number" step="0.01" value="15">
+                <small>تستخدم لحساب السعر الظاهر في الملصق والعروض (لا تغيّر السعر المخزن مباشرة).</small>
+            </div>
+
+            <div class="settings-group">
+                <strong>تعديل أسعار البيع</strong>
+                <label>نوع التعديل</label>
+                <select id="setPriceChangeType">
+                    <option value="none">بدون</option>
+                    <option value="up">رفع الأسعار</option>
+                    <option value="down">تخفيض الأسعار</option>
+                </select>
+                <label>النسبة %</label>
+                <input id="setPriceChangePercent" type="number" step="0.01" value="0">
+                <div class="form-group-inline">
+                    <input id="setPriceIncludeVat" type="checkbox">
+                    <label for="setPriceIncludeVat">التعديل على سعر شامل الضريبة</label>
+                </div>
+                <button id="btnApplyPriceChange" class="btn btn-primary" style="margin-top:4px;">تطبيق على كل المنتجات</button>
+            </div>
+
+            <div class="settings-group">
+                <strong>استيراد / تصدير المنتجات</strong>
+                <button id="btnExport" class="btn btn-secondary" style="margin-top:4px;">📤 تصدير (JSON)</button>
+                <button id="btnImport" class="btn btn-secondary" style="margin-top:4px;">📥 استيراد (JSON)</button>
+                <input id="importFile" type="file" accept=".json,application/json" style="display:none;">
+                <small>Id = 0 منتج جديد، غير ذلك تعديل.</small>
+            </div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>الباركود</th>
+            <th>اسم المنتج</th>
+            <th>التصنيف</th>
+            <th>المورد</th>
+            <th>السعر / العرض</th>
+            <th>الكمية المتبقية</th>
+            <th>حالة المنتج</th>
+            <th>حالة العرض</th>
+            <th>إجراءات</th>
+        </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+    </table>
+
+    <div class="table-footer">
+        <div class="footer-left">
+            <span id="totalCountText">عدد المنتجات الكلي: 0</span>
+            <span id="filteredCountText">المعروضة حالياً: 0 من 0</span>
+        </div>
+        <div class="footer-right">
+            <span>عدد الصفوف في الصفحة:</span>
+            <select id="pageSizeSelect">
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+            </select>
+            <button id="btnFirstPage" class="btn btn-secondary btn-icon">الأول</button>
+            <button id="btnPrevPage" class="btn btn-secondary btn-icon">السابق</button>
+            <span id="pageInfo">صفحة 1 من 1</span>
+            <button id="btnNextPage" class="btn btn-secondary btn-icon">التالي</button>
+            <button id="btnLastPage" class="btn btn-secondary btn-icon">الأخير</button>
+        </div>
+    </div>
+</div>
+
+<div id="formModalBack" class="form-modal-back">
+    <div class="form-modal">
+        <div class="modal-header">
+            <h3 id="formTitle">تسجيل منتج جديد</h3>
+            <button id="btnCloseModal" class="btn btn-secondary btn-icon">✕</button>
+        </div>
+        <form id="productForm">
+            <input type="hidden" id="id" />
+            <div class="form-row">
+                <div class="form-group">
+                    <label>رقم الباركود</label>
+                    <div style="display:flex;gap:4px;">
+                        <input id="barcode" style="flex:1;" placeholder="مثال: 6281006...">
+                        <button type="button" id="btnPrintBarcode" class="btn btn-secondary btn-icon">🖨️</button>
+                    </div>
+                    <small style="font-size:11px;color:#6b7280;">إعدادات الملصق من زر الإعدادات ⚙️.</small>
+                </div>
+                <div class="form-group">
+                    <label>اسم المنتج</label>
+                    <input id="name" placeholder="مثال: ماء 600مل">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>التصنيف</label>
+                    <input id="category" placeholder="مشروبات/غذائية">
+                </div>
+                <div class="form-group">
+                    <label>المورد</label>
+                    <input id="supplierName" placeholder="اسم المورد">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الكمية</label>
+                    <input id="quantity" type="number" value="0">
+                </div>
+                <div class="form-group">
+                    <label>الكمية المباعة</label>
+                    <input id="soldQuantity" type="number" value="0">
+                </div>
+                <div class="form-group">
+                    <label>الحد الأدنى</label>
+                    <input id="minQuantity" type="number" value="0">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>سعر الشراء</label>
+                    <input id="purchasePrice" type="number" step="0.01" value="0">
+                </div>
+                <div class="form-group">
+                    <label>سعر البيع</label>
+                    <input id="salePrice" type="number" step="0.01" value="0">
+                </div>
+                <div class="form-group">
+                    <label>السعر شامل الضريبة</label>
+                    <div class="form-group-inline">
+                        <input id="isVatIncluded" type="checkbox" checked>
+                        <span>السعر المدخل شامل ضريبة القيمة المضافة</span>
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>تفعيل العرض</label>
+                    <div class="form-group-inline">
+                        <input id="offerEnabled" type="checkbox">
+                        <span>يوجد عرض على هذا المنتج</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>اسم العرض</label>
+                    <input id="offerName" placeholder="مثال: عرض نهاية الأسبوع">
+                </div>
+                <div class="form-group">
+                    <label>سعر العرض</label>
+                    <input id="offerPrice" type="number" step="0.01">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>فترة العرض</label>
+                    <div class="form-group-inline">
+                        <span>من</span>
+                        <input id="offerStart" type="date">
+                        <span>إلى</span>
+                        <input id="offerEnd" type="date">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>سعر العرض شامل الضريبة</label>
+                    <div class="form-group-inline">
+                        <input id="offerVatIncluded" type="checkbox" checked>
+                        <span>سعر العرض يشمل الضريبة</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="offerSummary" class="offer-summary" style="display:none;"></div>
+
+            <div class="form-actions">
+                <button type="submit" id="btnSave" class="btn btn-primary">حفظ</button>
+                <button type="button" id="btnCancel" class="btn btn-secondary">إلغاء</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+    const api = "/api/products";
+
+    // عناصر الجدول والبحث
+    const rows = document.getElementById("rows");
+    const searchText = document.getElementById("searchText");
+    const searchSupplier = document.getElementById("searchSupplier");
+    const filterStatus = document.getElementById("filterStatus");
+    const filterOffer = document.getElementById("filterOffer");
+
+    // إعدادات
+    const btnSettings = document.getElementById("btnSettings");
+    const btnPrintList = document.getElementById("btnPrintList");
+    const settingsPanel = document.getElementById("settingsPanel");
+    const setStoreName = document.getElementById("setStoreName");
+    const setLabelCount = document.getElementById("setLabelCount");
+    const setLabelWidth = document.getElementById("setLabelWidth");
+    const setLabelHeight = document.getElementById("setLabelHeight");
+    const setShowStoreName = document.getElementById("setShowStoreName");
+    const setShowProductName = document.getElementById("setShowProductName");
+    const setShowPrice = document.getElementById("setShowPrice");
+    const setPriceDisplayIncludeVat = document.getElementById("setPriceDisplayIncludeVat");
+    const setPreviewBarcode = document.getElementById("setPreviewBarcode");
+    const settingsBarcodePreview = document.getElementById("settingsBarcodePreview");
+
+    const setTaxPercent = document.getElementById("setTaxPercent");
+    const setPriceChangeType = document.getElementById("setPriceChangeType");
+    const setPriceChangePercent = document.getElementById("setPriceChangePercent");
+    const setPriceIncludeVat = document.getElementById("setPriceIncludeVat");
+    const btnApplyPriceChange = document.getElementById("btnApplyPriceChange");
+    const btnExport = document.getElementById("btnExport");
+    const btnImport = document.getElementById("btnImport");
+    const importFile = document.getElementById("importFile");
+
+    // المودال
+    const formModalBack = document.getElementById("formModalBack");
+    const formTitle = document.getElementById("formTitle");
+    const productForm = document.getElementById("productForm");
+    const btnAdd = document.getElementById("btnAdd");
+    const btnCloseModal = document.getElementById("btnCloseModal");
+    const btnCancel = document.getElementById("btnCancel");
+    const btnPrintBarcode = document.getElementById("btnPrintBarcode");
+    const offerSummary = document.getElementById("offerSummary");
+
+    // حقول النموذج
+    const id = document.getElementById("id");
+    const barcode = document.getElementById("barcode");
+    const nameInput = document.getElementById("name");
+    const category = document.getElementById("category");
+    const supplierName = document.getElementById("supplierName");
+    const quantity = document.getElementById("quantity");
+    const soldQuantity = document.getElementById("soldQuantity");
+    const minQuantity = document.getElementById("minQuantity");
+    const purchasePrice = document.getElementById("purchasePrice");
+    const salePrice = document.getElementById("salePrice");
+    const isVatIncluded = document.getElementById("isVatIncluded");
+    const offerEnabled = document.getElementById("offerEnabled");
+    const offerName = document.getElementById("offerName");
+    const offerPrice = document.getElementById("offerPrice");
+    const offerStart = document.getElementById("offerStart");
+    const offerEnd = document.getElementById("offerEnd");
+    const offerVatIncluded = document.getElementById("offerVatIncluded");
+
+    // عناصر الفوتر / الصفحات
+    const totalCountText = document.getElementById("totalCountText");
+    const filteredCountText = document.getElementById("filteredCountText");
+    const pageInfo = document.getElementById("pageInfo");
+    const pageSizeSelect = document.getElementById("pageSizeSelect");
+    const btnFirstPage = document.getElementById("btnFirstPage");
+    const btnPrevPage = document.getElementById("btnPrevPage");
+    const btnNextPage = document.getElementById("btnNextPage");
+    const btnLastPage = document.getElementById("btnLastPage");
+
+    let products = [];
+    let settings = {
+        storeName: "",
+        labelCount: 1,
+        labelWidth: 40,
+        labelHeight: 25,
+        showStoreName: true,
+        showProductName: true,
+        showPrice: true,
+        priceDisplayIncludeVat: true,
+        taxPercent: 15,
+        priceChangeType: "none",
+        priceChangePercent: 0,
+        priceIncludeVat: false
+    };
+
+    let pageSize = 50;
+    let currentPage = 1;
+    let lastFiltered = [];
+
+    function loadSettings(){
+        try{
+            const saved = localStorage.getItem("NaderProductsSettings");
+            if (saved){
+                settings = Object.assign(settings, JSON.parse(saved));
+            }
+        }catch(e){}
+        setStoreName.value = settings.storeName || "";
+        setLabelCount.value = settings.labelCount;
+        setLabelWidth.value = settings.labelWidth;
+        setLabelHeight.value = settings.labelHeight;
+        setShowStoreName.checked = settings.showStoreName;
+        setShowProductName.checked = settings.showProductName;
+        setShowPrice.checked = settings.showPrice;
+        setPriceDisplayIncludeVat.checked = settings.priceDisplayIncludeVat;
+        setTaxPercent.value = settings.taxPercent;
+        setPriceChangeType.value = settings.priceChangeType;
+        setPriceChangePercent.value = settings.priceChangePercent;
+        setPriceIncludeVat.checked = settings.priceIncludeVat;
+    }
+
+    function saveSettings(){
+        settings.storeName = setStoreName.value || "";
+        settings.labelCount = parseInt(setLabelCount.value || "1");
+        settings.labelWidth = parseFloat(setLabelWidth.value || "40");
+        settings.labelHeight = parseFloat(setLabelHeight.value || "25");
+        settings.showStoreName = setShowStoreName.checked;
+        settings.showProductName = setShowProductName.checked;
+        settings.showPrice = setShowPrice.checked;
+        settings.priceDisplayIncludeVat = setPriceDisplayIncludeVat.checked;
+        settings.taxPercent = parseFloat(setTaxPercent.value || "15");
+        settings.priceChangeType = setPriceChangeType.value;
+        settings.priceChangePercent = parseFloat(setPriceChangePercent.value || "0");
+        settings.priceIncludeVat = setPriceIncludeVat.checked;
+        localStorage.setItem("NaderProductsSettings", JSON.stringify(settings));
+        updateSettingsBarcodePreview();
+    }
+
+    function updateSettingsBarcodePreview(){
+        if (!settingsBarcodePreview) return;
+        while(settingsBarcodePreview.firstChild){
+            settingsBarcodePreview.removeChild(settingsBarcodePreview.firstChild);
+        }
+        const val = (setPreviewBarcode.value || "").trim();
+        if (!val || typeof JsBarcode === "undefined") return;
+        try{
+            JsBarcode(settingsBarcodePreview, val, {
+                format: "CODE128",
+                displayValue: false,
+                width: 2,
+                height: 40,
+                margin: 0
+            });
+        }catch(e){console.error(e);}
+    }
+
+    function statusOfProduct(p){
+        const remaining = p.remainingQuantity;
+        if (remaining <= 0) return {text:"نافد", css:"status-out"};
+        if (remaining <= p.minQuantity) return {text:"منخفض", css:"status-low"};
+        return {text:"متوفر", css:"status-ok"};
+    }
+
+    function offerInfo(p){
+        if (!p.offerEnabled || !p.offerPrice || !p.offerStart || !p.offerEnd){
+            return {state:"بدون", text:"لا يوجد عرض مفعّل حالياً", hasOffer:false};
+        }
+        const now = new Date();
+        const start = new Date(p.offerStart);
+        const end = new Date(p.offerEnd);
+        const oneDay = 1000*60*60*24;
+        const durationDays = Math.round((end-start)/oneDay);
+        const daysToStart = Math.round((start-now)/oneDay);
+        const daysToEnd = Math.round((end-now)/oneDay);
+        let state="", text="";
+        if (now<start){
+            state="قادم";
+            text="عرض قادم يبدأ في "+start.toLocaleDateString("ar-SA")+" لمدة "+durationDays+" يوم، متبقّي "+daysToStart+" يوم لبداية العرض و"+daysToEnd+" يوم لنهاية العرض.";
+        }else if(now>=start && now<=end){
+            state="نشط";
+            text="عرض نشط من "+start.toLocaleDateString("ar-SA")+" إلى "+end.toLocaleDateString("ar-SA")+" (مدة "+durationDays+" يوم)، متبقّي "+daysToEnd+" يوم لنهاية العرض.";
+        }else{
+            state="منتهي";
+            text="عرض منتهي، مدته "+durationDays+" يوم وانتهى في "+end.toLocaleDateString("ar-SA")+".";
+        }
+        return {state,text,hasOffer:true};
+    }
+
+    function render(){
+        const term = (searchText.value || "").toLowerCase();
+        const supplierTerm = (searchSupplier.value || "").toLowerCase();
+        const statusFilter = filterStatus.value;
+        const offerFilter = filterOffer.value;
+
+        let filtered = [];
+        products.forEach(p=>{
+            const combined = ((p.name||"") + " " + (p.barcode||"")).toLowerCase();
+            if (term && combined.indexOf(term)===-1) return;
+            if (supplierTerm && (!p.supplierName || p.supplierName.toLowerCase().indexOf(supplierTerm)===-1)) return;
+
+            const st = statusOfProduct(p);
+            const offer = offerInfo(p);
+
+            if (statusFilter && st.text!==statusFilter) return;
+            if (offerFilter){
+                if (offerFilter==="بدون" && offer.state!=="بدون") return;
+                if (offerFilter==="قادم" && offer.state!=="قادم") return;
+                if (offerFilter==="نشط" && offer.state!=="نشط") return;
+                if (offerFilter==="منتهي" && offer.state!=="منتهي") return;
+            }
+            filtered.push(p);
+        });
+
+        lastFiltered = filtered;
+
+        const totalCount = products.length;
+        const filteredCount = filtered.length;
+        const totalPages = Math.max(1, Math.ceil((filteredCount || 1) / pageSize));
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const pageItems = filtered.slice(startIndex, endIndex);
+
+        rows.innerHTML = "";
+        pageItems.forEach(p=>{
+            const st = statusOfProduct(p);
+            const offer = offerInfo(p);
+            let priceHtml = "";
+            const basePrice = Number(p.salePrice || 0);
+            if (offer.hasOffer && p.offerPrice){
+                priceHtml += "<del>"+basePrice.toFixed(2)+" ر.س</del> ";
+                priceHtml += "<strong>"+Number(p.offerPrice).toFixed(2)+" ر.س</strong>";
+                priceHtml += "<span class='offer-text'>"+offer.text+"</span>";
+            }else{
+                priceHtml = basePrice.toFixed(2)+" ر.س";
+            }
+
+            let offerStateHtml="";
+            if (offer.hasOffer){
+                offerStateHtml = "<span class='badge offer-badge'>"+offer.state+"</span>";
+            }else{
+                offerStateHtml = "<span style='font-size:11px;color:#6b7280;'>لا يوجد عرض</span>";
+            }
+
+            const tr = document.createElement("tr");
+            tr.innerHTML =
+                "<td>"+(p.barcode||"")+"</td>"+
+                "<td>"+(p.name||"")+"</td>"+
+                "<td>"+(p.category||"")+"</td>"+
+                "<td>"+(p.supplierName||"")+"</td>"+
+                "<td>"+priceHtml+"</td>"+
+                "<td>"+p.remainingQuantity+"</td>"+
+                "<td><span class='badge "+st.css+"'>"+st.text+"</span></td>"+
+                "<td>"+offerStateHtml+"</td>"+
+                "<td>"+
+                    "<button class='btn btn-secondary btn-icon' data-act='print' data-id='"+p.id+"'>🖨️</button>"+
+                    "<button class='btn btn-secondary btn-icon' data-act='edit' data-id='"+p.id+"'>تعديل</button>"+
+                    "<button class='btn btn-danger btn-icon' data-act='del' data-id='"+p.id+"'>حذف</button>"+
+                "</td>";
+            rows.appendChild(tr);
+        });
+
+        if (totalCountText) totalCountText.textContent = "عدد المنتجات الكلي: " + totalCount;
+        if (filteredCountText) filteredCountText.textContent = "المعروضة حالياً: " + pageItems.length + " من " + filteredCount;
+        if (pageInfo) pageInfo.textContent = "صفحة " + currentPage + " من " + (totalPages || 1);
+
+        if (btnFirstPage && btnPrevPage){
+            btnFirstPage.disabled = currentPage <= 1;
+            btnPrevPage.disabled = currentPage <= 1;
+        }
+        if (btnNextPage && btnLastPage){
+            btnNextPage.disabled = currentPage >= totalPages;
+            btnLastPage.disabled = currentPage >= totalPages;
+        }
+    }
+
+    async function loadProducts(){
+        try{
+            const res = await fetch(api);
+            let data = await res.json();
+            if (!Array.isArray(data)) data = [];
+            data.forEach(p=>{
+                p.quantity = p.quantity || 0;
+                p.soldQuantity = p.soldQuantity || 0;
+                p.minQuantity = p.minQuantity || 0;
+                p.remainingQuantity = (p.quantity||0) - (p.soldQuantity||0);
+                p.salePrice = p.salePrice || 0;
+            });
+            products = data;
+            render();
+        }catch(e){
+            console.error(e);
+            products=[];
+            render();
+        }
+    }
+
+    function openForm(p){
+        if (p){
+            formTitle.textContent = "تعديل منتج";
+            id.value = p.id;
+            barcode.value = p.barcode || "";
+            nameInput.value = p.name || "";
+            category.value = p.category || "";
+            supplierName.value = p.supplierName || "";
+            quantity.value = p.quantity || 0;
+            soldQuantity.value = p.soldQuantity || 0;
+            minQuantity.value = p.minQuantity || 0;
+            purchasePrice.value = p.purchasePrice || 0;
+            salePrice.value = p.salePrice || 0;
+            isVatIncluded.checked = !!p.isVatIncluded;
+            offerEnabled.checked = !!p.offerEnabled;
+            offerName.value = p.offerName || "";
+            offerPrice.value = p.offerPrice != null ? p.offerPrice : "";
+            offerStart.value = p.offerStart ? p.offerStart.substring(0,10) : "";
+            offerEnd.value = p.offerEnd ? p.offerEnd.substring(0,10) : "";
+            offerVatIncluded.checked = p.offerVatIncluded == null ? true : !!p.offerVatIncluded;
+        }else{
+            formTitle.textContent = "تسجيل منتج جديد";
+            id.value="";
+            barcode.value="";
+            nameInput.value="";
+            category.value="";
+            supplierName.value="";
+            quantity.value=0;
+            soldQuantity.value=0;
+            minQuantity.value=0;
+            purchasePrice.value=0;
+            salePrice.value=0;
+            isVatIncluded.checked=true;
+            offerEnabled.checked=false;
+            offerName.value="";
+            offerPrice.value="";
+            offerStart.value="";
+            offerEnd.value="";
+            offerVatIncluded.checked=true;
+            offerSummary.style.display="none";
+            offerSummary.textContent="";
+        }
+        updateOfferSummary();
+        formModalBack.style.display="flex";
+    }
+
+    function closeForm(){
+        formModalBack.style.display="none";
+    }
+
+    function updateOfferSummary(){
+        if (!offerSummary) return;
+        if (!offerEnabled.checked || !offerStart.value || !offerEnd.value){
+            offerSummary.style.display="none";
+            offerSummary.textContent="";
+            return;
+        }
+        const start = new Date(offerStart.value);
+        const end = new Date(offerEnd.value);
+        if (isNaN(start.getTime()) || isNaN(end.getTime())){
+            offerSummary.style.display="none";
+            offerSummary.textContent="";
+            return;
+        }
+        const now = new Date();
+        const oneDay = 1000*60*60*24;
+        const durationDays = Math.round((end-start)/oneDay);
+        const daysToStart = Math.round((start-now)/oneDay);
+        const daysToEnd = Math.round((end-now)/oneDay);
+        let txt = "مدة العرض: "+durationDays+" يوم. ";
+        if (now<start){
+            txt += "متبقّي "+daysToStart+" يوم لبداية العرض و"+daysToEnd+" يوم لنهاية العرض.";
+        }else if(now>=start && now<=end){
+            txt += "العرض بدأ بالفعل، متبقّي "+daysToEnd+" يوم لنهاية العرض.";
+        }else{
+            txt += "العرض منتهي.";
+        }
+        offerSummary.textContent=txt;
+        offerSummary.style.display="block";
+    }
+
+    async function saveProduct(evt){
+        evt.preventDefault();
+        const body = {
+            id: id.value ? parseInt(id.value) : 0,
+            barcode: barcode.value,
+            name: nameInput.value,
+            category: category.value,
+            supplierName: supplierName.value,
+            quantity: parseInt(quantity.value || "0"),
+            soldQuantity: parseInt(soldQuantity.value || "0"),
+            minQuantity: parseInt(minQuantity.value || "0"),
+            purchasePrice: parseFloat(purchasePrice.value || "0"),
+            salePrice: parseFloat(salePrice.value || "0"),
+            isVatIncluded: isVatIncluded.checked,
+            expiryDate: null,
+            offerEnabled: offerEnabled.checked,
+            offerName: offerName.value || "",
+            offerPrice: offerPrice.value ? parseFloat(offerPrice.value) : null,
+            offerStart: offerStart.value ? offerStart.value : null,
+            offerEnd: offerEnd.value ? offerEnd.value : null,
+            offerVatIncluded: offerVatIncluded.checked
+        };
+        const isEdit = !!id.value;
+        const method = isEdit ? "PUT" : "POST";
+        const url = isEdit ? (api + "/" + body.id) : api;
+        try{
+            const res = await fetch(url,{
+                method,
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify(body)
+            });
+            if (!res.ok){
+                alert("خطأ في الحفظ، الكود: "+res.status);
+                return;
+            }
+            await loadProducts();
+            closeForm();
+        }catch(e){
+            console.error(e);
+            alert("حدث خطأ أثناء الاتصال بالخادم.");
+        }
+    }
+
+    function calcDisplayPrice(basePrice, isVatIncludedFlag){
+        let price = basePrice || 0;
+        const tax = settings.taxPercent || 0;
+        if (settings.priceDisplayIncludeVat && !isVatIncludedFlag){
+            price = price * (1 + tax/100);
+        }
+        return price;
+    }
+
+    function printBarcodeFor(code, nameVal, basePrice, isVatIncludedFlag){
+        code = (code||"").trim();
+        if (!code){
+            alert("أدخل الباركود أولاً.");
+            return;
+        }
+        saveSettings();
+        const count = settings.labelCount || 1;
+        const w = settings.labelWidth || 40;
+        const h = settings.labelHeight || 25;
+        const storeName = settings.storeName || "";
+        const showStore = settings.showStoreName;
+        const showName = settings.showProductName;
+        const showPrice = settings.showPrice;
+
+        let priceToShow = null;
+        if (showPrice && basePrice!=null){
+            priceToShow = calcDisplayPrice(basePrice, isVatIncludedFlag);
+        }
+
+        const win = window.open("","_blank");
+        if (!win){
+            alert("المتصفح منع فتح نافذة الطباعة.");
+            return;
+        }
+
+        let html="<!DOCTYPE html><html dir='rtl'><head><meta charset='utf-8'><title>طباعة الباركود</title>";
+        html+="<style>body{margin:0;font-family:system-ui,'Segoe UI';direction:rtl;} .label{display:inline-block;border:1px solid #000;margin:2px;padding:4px;text-align:center;font-size:11px;width:"+w+"mm;height:"+h+"mm;box-sizing:border-box;overflow:hidden;} .top-line{font-weight:bold;font-size:11px;} .name-line{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .price-line{font-size:11px;margin-top:2px;}</style>";
+        html+="<script src='https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js'><\/script>";
+        html+="</head><body><div id='labels'></div>";
+        html+="<script>";
+        html+="var count="+count+";";
+        html+="var code='"+code.replace(/'/g,"\\'")+"';";
+        html+="var storeName="+JSON.stringify(storeName)+";";
+        html+="var nameVal="+JSON.stringify(nameVal||"")+";";
+        html+="var showStore="+(showStore?"true":"false")+";";
+        html+="var showName="+(showName?"true":"false")+";";
+        html+="var showPrice="+(priceToShow!=null?"true":"false")+";";
+        html+="var priceVal="+(priceToShow!=null?priceToShow.toFixed(2):"0")+";";
+        html+="window.onload=function(){var c=document.getElementById('labels');";
+        html+="for(var i=0;i<count;i++){var d=document.createElement('div');d.className='label';";
+        html+="if(showStore && storeName){var t=document.createElement('div');t.className='top-line';t.textContent=storeName;d.appendChild(t);} ";
+        html+="if(showName && nameVal){var n=document.createElement('div');n.className='name-line';n.textContent=nameVal;d.appendChild(n);} ";
+        html+="var svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.classList.add('barcode');d.appendChild(svg);";
+        html+="if(showPrice){var pr=document.createElement('div');pr.className='price-line';pr.textContent=priceVal+' ر.س';d.appendChild(pr);} ";
+        html+="c.appendChild(d);} ";
+        html+="JsBarcode('.barcode', code,{format:'CODE128',displayValue:false,width:2,height:40,margin:0});";
+        html+="window.print();};";
+        html+="<\/script></body></html>";
+
+        win.document.open();
+        win.document.write(html);
+        win.document.close();
+    }
+
+    function printCurrentList(){
+        const data = (lastFiltered && lastFiltered.length) ? lastFiltered : products;
+        if (!data || !data.length){
+            alert("لا توجد بيانات لطباعتها.");
+            return;
+        }
+        const win = window.open("","_blank");
+        if (!win){
+            alert("المتصفح منع فتح نافذة الطباعة.");
+            return;
+        }
+        let html="<!DOCTYPE html><html dir='rtl'><head><meta charset='utf-8'><title>قائمة المنتجات</title>";
+        html+="<style>body{font-family:system-ui,'Segoe UI';direction:rtl;font-size:12px;margin:10px;} table{width:100%;border-collapse:collapse;} th,td{border:1px solid #ccc;padding:4px 6px;text-align:right;} thead{background:#f3f4f6;}</style>";
+        html+="</head><body>";
+        html+="<h3>قائمة المنتجات (حسب البحث الحالي)</h3>";
+        html+="<table><thead><tr><th>الباركود</th><th>اسم المنتج</th><th>التصنيف</th><th>المورد</th><th>السعر/العرض</th><th>الكمية المتبقية</th><th>حالة المنتج</th><th>حالة العرض</th></tr></thead><tbody>";
+        data.forEach(p=>{
+            const st = statusOfProduct(p);
+            const offer = offerInfo(p);
+            const basePrice = Number(p.salePrice || 0);
+            let priceText="";
+            if (offer.hasOffer && p.offerPrice){
+                priceText = basePrice.toFixed(2)+" ⟶ "+Number(p.offerPrice).toFixed(2)+" ر.س";
+            }else{
+                priceText = basePrice.toFixed(2)+" ر.س";
+            }
+            html+="<tr>";
+            html+="<td>"+(p.barcode||"")+"</td>";
+            html+="<td>"+(p.name||"")+"</td>";
+            html+="<td>"+(p.category||"")+"</td>";
+            html+="<td>"+(p.supplierName||"")+"</td>";
+            html+="<td>"+priceText+"</td>";
+            html+="<td>"+p.remainingQuantity+"</td>";
+            html+="<td>"+st.text+"</td>";
+            html+="<td>"+(offer.hasOffer?offer.state:"بدون")+"</td>";
+            html+="</tr>";
+        });
+        html+="</tbody></table>";
+        html+="</body></html>";
+        win.document.open();
+        win.document.write(html);
+        win.document.close();
+        win.print();
+    }
+
+    // أحداث عامة
+    btnSettings.addEventListener("click", function(){
+        settingsPanel.style.display = (settingsPanel.style.display==="block") ? "none" : "block";
+    });
+    btnAdd.addEventListener("click", function(){ openForm(null); });
+    btnCloseModal.addEventListener("click", closeForm);
+    btnCancel.addEventListener("click", function(e){ e.preventDefault(); closeForm(); });
+    productForm.addEventListener("submit", saveProduct);
+
+    offerEnabled.addEventListener("change", updateOfferSummary);
+    offerStart.addEventListener("change", updateOfferSummary);
+    offerEnd.addEventListener("change", updateOfferSummary);
+
+    btnPrintBarcode.addEventListener("click", function(){
+        const basePrice = salePrice.value ? parseFloat(salePrice.value) : null;
+        printBarcodeFor(barcode.value, nameInput.value, basePrice, isVatIncluded.checked);
+    });
+
+    searchText.addEventListener("input", function(){ currentPage = 1; render(); });
+    searchSupplier.addEventListener("input", function(){ currentPage = 1; render(); });
+    filterStatus.addEventListener("change", function(){ currentPage = 1; render(); });
+    filterOffer.addEventListener("change", function(){ currentPage = 1; render(); });
+
+    setPreviewBarcode.addEventListener("input", updateSettingsBarcodePreview);
+    [setStoreName,setLabelCount,setLabelWidth,setLabelHeight,setShowStoreName,setShowProductName,setShowPrice,setPriceDisplayIncludeVat,setTaxPercent,setPriceChangeType,setPriceChangePercent,setPriceIncludeVat]
+        .forEach(function(el){ el.addEventListener("change", saveSettings); });
+
+    rows.addEventListener("click", function(e){
+        const btn = e.target.closest("button");
+        if (!btn || !btn.dataset.act) return;
+        const act = btn.dataset.act;
+        const pid = parseInt(btn.dataset.id);
+        const p = products.find(x=>x.id===pid);
+        if (!p) return;
+
+        if (act==="edit"){
+            openForm(p);
+        }else if(act==="del"){
+            if (!confirm("هل أنت متأكد من حذف المنتج؟")) return;
+            fetch(api+"/"+pid,{method:"DELETE"}).then(loadProducts).catch(console.error);
+        }else if(act==="print"){
+            const basePrice = (p.offerEnabled && p.offerPrice) ? p.offerPrice : p.salePrice;
+            printBarcodeFor(p.barcode, p.name, basePrice, p.isVatIncluded);
+        }
+    });
+
+    btnApplyPriceChange.addEventListener("click", async function(){
+        saveSettings();
+        if (settings.priceChangeType==="none" || !settings.priceChangePercent){
+            alert("اختر نوع التعديل وأدخل نسبة صحيحة.");
+            return;
+        }
+        if (!confirm("سيتم تعديل أسعار البيع لجميع المنتجات، هل أنت متأكد؟")) return;
+        for (let p of products){
+            let base = p.salePrice || 0;
+            const percent = settings.priceChangePercent/100;
+            if (settings.priceChangeType==="up") base = base*(1+percent);
+            else if (settings.priceChangeType==="down") base = base*(1-percent);
+            p.salePrice = base;
+            const body = Object.assign({},p);
+            await fetch(api+"/"+p.id,{
+                method:"PUT",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify(body)
+            });
+        }
+        await loadProducts();
+        alert("تم تعديل أسعار البيع.");
+    });
+
+    btnExport.addEventListener("click", async function(){
+        const res = await fetch(api);
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "products-export.json";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    });
+
+    btnImport.addEventListener("click", function(){ importFile.click(); });
+    importFile.addEventListener("change", function(){
+        const file = importFile.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async function(){
+            try{
+                const arr = JSON.parse(reader.result);
+                if (!Array.isArray(arr)){ alert("ملف غير صحيح."); return; }
+                if (!confirm("استيراد/تحديث المنتجات من الملف؟")) return;
+                for (let item of arr){
+                    const isEdit = item.id && item.id>0;
+                    const method = isEdit ? "PUT" : "POST";
+                    const url = isEdit ? (api+"/"+item.id) : api;
+                    await fetch(url,{
+                        method,
+                        headers:{"Content-Type":"application/json"},
+                        body:JSON.stringify(item)
+                    });
+                }
+                await loadProducts();
+                alert("تم الاستيراد بنجاح.");
+            }catch(e){
+                console.error(e);
+                alert("حدث خطأ أثناء قراءة الملف.");
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    // تغيّر حجم الصفحة
+    pageSizeSelect.addEventListener("change", function(){
+        pageSize = parseInt(pageSizeSelect.value || "50");
+        currentPage = 1;
+        render();
+    });
+
+    btnFirstPage.addEventListener("click", function(){
+        currentPage = 1;
+        render();
+    });
+    btnPrevPage.addEventListener("click", function(){
+        if (currentPage > 1){
+            currentPage--;
+            render();
+        }
+    });
+    btnNextPage.addEventListener("click", function(){
+        const totalPages = Math.max(1, Math.ceil((lastFiltered.length || 1) / pageSize));
+        if (currentPage < totalPages){
+            currentPage++;
+            render();
+        }
+    });
+    btnLastPage.addEventListener("click", function(){
+        const totalPages = Math.max(1, Math.ceil((lastFiltered.length || 1) / pageSize));
+        currentPage = totalPages;
+        render();
+    });
+
+    // طباعة القائمة
+    btnPrintList.addEventListener("click", printCurrentList);
+
+    // تشغيل أولي
+    loadSettings();
+    updateSettingsBarcodePreview();
+    loadProducts();
+});
+</script>
+</body>
+</html>

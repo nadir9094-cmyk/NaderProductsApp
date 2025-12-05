@@ -1,0 +1,267 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <title>شاشة المنتجات</title>
+    <style>
+        body { font-family: system-ui, 'Segoe UI', Tahoma, sans-serif; background:#f5f6fa; margin:0; direction:rtl; }
+        .page{max-width:1200px;margin:20px auto;background:#fff;border-radius:12px;padding:16px;box-shadow:0 4px 10px rgba(0,0,0,.05);}
+        header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+        table{width:100%;border-collapse:collapse;font-size:13px;}
+        th,td{padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;}
+        thead{background:#f3f4f6;}
+        .btn{border:none;border-radius:8px;padding:4px 10px;margin-left:4px;cursor:pointer;font-size:12px;}
+        .btn-primary{background:#2563eb;color:#fff;}
+        .btn-danger{background:#dc2626;color:#fff;}
+        .btn-secondary{background:#6b7280;color:#fff;}
+        .badge{padding:2px 8px;border-radius:999px;font-size:11px;}
+        .ok{background:#dcfce7;color:#166534;}
+        .low{background:#fef3c7;color:#92400e;}
+        .out{background:#fee2e2;color:#991b1b;}
+        .form-row{display:flex;gap:8px;margin-bottom:6px;}
+        .form-group{flex:1;display:flex;flex-direction:column;font-size:12px;}
+        .form-group input{padding:4px 6px;border-radius:6px;border:1px solid #d1d5db;}
+        .modal-back{position:fixed;inset:0;background:rgba(15,23,42,.4);display:none;align-items:center;justify-content:center;}
+        .modal{background:#fff;border-radius:12px;padding:12px 16px;max-width:900px;width:95%;}
+        .modal-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+    </style>
+</head>
+<body>
+<div class="page">
+    <header>
+        <h2>شاشة المنتجات</h2>
+        <button id="btnAdd" class="btn btn-primary">➕ منتج جديد</button>
+    </header>
+    <div style="margin-bottom:8px;display:flex;gap:8px;">
+        <input id="search" placeholder="بحث بالاسم أو الباركود..." style="flex:1;padding:4px 6px;border-radius:6px;border:1px solid #d1d5db;">
+    </div>
+    <table>
+        <thead>
+        <tr>
+            <th>الباركود</th>
+            <th>اسم المنتج</th>
+            <th>التصنيف</th>
+            <th>المورد</th>
+            <th>السعر</th>
+            <th>الكمية المتبقية</th>
+            <th>الحالة</th>
+            <th>إجراءات</th>
+        </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+    </table>
+</div>
+
+<div id="modalBack" class="modal-back">
+    <div class="modal">
+        <div class="modal-title">
+            <h3 id="modalTitle">تسجيل منتج جديد</h3>
+            <button id="btnClose" class="btn btn-secondary">إغلاق</button>
+        </div>
+        <form id="form">
+            <input type="hidden" id="id">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>رقم الباركود</label>
+                    <input id="barcode" placeholder="مثال: 6281006...">
+                </div>
+                <div class="form-group">
+                    <label>اسم المنتج</label>
+                    <input id="name" placeholder="مثال: ماء 600مل">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>التصنيف</label>
+                    <input id="category" placeholder="مشروبات/غذائية">
+                </div>
+                <div class="form-group">
+                    <label>المورد</label>
+                    <input id="supplierName" placeholder="اسم المورد">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الكمية</label>
+                    <input id="quantity" type="number" value="0">
+                </div>
+                <div class="form-group">
+                    <label>الكمية المباعة</label>
+                    <input id="soldQuantity" type="number" value="0">
+                </div>
+                <div class="form-group">
+                    <label>حد أدنى</label>
+                    <input id="minQuantity" type="number" value="0">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>سعر الشراء</label>
+                    <input id="purchasePrice" type="number" step="0.01" value="0">
+                </div>
+                <div class="form-group">
+                    <label>سعر البيع</label>
+                    <input id="salePrice" type="number" step="0.01" value="0">
+                </div>
+                <div class="form-group">
+                    <label>شامل الضريبة</label>
+                    <input id="isVatIncluded" type="checkbox" checked>
+                </div>
+            </div>
+        </form>
+        <div style="margin-top:8px;">
+            <button id="btnSave" class="btn btn-primary">حفظ</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const api = "/api/products";
+const rows = document.getElementById("rows");
+const modalBack = document.getElementById("modalBack");
+const btnAdd = document.getElementById("btnAdd");
+const btnClose = document.getElementById("btnClose");
+const btnSave = document.getElementById("btnSave");
+const search = document.getElementById("search");
+
+const id = document.getElementById("id");
+const barcode = document.getElementById("barcode");
+const nameInput = document.getElementById("name");
+const category = document.getElementById("category");
+const supplierName = document.getElementById("supplierName");
+const quantity = document.getElementById("quantity");
+const soldQuantity = document.getElementById("soldQuantity");
+const minQuantity = document.getElementById("minQuantity");
+const purchasePrice = document.getElementById("purchasePrice");
+const salePrice = document.getElementById("salePrice");
+const isVatIncluded = document.getElementById("isVatIncluded");
+
+let products = [];
+
+function statusOf(p){
+    const remaining = p.remainingQuantity;
+    if (remaining <= 0) return {t:"نافد",c:"out"};
+    if (remaining <= p.minQuantity) return {t:"منخفض",c:"low"};
+    return {t:"متوفر",c:"ok"};
+}
+
+function render(){
+    const term = (search.value || "").toLowerCase();
+    rows.innerHTML = "";
+    products
+        .filter(p => !term || (p.name + " " + p.barcode).toLowerCase().includes(term))
+        .forEach(p => {
+            const tr = document.createElement("tr");
+            const st = statusOf(p);
+            tr.innerHTML = 
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td> ر.س</td>
+                <td></td>
+                <td><span class="badge "></span></td>
+                <td>
+                    <button class="btn btn-secondary" data-act="edit" data-id="">تعديل</button>
+                    <button class="btn btn-danger" data-act="del" data-id="">حذف</button>
+                </td>
+            ;
+            rows.appendChild(tr);
+        });
+}
+
+async function load(){
+    const res = await fetch(api);
+    products = await res.json();
+    render();
+}
+
+function openModal(p){
+    if (p){
+        id.value = p.id;
+        barcode.value = p.barcode;
+        nameInput.value = p.name;
+        category.value = p.category || "";
+        supplierName.value = p.supplierName || "";
+        quantity.value = p.quantity;
+        soldQuantity.value = p.soldQuantity;
+        minQuantity.value = p.minQuantity;
+        purchasePrice.value = p.purchasePrice;
+        salePrice.value = p.salePrice;
+        isVatIncluded.checked = p.isVatIncluded;
+    } else {
+        id.value = "";
+        barcode.value = "";
+        nameInput.value = "";
+        category.value = "";
+        supplierName.value = "";
+        quantity.value = 0;
+        soldQuantity.value = 0;
+        minQuantity.value = 0;
+        purchasePrice.value = 0;
+        salePrice.value = 0;
+        isVatIncluded.checked = true;
+    }
+    modalBack.style.display = "flex";
+}
+
+function closeModal(){
+    modalBack.style.display = "none";
+}
+
+btnAdd.onclick = () => openModal(null);
+btnClose.onclick = closeModal;
+search.oninput = render;
+
+rows.addEventListener("click", async e => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const act = btn.dataset.act;
+    const pid = parseInt(btn.dataset.id);
+    if (act === "edit"){
+        const p = products.find(x => x.id === pid);
+        if (p) openModal(p);
+    } else if (act === "del"){
+        if (!confirm("هل أنت متأكد من حذف المنتج؟")) return;
+        await fetch(api + "/" + pid, { method: "DELETE" });
+        await load();
+    }
+});
+
+btnSave.onclick = async e => {
+    e.preventDefault();
+    const body = {
+        id: id.value ? parseInt(id.value) : 0,
+        barcode: barcode.value,
+        name: nameInput.value,
+        category: category.value,
+        supplierName: supplierName.value,
+        quantity: parseInt(quantity.value || "0"),
+        soldQuantity: parseInt(soldQuantity.value || "0"),
+        minQuantity: parseInt(minQuantity.value || "0"),
+        purchasePrice: parseFloat(purchasePrice.value || "0"),
+        salePrice: parseFloat(salePrice.value || "0"),
+        isVatIncluded: isVatIncluded.checked,
+        expiryDate: null,
+        offerEnabled: false,
+        offerStart: null,
+        offerEnd: null,
+        offerPrice: null
+    };
+    const isEdit = !!id.value;
+    const method = isEdit ? "PUT" : "POST";
+    const url = isEdit ? api + "/" + body.id : api;
+
+    await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+    });
+    closeModal();
+    await load();
+};
+
+load();
+</script>
+</body>
+</html>
