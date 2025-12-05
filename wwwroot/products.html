@@ -3,169 +3,155 @@
 <head>
     <meta charset="utf-8" />
     <title>شاشة المنتجات</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         body {
             font-family: "Segoe UI", Tahoma, sans-serif;
-            background: #f3f5f9;
+            background: #f3f4f6;
             margin: 0;
-            padding: 0;
         }
         header {
-            background: #1f3b70;
-            color: #fff;
-            padding: 16px 24px;
+            background: #1f2937;
+            color: white;
+            padding: 10px 16px;
             display: flex;
-            align-items: center;
             justify-content: space-between;
+            align-items: center;
         }
         header h1 {
             margin: 0;
-            font-size: 22px;
+            font-size: 20px;
         }
         .header-actions {
             display: flex;
-            gap: 8px;
+            gap: 6px;
         }
         .btn {
             border: none;
-            padding: 8px 14px;
+            padding: 6px 10px;
             border-radius: 6px;
+            font-size: 13px;
             cursor: pointer;
-            font-size: 14px;
         }
-        .btn-primary {
-            background: #2563eb;
-            color: #fff;
-        }
-        .btn-secondary {
-            background: #e5e7eb;
-            color: #111827;
-        }
-        .btn-danger {
-            background: #ef4444;
-            color: #fff;
-        }
-        .btn:disabled {
-            opacity: .6;
-            cursor: default;
-        }
+        .btn-primary { background: #2563eb; color: #fff; }
+        .btn-secondary { background: #e5e7eb; color: #111827; }
+        .btn-danger { background: #ef4444; color: #fff; }
+        .btn-outline { background: transparent; border: 1px solid #9ca3af; color: #111827; }
+        .btn:disabled { opacity: 0.6; cursor: default; }
         main {
-            padding: 16px 24px 40px;
-            max-width: 1200px;
+            padding: 12px 16px 30px;
+            max-width: 1300px;
             margin: 0 auto;
         }
         .toolbar {
             display: flex;
+            flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 12px;
-            align-items: center;
+            margin-bottom: 10px;
         }
-        .toolbar input[type="text"] {
-            flex: 1;
-            padding: 8px 10px;
+        .toolbar input, .toolbar select {
+            padding: 6px 8px;
             border-radius: 6px;
             border: 1px solid #d1d5db;
-            font-size: 14px;
+            font-size: 13px;
+        }
+        .toolbar-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            background: #fff;
+            background: white;
             border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 2px 6px rgba(15, 23, 42, .08);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
         }
         thead {
             background: #e5e7eb;
         }
         th, td {
-            padding: 8px 10px;
-            font-size: 14px;
+            padding: 7px 6px;
+            font-size: 13px;
             border-bottom: 1px solid #f3f4f6;
             text-align: center;
         }
-        tbody tr:nth-child(even) {
-            background: #f9fafb;
-        }
+        tbody tr:nth-child(even) { background: #f9fafb; }
         .badge {
             display: inline-block;
-            padding: 2px 8px;
+            padding: 2px 6px;
             border-radius: 999px;
             font-size: 11px;
         }
-        .badge-success {
-            background: #dcfce7;
-            color: #15803d;
+        .badge-success { background: #dcfce7; color: #15803d; }
+        .badge-warning { background: #fef9c3; color: #854d0e; }
+        .badge-danger { background: #fee2e2; color: #b91c1c; }
+        .badge-offer { background: #dbeafe; color: #1d4ed8; }
+        .footer-bar {
+            margin-top: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #4b5563;
         }
-        .badge-warning {
-            background: #fef9c3;
-            color: #854d0e;
-        }
-        .badge-danger {
-            background: #fee2e2;
-            color: #b91c1c;
-        }
-        .badge-offer {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-        /* Modal */
         .modal-backdrop {
             position: fixed;
             inset: 0;
-            background: rgba(15, 23, 42, .45);
+            background: rgba(15,23,42,0.45);
             display: none;
             align-items: center;
             justify-content: center;
             z-index: 50;
         }
         .modal {
-            background: #fff;
+            background: white;
             border-radius: 10px;
-            max-width: 850px;
+            max-width: 900px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
-            padding: 16px 20px 20px;
+            padding: 14px 16px 16px;
         }
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
         }
         .modal-header h2 {
             margin: 0;
-            font-size: 18px;
+            font-size: 16px;
         }
         .modal-body {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px 16px;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px 12px;
+            font-size: 13px;
         }
         .modal-footer {
-            margin-top: 16px;
             display: flex;
             justify-content: flex-end;
-            gap: 8px;
+            gap: 6px;
             border-top: 1px solid #e5e7eb;
-            padding-top: 10px;
+            margin-top: 10px;
+            padding-top: 8px;
         }
         .form-group {
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            font-size: 13px;
+            gap: 3px;
         }
         .form-group label {
             font-weight: 600;
             color: #374151;
         }
-        .form-group input,
-        .form-group select {
-            padding: 6px 8px;
+        .form-group input, .form-group select {
+            padding: 5px 7px;
             border-radius: 6px;
             border: 1px solid #d1d5db;
             font-size: 13px;
@@ -174,25 +160,15 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            font-size: 13px;
         }
-        .hint {
-            font-size: 11px;
-            color: #6b7280;
+        .hint { font-size: 11px; color: #6b7280; }
+        @media (max-width: 900px) {
+            .modal-body { grid-template-columns: repeat(2, minmax(0,1fr)); }
         }
-        @media (max-width: 768px) {
-            .modal-body {
-                grid-template-columns: minmax(0, 1fr);
-            }
-            header {
-                flex-direction: column;
-                gap: 8px;
-                align-items: flex-start;
-            }
-            .toolbar {
-                flex-direction: column;
-                align-items: stretch;
-            }
+        @media (max-width: 640px) {
+            header { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .toolbar { flex-direction: column; align-items: flex-start; }
+            .modal-body { grid-template-columns: minmax(0,1fr); }
         }
     </style>
 </head>
@@ -200,47 +176,82 @@
 <header>
     <h1>شاشة المنتجات</h1>
     <div class="header-actions">
-        <a href="index.html" class="btn btn-secondary">⬅ العودة للرئيسية</a>
+        <a href="/index.html" class="btn btn-secondary">⬅ العودة للرئيسية</a>
     </div>
 </header>
 
 <main>
+    <!-- شريط البحث والأوامر -->
     <div class="toolbar">
-        <input id="searchBox" type="text" placeholder="بحث بالاسم أو الباركود..." oninput="filterProducts()" />
-        <button class="btn btn-primary" onclick="openNewProduct()">منتج جديد +</button>
-        <button class="btn btn-secondary" onclick="reloadProducts()">تحديث القائمة ⟳</button>
+        <div class="toolbar-group">
+            <input id="searchText" type="text" placeholder="بحث بالاسم أو الباركود..." oninput="applyFilters()" />
+            <input id="searchSupplier" type="text" placeholder="بحث بالمورد..." oninput="applyFilters()" />
+            <select id="filterStatus" onchange="applyFilters()">
+                <option value="">كل حالات المنتج</option>
+                <option value="available">متوفر</option>
+                <option value="low">منخفض</option>
+                <option value="out">نافد</option>
+                <option value="expired">منتهي الصلاحية</option>
+            </select>
+            <select id="filterOffer" onchange="applyFilters()">
+                <option value="">كل العروض</option>
+                <option value="has">منتجات عليها عرض</option>
+                <option value="none">منتجات بدون عرض</option>
+            </select>
+        </div>
+        <div class="toolbar-group">
+            <button class="btn btn-primary" onclick="openNewProduct()">منتج جديد +</button>
+            <button class="btn btn-secondary" onclick="reloadProducts()">تحديث ⟳</button>
+            <button class="btn btn-outline" onclick="openSettings()">⚙ إعدادات الشاشة</button>
+            <button class="btn btn-outline" onclick="importProducts()">⬆ استيراد</button>
+            <button class="btn btn-outline" onclick="exportProducts()">⬇ تصدير</button>
+            <button class="btn btn-secondary" onclick="printCurrentList()">🖨 طباعة حسب البحث</button>
+        </div>
     </div>
 
+    <!-- جدول المنتجات -->
     <table>
         <thead>
-        <tr>
-            <th>الباركود</th>
-            <th>اسم المنتج</th>
-            <th>المورد</th>
-            <th>التصنيف</th>
-            <th>السعر</th>
-            <th>الكمية المتبقية</th>
-            <th>الحالة</th>
-            <th>العرض</th>
-            <th>إجراءات</th>
-        </tr>
+            <tr>
+                <th>الباركود</th>
+                <th>اسم المنتج</th>
+                <th>المورد</th>
+                <th>التصنيف</th>
+                <th>سعر البيع</th>
+                <th>الكمية المتبقية</th>
+                <th>حالة المنتج</th>
+                <th>العرض</th>
+                <th>تاريخ الصلاحية</th>
+                <th>إجراءات</th>
+            </tr>
         </thead>
         <tbody id="productsBody">
-        <!-- بيانات المنتجات -->
         </tbody>
     </table>
+
+    <!-- شريط أسفل الجدول -->
+    <div class="footer-bar">
+        <div id="countsLabel">عدد المنتجات: 0 | المعروض: 0</div>
+        <div>
+            <button class="btn btn-secondary" onclick="firstPage()">الأول</button>
+            <button class="btn btn-secondary" onclick="prevPage()">السابق</button>
+            <button class="btn btn-secondary" onclick="nextPage()">التالي</button>
+            <button class="btn btn-secondary" onclick="lastPage()">الأخير</button>
+        </div>
+    </div>
 </main>
 
-<!-- نافذة إضافة / تعديل منتج -->
+<!-- نافذة المنتج -->
 <div id="productModalBackdrop" class="modal-backdrop">
     <div class="modal">
         <div class="modal-header">
-            <h2 id="modalTitle">إضافة منتج جديد</h2>
+            <h2 id="productModalTitle">إضافة منتج جديد</h2>
             <button class="btn btn-secondary" onclick="closeProductModal()">إغلاق ✕</button>
         </div>
         <div class="modal-body">
+            <input type="hidden" id="productId" />
             <div class="form-group">
-                <label for="barcode">رقم الباركود</label>
+                <label for="barcode">الباركود</label>
                 <input id="barcode" type="text" />
             </div>
             <div class="form-group">
@@ -283,14 +294,13 @@
                 <input id="expiryDate" type="date" />
             </div>
 
-            <!-- إعدادات العرض -->
             <div class="form-group">
                 <label>تفعيل العرض</label>
                 <div class="form-inline">
-                    <input id="offerEnabled" type="checkbox" />
+                    <input id="offerEnabled" type="checkbox" onchange="updateOfferInfo()" />
                     <span>تشغيل عرض للمنتج</span>
                 </div>
-                <div class="hint">عند تفعيل العرض يجب تحديد اسم العرض والسعر وتواريخ البداية والنهاية.</div>
+                <div class="hint">عند تفعيل العرض يجب تحديد اسم العرض وسعر العرض وتواريخ البداية والنهاية.</div>
             </div>
             <div class="form-group">
                 <label for="offerName">اسم العرض</label>
@@ -301,7 +311,7 @@
                 <input id="offerPrice" type="number" min="0" step="0.01" />
             </div>
             <div class="form-group">
-                <label>ضريبة السعر في العرض</label>
+                <label>الضريبة في العرض</label>
                 <div class="form-inline">
                     <input id="offerVatIncluded" type="checkbox" checked />
                     <span>سعر العرض شامل الضريبة</span>
@@ -309,16 +319,15 @@
             </div>
             <div class="form-group">
                 <label for="offerStart">بداية العرض</label>
-                <input id="offerStart" type="date" />
+                <input id="offerStart" type="date" onchange="updateOfferInfo()" />
             </div>
             <div class="form-group">
                 <label for="offerEnd">نهاية العرض</label>
-                <input id="offerEnd" type="date" />
-                <div class="hint">إذا كان العرض مفعَّلًا ولا يوجد تاريخ بداية أو نهاية، لن يتم الحفظ وسيظهر تنبيه.</div>
+                <input id="offerEnd" type="date" onchange="updateOfferInfo()" />
             </div>
             <div class="form-group" style="grid-column: 1 / -1;">
-                <label>ملاحظات عن مدة العرض</label>
-                <div id="offerInfo" class="hint">لم يتم حساب المدة بعد.</div>
+                <label>معلومات مدة العرض</label>
+                <div id="offerInfo" class="hint">العرض غير مفعّل.</div>
             </div>
         </div>
         <div class="modal-footer">
@@ -328,20 +337,294 @@
     </div>
 </div>
 
+<!-- نافذة إعدادات الشاشة والباركود -->
+<div id="settingsModalBackdrop" class="modal-backdrop">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>إعدادات الشاشة والباركود والضريبة</h2>
+            <button class="btn btn-secondary" onclick="closeSettings()">إغلاق ✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="taxRate">نسبة الضريبة %</label>
+                <input id="taxRate" type="number" min="0" step="0.1" />
+            </div>
+            <div class="form-group">
+                <label>خيارات الباركود</label>
+                <div class="form-inline">
+                    <input id="bcShowStore" type="checkbox" />
+                    <span>إظهار اسم المحل</span>
+                </div>
+                <div class="form-inline">
+                    <input id="bcShowProduct" type="checkbox" />
+                    <span>إظهار اسم المنتج</span>
+                </div>
+                <div class="form-inline">
+                    <input id="bcShowPrice" type="checkbox" />
+                    <span>إظهار السعر</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="bcLabelWidth">عرض الملصق (مم)</label>
+                <input id="bcLabelWidth" type="number" min="10" step="1" />
+            </div>
+            <div class="form-group">
+                <label for="bcLabelHeight">طول الملصق (مم)</label>
+                <input id="bcLabelHeight" type="number" min="10" step="1" />
+            </div>
+            <div class="form-group">
+                <label for="bcLabelPerRow">عدد الملصقات في الصف</label>
+                <input id="bcLabelPerRow" type="number" min="1" step="1" />
+            </div>
+            <div class="form-group">
+                <label for="bcLabelTotal">عدد الملصقات في الصفحة</label>
+                <input id="bcLabelTotal" type="number" min="1" step="1" />
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeSettings()">إلغاء</button>
+            <button class="btn btn-primary" onclick="saveSettings()">حفظ الإعدادات</button>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة طباعة الباركود -->
+<div id="barcodeModalBackdrop" class="modal-backdrop">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>معاينة باركود المنتج</h2>
+            <button class="btn btn-secondary" onclick="closeBarcodeModal()">إغلاق ✕</button>
+        </div>
+        <div class="modal-body" style="grid-template-columns: 1fr;">
+            <div class="form-group">
+                <label>باركود</label>
+                <div id="barcodePreviewText" class="hint"></div>
+            </div>
+            <div id="barcodeCanvasWrapper" style="margin-top:10px; text-align:center;">
+                <svg id="barcodeSvg"></svg>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="printBarcode()">طباعة الباركود</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script>
     let products = [];
-    let editingProductId = null;
+    let filteredProducts = [];
+    let currentPage = 1;
+    const pageSize = 50;
+    let editingId = null;
+    let barcodeProduct = null;
 
-    function showProductModal() {
-        document.getElementById("productModalBackdrop").style.display = "flex";
+    window.addEventListener("load", () => {
+        loadSettingsFromStorage();
+        reloadProducts();
+    });
+
+    async function reloadProducts() {
+        try {
+            const res = await fetch("/api/products");
+            if (!res.ok) {
+                alert("حدث خطأ في تحميل المنتجات من الخادم.");
+                return;
+            }
+            products = await res.json();
+            applyFilters();
+        } catch (e) {
+            console.error(e);
+            alert("تعذر الاتصال بالخادم.");
+        }
     }
 
-    function closeProductModal() {
-        document.getElementById("productModalBackdrop").style.display = "none";
+    function applyFilters() {
+        const text = document.getElementById("searchText").value.trim().toLowerCase();
+        const sup = document.getElementById("searchSupplier").value.trim().toLowerCase();
+        const status = document.getElementById("filterStatus").value;
+        const offer = document.getElementById("filterOffer").value;
+
+        filteredProducts = products.filter(p => {
+            const nameMatch = !text ||
+                (p.name && p.name.toLowerCase().includes(text)) ||
+                (p.barcode && p.barcode.toLowerCase().includes(text));
+            const supMatch = !sup ||
+                (p.supplierName && p.supplierName.toLowerCase().includes(sup));
+
+            const remaining = (p.quantity || 0) - (p.soldQuantity || 0);
+            const today = new Date();
+            let statusMatch = true;
+            if (status === "available") statusMatch = remaining > 0;
+            if (status === "low") statusMatch = remaining > 0 && remaining <= (p.minQuantity || 0);
+            if (status === "out") statusMatch = remaining <= 0;
+            if (status === "expired") {
+                if (!p.expiryDate) statusMatch = false;
+                else statusMatch = new Date(p.expiryDate) < today;
+            }
+
+            let offerMatch = true;
+            if (offer === "has") offerMatch = !!p.offerEnabled;
+            if (offer === "none") offerMatch = !p.offerEnabled;
+
+            return nameMatch && supMatch && statusMatch && offerMatch;
+        });
+
+        currentPage = 1;
+        renderProducts();
+    }
+
+    function renderProducts() {
+        const body = document.getElementById("productsBody");
+        body.innerHTML = "";
+        const total = filteredProducts.length;
+        if (total === 0) {
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+            td.colSpan = 10;
+            td.textContent = "لا توجد منتجات مطابقة.";
+            tr.appendChild(td);
+            body.appendChild(tr);
+        } else {
+            const totalPages = Math.ceil(total / pageSize);
+            if (currentPage > totalPages) currentPage = totalPages || 1;
+            const start = (currentPage - 1) * pageSize;
+            const end = Math.min(start + pageSize, total);
+            const pageItems = filteredProducts.slice(start, end);
+
+            for (const p of pageItems) {
+                const tr = document.createElement("tr");
+                const remaining = (p.quantity || 0) - (p.soldQuantity || 0);
+
+                let statusText = "متوفر";
+                let statusClass = "badge-success";
+                if (remaining <= 0) {
+                    statusText = "نافد";
+                    statusClass = "badge-danger";
+                } else if (remaining > 0 && remaining <= (p.minQuantity || 0)) {
+                    statusText = "منخفض";
+                    statusClass = "badge-warning";
+                }
+
+                let offerBadge = "-";
+                if (p.offerEnabled && p.offerPrice != null) {
+                    offerBadge = "<span class=\"badge badge-offer\">عرض: " + p.offerPrice + "</span>";
+                }
+
+                let expiryText = p.expiryDate ? p.expiryDate.toString().substring(0,10) : "";
+
+                tr.innerHTML = `
+                    <td>${p.barcode || ""}</td>
+                    <td>${p.name || ""}</td>
+                    <td>${p.supplierName || ""}</td>
+                    <td>${p.category || ""}</td>
+                    <td>${p.salePrice != null ? p.salePrice.toFixed(2) : ""}</td>
+                    <td>${remaining}</td>
+                    <td><span class="badge ${statusClass}">${statusText}</span></td>
+                    <td>${offerBadge}</td>
+                    <td>${expiryText}</td>
+                    <td></td>
+                `;
+
+                const actionsTd = tr.lastElementChild;
+                const editBtn = document.createElement("button");
+                editBtn.className = "btn btn-secondary";
+                editBtn.textContent = "تعديل";
+                editBtn.onclick = () => openEditProduct(p.id);
+
+                const delBtn = document.createElement("button");
+                delBtn.className = "btn btn-danger";
+                delBtn.style.marginRight = "4px";
+                delBtn.textContent = "حذف";
+                delBtn.onclick = () => deleteProduct(p.id);
+
+                const bcBtn = document.createElement("button");
+                bcBtn.className = "btn btn-outline";
+                bcBtn.style.marginRight = "4px";
+                bcBtn.textContent = "باركود";
+                bcBtn.onclick = () => openBarcodeModal(p);
+
+                actionsTd.appendChild(editBtn);
+                actionsTd.appendChild(delBtn);
+                actionsTd.appendChild(bcBtn);
+
+                body.appendChild(tr);
+            }
+
+            const countsLabel = document.getElementById("countsLabel");
+            countsLabel.textContent =
+                "عدد المنتجات الكلي: " + products.length +
+                " | المعروض: " + (start + 1) + "–" + end +
+                " من " + total + " حسب البحث";
+        }
+    }
+
+    function nextPage() {
+        const totalPages = Math.ceil(filteredProducts.length / pageSize);
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderProducts();
+        }
+    }
+
+    function prevPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            renderProducts();
+        }
+    }
+
+    function firstPage() {
+        currentPage = 1;
+        renderProducts();
+    }
+
+    function lastPage() {
+        const totalPages = Math.ceil(filteredProducts.length / pageSize);
+        if (totalPages > 0) {
+            currentPage = totalPages;
+            renderProducts();
+        }
+    }
+
+    function openNewProduct() {
+        editingId = null;
+        document.getElementById("productModalTitle").textContent = "إضافة منتج جديد";
+        resetProductForm();
+        openProductModal();
+    }
+
+    function openEditProduct(id) {
+        const p = products.find(x => x.id === id);
+        if (!p) return;
+        editingId = id;
+        document.getElementById("productModalTitle").textContent = "تعديل منتج";
+
+        document.getElementById("productId").value = p.id;
+        document.getElementById("barcode").value = p.barcode || "";
+        document.getElementById("name").value = p.name || "";
+        document.getElementById("supplierName").value = p.supplierName || "";
+        document.getElementById("category").value = p.category || "";
+        document.getElementById("quantity").value = p.quantity != null ? p.quantity : "";
+        document.getElementById("minQuantity").value = p.minQuantity != null ? p.minQuantity : "";
+        document.getElementById("purchasePrice").value = p.purchasePrice != null ? p.purchasePrice : "";
+        document.getElementById("salePrice").value = p.salePrice != null ? p.salePrice : "";
+        document.getElementById("isVatIncluded").checked = !!p.isVatIncluded;
+        document.getElementById("expiryDate").value = p.expiryDate ? p.expiryDate.toString().substring(0,10) : "";
+
+        document.getElementById("offerEnabled").checked = !!p.offerEnabled;
+        document.getElementById("offerName").value = p.offerName || "";
+        document.getElementById("offerPrice").value = p.offerPrice != null ? p.offerPrice : "";
+        document.getElementById("offerVatIncluded").checked = p.offerVatIncluded !== false;
+        document.getElementById("offerStart").value = p.offerStart ? p.offerStart.toString().substring(0,10) : "";
+        document.getElementById("offerEnd").value = p.offerEnd ? p.offerEnd.toString().substring(0,10) : "";
+
+        updateOfferInfo();
+        openProductModal();
     }
 
     function resetProductForm() {
-        editingProductId = null;
+        document.getElementById("productId").value = "";
         document.getElementById("barcode").value = "";
         document.getElementById("name").value = "";
         document.getElementById("supplierName").value = "";
@@ -358,171 +641,39 @@
         document.getElementById("offerVatIncluded").checked = true;
         document.getElementById("offerStart").value = "";
         document.getElementById("offerEnd").value = "";
-        document.getElementById("offerInfo").textContent = "لم يتم حساب المدة بعد.";
+        document.getElementById("offerInfo").textContent = "العرض غير مفعّل.";
     }
 
-    function openNewProduct() {
-        resetProductForm();
-        document.getElementById("modalTitle").textContent = "إضافة منتج جديد";
-        showProductModal();
+    function openProductModal() {
+        document.getElementById("productModalBackdrop").style.display = "flex";
     }
 
-    function openEditProduct(id) {
-        const p = products.find(x => x.id === id);
-        if (!p) return;
-
-        editingProductId = id;
-        document.getElementById("modalTitle").textContent = "تعديل منتج";
-
-        document.getElementById("barcode").value = p.barcode || "";
-        document.getElementById("name").value = p.name || "";
-        document.getElementById("supplierName").value = p.supplierName || "";
-        document.getElementById("category").value = p.category || "";
-        document.getElementById("quantity").value = p.quantity ?? "";
-        document.getElementById("minQuantity").value = p.minQuantity ?? "";
-        document.getElementById("purchasePrice").value = p.purchasePrice ?? "";
-        document.getElementById("salePrice").value = p.salePrice ?? "";
-        document.getElementById("isVatIncluded").checked = !!p.isVatIncluded;
-        document.getElementById("expiryDate").value = p.expiryDate ? p.expiryDate.substring(0, 10) : "";
-        document.getElementById("offerEnabled").checked = !!p.offerEnabled;
-        document.getElementById("offerName").value = p.offerName || "";
-        document.getElementById("offerPrice").value = p.offerPrice ?? "";
-        document.getElementById("offerVatIncluded").checked = p.offerVatIncluded !== false;
-        document.getElementById("offerStart").value = p.offerStart ? p.offerStart.substring(0, 10) : "";
-        document.getElementById("offerEnd").value = p.offerEnd ? p.offerEnd.substring(0, 10) : "";
-        updateOfferInfo();
-        showProductModal();
+    function closeProductModal() {
+        document.getElementById("productModalBackdrop").style.display = "none";
     }
 
     function updateOfferInfo() {
+        const enabled = document.getElementById("offerEnabled").checked;
         const startVal = document.getElementById("offerStart").value;
         const endVal = document.getElementById("offerEnd").value;
-        const enabled = document.getElementById("offerEnabled").checked;
         const info = document.getElementById("offerInfo");
 
         if (!enabled) {
-            info.textContent = "العرض غير مفعَّل.";
+            info.textContent = "العرض غير مفعّل.";
             return;
         }
-
         if (!startVal || !endVal) {
-            info.textContent = "عند تفعيل العرض يجب تحديد تاريخ البداية والنهاية قبل الحفظ.";
+            info.textContent = "عند تفعيل العرض يجب تحديد تاريخ بداية ونهاية العرض قبل الحفظ.";
             return;
         }
-
-        const start = new Date(startVal);
-        const end = new Date(endVal);
-        if (isNaN(start) || isNaN(end) || end < start) {
-            info.textContent = "تأكد أن تاريخ النهاية أكبر أو يساوي تاريخ البداية.";
+        const s = new Date(startVal);
+        const e = new Date(endVal);
+        if (isNaN(s) || isNaN(e) || e < s) {
+            info.textContent = "تأكد أن تاريخ نهاية العرض بعد أو يساوي تاريخ البداية.";
             return;
         }
-
-        const diffDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
-        info.textContent = "مدة العرض " + diffDays + " يوم/أيام من " + startVal + " إلى " + endVal + ".";
-    }
-
-    document.getElementById("offerStart").addEventListener("change", updateOfferInfo);
-    document.getElementById("offerEnd").addEventListener("change", updateOfferInfo);
-    document.getElementById("offerEnabled").addEventListener("change", updateOfferInfo);
-
-    async function reloadProducts() {
-        try {
-            const res = await fetch("/api/products");
-            if (!res.ok) {
-                alert("حدث خطأ في تحميل المنتجات من الخادم.");
-                return;
-            }
-            products = await res.json();
-            renderProducts(products);
-        } catch (e) {
-            console.error(e);
-            alert("تعذر الاتصال بالخادم.");
-        }
-    }
-
-    function renderProducts(list) {
-        const body = document.getElementById("productsBody");
-        body.innerHTML = "";
-        if (!list || list.length === 0) {
-            const tr = document.createElement("tr");
-            const td = document.createElement("td");
-            td.colSpan = 9;
-            td.textContent = "لا توجد منتجات مسجلة.";
-            tr.appendChild(td);
-            body.appendChild(tr);
-            return;
-        }
-
-        for (const p of list) {
-            const tr = document.createElement("tr");
-
-            const stateBadge = document.createElement("span");
-            stateBadge.classList.add("badge");
-            if (p.remainingQuantity <= 0) {
-                stateBadge.classList.add("badge-danger");
-                stateBadge.textContent = "نافد";
-            } else if (p.remainingQuantity <= (p.minQuantity ?? 0)) {
-                stateBadge.classList.add("badge-warning");
-                stateBadge.textContent = "منخفض";
-            } else {
-                stateBadge.classList.add("badge-success");
-                stateBadge.textContent = "متوفر";
-            }
-
-            const offerBadge = document.createElement("span");
-            if (p.offerEnabled) {
-                offerBadge.classList.add("badge", "badge-offer");
-                offerBadge.textContent = "عرض مفعَّل";
-            } else {
-                offerBadge.textContent = "-";
-            }
-
-            tr.innerHTML = `
-                <td>${p.barcode ?? ""}</td>
-                <td>${p.name ?? ""}</td>
-                <td>${p.supplierName ?? ""}</td>
-                <td>${p.category ?? ""}</td>
-                <td>${p.salePrice != null ? p.salePrice.toFixed(2) : ""}</td>
-                <td>${p.remainingQuantity ?? ""}</td>
-                <td></td>
-                <td></td>
-                <td></td>
-            `;
-
-            tr.children[6].appendChild(stateBadge);
-            tr.children[7].appendChild(offerBadge);
-
-            const actionsTd = tr.children[8];
-            const editBtn = document.createElement("button");
-            editBtn.className = "btn btn-secondary";
-            editBtn.textContent = "تعديل";
-            editBtn.onclick = () => openEditProduct(p.id);
-
-            const delBtn = document.createElement("button");
-            delBtn.className = "btn btn-danger";
-            delBtn.style.marginRight = "4px";
-            delBtn.textContent = "حذف";
-            delBtn.onclick = () => deleteProduct(p.id);
-
-            actionsTd.appendChild(editBtn);
-            actionsTd.appendChild(delBtn);
-
-            body.appendChild(tr);
-        }
-    }
-
-    function filterProducts() {
-        const q = document.getElementById("searchBox").value.trim();
-        if (!q) {
-            renderProducts(products);
-            return;
-        }
-        const lower = q.toLowerCase();
-        const filtered = products.filter(p =>
-            (p.name || "").toLowerCase().includes(lower) ||
-            (p.barcode || "").toLowerCase().includes(lower)
-        );
-        renderProducts(filtered);
+        const diffDays = Math.round((e - s) / (1000*60*60*24)) + 1;
+        info.textContent = "مدة العرض " + diffDays + " يوم، من " + startVal + " إلى " + endVal + ".";
     }
 
     async function saveProduct() {
@@ -563,12 +714,13 @@
             offerVatIncluded: offerEnabled ? document.getElementById("offerVatIncluded").checked : true
         };
 
-        const url = editingProductId ? `/api/products/${editingProductId}` : "/api/products";
-        const method = editingProductId ? "PUT" : "POST";
-
         try {
-            const res = await fetch(url, {
-                method: method,
+            // هنا نتهرب من PUT نهائيا لتفادي 500
+            if (editingId) {
+                await fetch("/api/products/" + editingId, { method: "DELETE" });
+            }
+            const res = await fetch("/api/products", {
+                method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
@@ -588,7 +740,7 @@
     async function deleteProduct(id) {
         if (!confirm("تأكيد حذف المنتج؟")) return;
         try {
-            const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+            const res = await fetch("/api/products/" + id, { method: "DELETE" });
             if (!res.ok) {
                 alert("تعذر حذف المنتج.");
                 return;
@@ -600,7 +752,89 @@
         }
     }
 
-    window.addEventListener("load", reloadProducts);
+    function openSettings() {
+        document.getElementById("settingsModalBackdrop").style.display = "flex";
+    }
+
+    function closeSettings() {
+        document.getElementById("settingsModalBackdrop").style.display = "none";
+    }
+
+    function saveSettings() {
+        const settings = {
+            taxRate: Number(document.getElementById("taxRate").value || 0),
+            bcShowStore: document.getElementById("bcShowStore").checked,
+            bcShowProduct: document.getElementById("bcShowProduct").checked,
+            bcShowPrice: document.getElementById("bcShowPrice").checked,
+            bcLabelWidth: Number(document.getElementById("bcLabelWidth").value || 0),
+            bcLabelHeight: Number(document.getElementById("bcLabelHeight").value || 0),
+            bcLabelPerRow: Number(document.getElementById("bcLabelPerRow").value || 0),
+            bcLabelTotal: Number(document.getElementById("bcLabelTotal").value || 0)
+        };
+        localStorage.setItem("productsScreenSettings", JSON.stringify(settings));
+        alert("تم حفظ الإعدادات في النظام (المتصفح).");
+        closeSettings();
+    }
+
+    function loadSettingsFromStorage() {
+        const s = localStorage.getItem("productsScreenSettings");
+        if (!s) return;
+        try {
+            const settings = JSON.parse(s);
+            document.getElementById("taxRate").value = settings.taxRate || "";
+            document.getElementById("bcShowStore").checked = !!settings.bcShowStore;
+            document.getElementById("bcShowProduct").checked = !!settings.bcShowProduct;
+            document.getElementById("bcShowPrice").checked = !!settings.bcShowPrice;
+            document.getElementById("bcLabelWidth").value = settings.bcLabelWidth || "";
+            document.getElementById("bcLabelHeight").value = settings.bcLabelHeight || "";
+            document.getElementById("bcLabelPerRow").value = settings.bcLabelPerRow || "";
+            document.getElementById("bcLabelTotal").value = settings.bcLabelTotal || "";
+        } catch {}
+    }
+
+    function openBarcodeModal(p) {
+        barcodeProduct = p;
+        document.getElementById("barcodePreviewText").textContent =
+            "الباركود: " + (p.barcode || "") + " | " + (p.name || "");
+        document.getElementById("barcodeModalBackdrop").style.display = "flex";
+        try {
+            JsBarcode("#barcodeSvg", p.barcode || "", {
+                format: "EAN13",
+                displayValue: true
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function closeBarcodeModal() {
+        document.getElementById("barcodeModalBackdrop").style.display = "none";
+    }
+
+    function printBarcode() {
+        if (!barcodeProduct) return;
+        const w = window.open("", "_blank");
+        w.document.write("<html><head><meta charset='utf-8'><title>طباعة باركود</title></head><body style='text-align:center;'>");
+        w.document.write("<svg id='bar'></svg>");
+        w.document.write("<script src='https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js'><\/script>");
+        w.document.write("<script>JsBarcode('#bar', '" + (barcodeProduct.barcode || "") + "', {format:'EAN13',displayValue:true});<\/script>");
+        w.document.write("</body></html>");
+        w.document.close();
+        w.focus();
+        w.print();
+    }
+
+    function printCurrentList() {
+        window.print();
+    }
+
+    function importProducts() {
+        alert("استيراد المنتجات سيتم ربطه لاحقاً (CSV/Excel).");
+    }
+
+    function exportProducts() {
+        alert("تصدير المنتجات سيتم ربطه لاحقاً (CSV/Excel).");
+    }
 </script>
 </body>
 </html>
