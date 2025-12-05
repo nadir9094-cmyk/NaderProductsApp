@@ -1,8 +1,8 @@
-๏ปฟ<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="utf-8" />
-    <title>ุดุงุดุฉ ุงูู…ูุชุฌุงุช</title>
+    <title>ิวิษ วแใไสฬวส</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         body {
@@ -174,230 +174,230 @@
 </head>
 <body>
 <header>
-    <h1>ุดุงุดุฉ ุงูู…ูุชุฌุงุช</h1>
+    <h1>ิวิษ วแใไสฬวส</h1>
     <div class="header-actions">
-        <a href="/index.html" class="btn btn-secondary">โฌ… ุงูุนูุฏุฉ ููุฑุฆูุณูุฉ</a>
+        <a href="/index.html" class="btn btn-secondary">? วแฺๆฯษ แแัฦํำํษ</a>
     </div>
 </header>
 
 <main>
-    <!-- ุดุฑูุท ุงูุจุญุซ ูุงูุฃูุงู…ุฑ -->
+    <!-- ิัํุ วแศอห ๆวแรๆวใั -->
     <div class="toolbar">
         <div class="toolbar-group">
-            <input id="searchText" type="text" placeholder="ุจุญุซ ุจุงูุงุณู… ุฃู ุงูุจุงุฑููุฏ..." oninput="applyFilters()" />
-            <input id="searchSupplier" type="text" placeholder="ุจุญุซ ุจุงูู…ูุฑุฏ..." oninput="applyFilters()" />
+            <input id="searchText" type="text" placeholder="ศอห ศวแวำใ รๆ วแศวั฿ๆฯ..." oninput="applyFilters()" />
+            <input id="searchSupplier" type="text" placeholder="ศอห ศวแใๆัฯ..." oninput="applyFilters()" />
             <select id="filterStatus" onchange="applyFilters()">
-                <option value="">ูู ุญุงูุงุช ุงูู…ูุชุฌ</option>
-                <option value="available">ู…ุชููุฑ</option>
-                <option value="low">ู…ูุฎูุถ</option>
-                <option value="out">ูุงูุฏ</option>
-                <option value="expired">ู…ูุชูู ุงูุตูุงุญูุฉ</option>
+                <option value="">฿แ อวแวส วแใไสฬ</option>
+                <option value="available">ใสๆÝั</option>
+                <option value="low">ใไฮÝึ</option>
+                <option value="out">ไวÝฯ</option>
+                <option value="expired">ใไสๅํ วแีแวอํษ</option>
             </select>
             <select id="filterOffer" onchange="applyFilters()">
-                <option value="">ูู ุงูุนุฑูุถ</option>
-                <option value="has">ู…ูุชุฌุงุช ุนูููุง ุนุฑุถ</option>
-                <option value="none">ู…ูุชุฌุงุช ุจุฏูู ุนุฑุถ</option>
+                <option value="">฿แ วแฺัๆึ</option>
+                <option value="has">ใไสฬวส ฺแํๅว ฺัึ</option>
+                <option value="none">ใไสฬวส ศฯๆไ ฺัึ</option>
             </select>
         </div>
         <div class="toolbar-group">
-            <button class="btn btn-primary" onclick="openNewProduct()">ู…ูุชุฌ ุฌุฏูุฏ +</button>
-            <button class="btn btn-secondary" onclick="reloadProducts()">ุชุญุฏูุซ โณ</button>
-            <button class="btn btn-outline" onclick="openSettings()">โ ุฅุนุฏุงุฏุงุช ุงูุดุงุดุฉ</button>
-            <button class="btn btn-outline" onclick="importProducts()">โฌ ุงุณุชูุฑุงุฏ</button>
-            <button class="btn btn-outline" onclick="exportProducts()">โฌ ุชุตุฏูุฑ</button>
-            <button class="btn btn-secondary" onclick="printCurrentList()">๐–จ ุทุจุงุนุฉ ุญุณุจ ุงูุจุญุซ</button>
+            <button class="btn btn-primary" onclick="openNewProduct()">ใไสฬ ฬฯํฯ +</button>
+            <button class="btn btn-secondary" onclick="reloadProducts()">สอฯํห ?</button>
+            <button class="btn btn-outline" onclick="openSettings()">? ลฺฯวฯวส วแิวิษ</button>
+            <button class="btn btn-outline" onclick="importProducts()">? วำสํัวฯ</button>
+            <button class="btn btn-outline" onclick="exportProducts()">? สีฯํั</button>
+            <button class="btn btn-secondary" onclick="printCurrentList()">?? ุศวฺษ อำศ วแศอห</button>
         </div>
     </div>
 
-    <!-- ุฌุฏูู ุงูู…ูุชุฌุงุช -->
+    <!-- ฬฯๆแ วแใไสฬวส -->
     <table>
         <thead>
             <tr>
-                <th>ุงูุจุงุฑููุฏ</th>
-                <th>ุงุณู… ุงูู…ูุชุฌ</th>
-                <th>ุงูู…ูุฑุฏ</th>
-                <th>ุงูุชุตููู</th>
-                <th>ุณุนุฑ ุงูุจูุน</th>
-                <th>ุงููู…ูุฉ ุงูู…ุชุจููุฉ</th>
-                <th>ุญุงูุฉ ุงูู…ูุชุฌ</th>
-                <th>ุงูุนุฑุถ</th>
-                <th>ุชุงุฑูุฎ ุงูุตูุงุญูุฉ</th>
-                <th>ุฅุฌุฑุงุกุงุช</th>
+                <th>วแศวั฿ๆฯ</th>
+                <th>วำใ วแใไสฬ</th>
+                <th>วแใๆัฯ</th>
+                <th>วแสีไํÝ</th>
+                <th>ำฺั วแศํฺ</th>
+                <th>วแ฿ใํษ วแใสศÞํษ</th>
+                <th>อวแษ วแใไสฬ</th>
+                <th>วแฺัึ</th>
+                <th>สวัํฮ วแีแวอํษ</th>
+                <th>ลฬัวมวส</th>
             </tr>
         </thead>
         <tbody id="productsBody">
         </tbody>
     </table>
 
-    <!-- ุดุฑูุท ุฃุณูู ุงูุฌุฏูู -->
+    <!-- ิัํุ รำÝแ วแฬฯๆแ -->
     <div class="footer-bar">
-        <div id="countsLabel">ุนุฏุฏ ุงูู…ูุชุฌุงุช: 0 | ุงูู…ุนุฑูุถ: 0</div>
+        <div id="countsLabel">ฺฯฯ วแใไสฬวส: 0 | วแใฺัๆึ: 0</div>
         <div>
-            <button class="btn btn-secondary" onclick="firstPage()">ุงูุฃูู</button>
-            <button class="btn btn-secondary" onclick="prevPage()">ุงูุณุงุจู</button>
-            <button class="btn btn-secondary" onclick="nextPage()">ุงูุชุงูู</button>
-            <button class="btn btn-secondary" onclick="lastPage()">ุงูุฃุฎูุฑ</button>
+            <button class="btn btn-secondary" onclick="firstPage()">วแรๆแ</button>
+            <button class="btn btn-secondary" onclick="prevPage()">วแำวศÞ</button>
+            <button class="btn btn-secondary" onclick="nextPage()">วแสวแํ</button>
+            <button class="btn btn-secondary" onclick="lastPage()">วแรฮํั</button>
         </div>
     </div>
 </main>
 
-<!-- ูุงูุฐุฉ ุงูู…ูุชุฌ -->
+<!-- ไวÝะษ วแใไสฬ -->
 <div id="productModalBackdrop" class="modal-backdrop">
     <div class="modal">
         <div class="modal-header">
-            <h2 id="productModalTitle">ุฅุถุงูุฉ ู…ูุชุฌ ุฌุฏูุฏ</h2>
-            <button class="btn btn-secondary" onclick="closeProductModal()">ุฅุบูุงู โ•</button>
+            <h2 id="productModalTitle">ลึวÝษ ใไสฬ ฬฯํฯ</h2>
+            <button class="btn btn-secondary" onclick="closeProductModal()">ลÛแวÞ ?</button>
         </div>
         <div class="modal-body">
             <input type="hidden" id="productId" />
             <div class="form-group">
-                <label for="barcode">ุงูุจุงุฑููุฏ</label>
+                <label for="barcode">วแศวั฿ๆฯ</label>
                 <input id="barcode" type="text" />
             </div>
             <div class="form-group">
-                <label for="name">ุงุณู… ุงูู…ูุชุฌ</label>
+                <label for="name">วำใ วแใไสฬ</label>
                 <input id="name" type="text" />
             </div>
             <div class="form-group">
-                <label for="supplierName">ุงูู…ูุฑุฏ</label>
+                <label for="supplierName">วแใๆัฯ</label>
                 <input id="supplierName" type="text" />
             </div>
             <div class="form-group">
-                <label for="category">ุงูุชุตููู</label>
+                <label for="category">วแสีไํÝ</label>
                 <input id="category" type="text" />
             </div>
             <div class="form-group">
-                <label for="quantity">ุงููู…ูุฉ</label>
+                <label for="quantity">วแ฿ใํษ</label>
                 <input id="quantity" type="number" min="0" />
             </div>
             <div class="form-group">
-                <label for="minQuantity">ุญุฏ ุฃุฏูู ููู…ุฎุฒูู</label>
+                <label for="minQuantity">อฯ รฯไ์ แแใฮาๆไ</label>
                 <input id="minQuantity" type="number" min="0" />
             </div>
             <div class="form-group">
-                <label for="purchasePrice">ุณุนุฑ ุงูุดุฑุงุก</label>
+                <label for="purchasePrice">ำฺั วแิัวม</label>
                 <input id="purchasePrice" type="number" min="0" step="0.01" />
             </div>
             <div class="form-group">
-                <label for="salePrice">ุณุนุฑ ุงูุจูุน</label>
+                <label for="salePrice">ำฺั วแศํฺ</label>
                 <input id="salePrice" type="number" min="0" step="0.01" />
             </div>
             <div class="form-group">
-                <label>ุงูุถุฑูุจุฉ</label>
+                <label>วแึัํศษ</label>
                 <div class="form-inline">
                     <input id="isVatIncluded" type="checkbox" checked />
-                    <span>ุงูุณุนุฑ ุดุงู…ู ุงูุถุฑูุจุฉ</span>
+                    <span>วแำฺั ิวใแ วแึัํศษ</span>
                 </div>
             </div>
             <div class="form-group">
-                <label for="expiryDate">ุชุงุฑูุฎ ุงูุตูุงุญูุฉ</label>
+                <label for="expiryDate">สวัํฮ วแีแวอํษ</label>
                 <input id="expiryDate" type="date" />
             </div>
 
             <div class="form-group">
-                <label>ุชูุนูู ุงูุนุฑุถ</label>
+                <label>สÝฺํแ วแฺัึ</label>
                 <div class="form-inline">
                     <input id="offerEnabled" type="checkbox" onchange="updateOfferInfo()" />
-                    <span>ุชุดุบูู ุนุฑุถ ููู…ูุชุฌ</span>
+                    <span>สิÛํแ ฺัึ แแใไสฬ</span>
                 </div>
-                <div class="hint">ุนูุฏ ุชูุนูู ุงูุนุฑุถ ูุฌุจ ุชุญุฏูุฏ ุงุณู… ุงูุนุฑุถ ูุณุนุฑ ุงูุนุฑุถ ูุชูุงุฑูุฎ ุงูุจุฏุงูุฉ ูุงูููุงูุฉ.</div>
+                <div class="hint">ฺไฯ สÝฺํแ วแฺัึ ํฬศ สอฯํฯ วำใ วแฺัึ ๆำฺั วแฺัึ ๆสๆวัํฮ วแศฯวํษ ๆวแไๅวํษ.</div>
             </div>
             <div class="form-group">
-                <label for="offerName">ุงุณู… ุงูุนุฑุถ</label>
+                <label for="offerName">วำใ วแฺัึ</label>
                 <input id="offerName" type="text" />
             </div>
             <div class="form-group">
-                <label for="offerPrice">ุณุนุฑ ุงูุนุฑุถ</label>
+                <label for="offerPrice">ำฺั วแฺัึ</label>
                 <input id="offerPrice" type="number" min="0" step="0.01" />
             </div>
             <div class="form-group">
-                <label>ุงูุถุฑูุจุฉ ูู ุงูุนุฑุถ</label>
+                <label>วแึัํศษ Ýํ วแฺัึ</label>
                 <div class="form-inline">
                     <input id="offerVatIncluded" type="checkbox" checked />
-                    <span>ุณุนุฑ ุงูุนุฑุถ ุดุงู…ู ุงูุถุฑูุจุฉ</span>
+                    <span>ำฺั วแฺัึ ิวใแ วแึัํศษ</span>
                 </div>
             </div>
             <div class="form-group">
-                <label for="offerStart">ุจุฏุงูุฉ ุงูุนุฑุถ</label>
+                <label for="offerStart">ศฯวํษ วแฺัึ</label>
                 <input id="offerStart" type="date" onchange="updateOfferInfo()" />
             </div>
             <div class="form-group">
-                <label for="offerEnd">ููุงูุฉ ุงูุนุฑุถ</label>
+                <label for="offerEnd">ไๅวํษ วแฺัึ</label>
                 <input id="offerEnd" type="date" onchange="updateOfferInfo()" />
             </div>
             <div class="form-group" style="grid-column: 1 / -1;">
-                <label>ู…ุนููู…ุงุช ู…ุฏุฉ ุงูุนุฑุถ</label>
-                <div id="offerInfo" class="hint">ุงูุนุฑุถ ุบูุฑ ู…ูุนู‘ู.</div>
+                <label>ใฺแๆใวส ใฯษ วแฺัึ</label>
+                <div id="offerInfo" class="hint">วแฺัึ Ûํั ใÝฺ๘แ.</div>
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeProductModal()">ุฅูุบุงุก</button>
-            <button class="btn btn-primary" onclick="saveProduct()">ุญูุธ</button>
+            <button class="btn btn-secondary" onclick="closeProductModal()">ลแÛวม</button>
+            <button class="btn btn-primary" onclick="saveProduct()">อÝู</button>
         </div>
     </div>
 </div>
 
-<!-- ูุงูุฐุฉ ุฅุนุฏุงุฏุงุช ุงูุดุงุดุฉ ูุงูุจุงุฑููุฏ -->
+<!-- ไวÝะษ ลฺฯวฯวส วแิวิษ ๆวแศวั฿ๆฯ -->
 <div id="settingsModalBackdrop" class="modal-backdrop">
     <div class="modal">
         <div class="modal-header">
-            <h2>ุฅุนุฏุงุฏุงุช ุงูุดุงุดุฉ ูุงูุจุงุฑููุฏ ูุงูุถุฑูุจุฉ</h2>
-            <button class="btn btn-secondary" onclick="closeSettings()">ุฅุบูุงู โ•</button>
+            <h2>ลฺฯวฯวส วแิวิษ ๆวแศวั฿ๆฯ ๆวแึัํศษ</h2>
+            <button class="btn btn-secondary" onclick="closeSettings()">ลÛแวÞ ?</button>
         </div>
         <div class="modal-body">
             <div class="form-group">
-                <label for="taxRate">ูุณุจุฉ ุงูุถุฑูุจุฉ %</label>
+                <label for="taxRate">ไำศษ วแึัํศษ %</label>
                 <input id="taxRate" type="number" min="0" step="0.1" />
             </div>
             <div class="form-group">
-                <label>ุฎูุงุฑุงุช ุงูุจุงุฑููุฏ</label>
+                <label>ฮํวัวส วแศวั฿ๆฯ</label>
                 <div class="form-inline">
                     <input id="bcShowStore" type="checkbox" />
-                    <span>ุฅุธูุงุฑ ุงุณู… ุงูู…ุญู</span>
+                    <span>ลูๅวั วำใ วแใอแ</span>
                 </div>
                 <div class="form-inline">
                     <input id="bcShowProduct" type="checkbox" />
-                    <span>ุฅุธูุงุฑ ุงุณู… ุงูู…ูุชุฌ</span>
+                    <span>ลูๅวั วำใ วแใไสฬ</span>
                 </div>
                 <div class="form-inline">
                     <input id="bcShowPrice" type="checkbox" />
-                    <span>ุฅุธูุงุฑ ุงูุณุนุฑ</span>
+                    <span>ลูๅวั วแำฺั</span>
                 </div>
             </div>
             <div class="form-group">
-                <label for="bcLabelWidth">ุนุฑุถ ุงูู…ูุตู (ู…ู…)</label>
+                <label for="bcLabelWidth">ฺัึ วแใแีÞ (ใใ)</label>
                 <input id="bcLabelWidth" type="number" min="10" step="1" />
             </div>
             <div class="form-group">
-                <label for="bcLabelHeight">ุทูู ุงูู…ูุตู (ู…ู…)</label>
+                <label for="bcLabelHeight">ุๆแ วแใแีÞ (ใใ)</label>
                 <input id="bcLabelHeight" type="number" min="10" step="1" />
             </div>
             <div class="form-group">
-                <label for="bcLabelPerRow">ุนุฏุฏ ุงูู…ูุตูุงุช ูู ุงูุตู</label>
+                <label for="bcLabelPerRow">ฺฯฯ วแใแีÞวส Ýํ วแีÝ</label>
                 <input id="bcLabelPerRow" type="number" min="1" step="1" />
             </div>
             <div class="form-group">
-                <label for="bcLabelTotal">ุนุฏุฏ ุงูู…ูุตูุงุช ูู ุงูุตูุญุฉ</label>
+                <label for="bcLabelTotal">ฺฯฯ วแใแีÞวส Ýํ วแีÝอษ</label>
                 <input id="bcLabelTotal" type="number" min="1" step="1" />
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="closeSettings()">ุฅูุบุงุก</button>
-            <button class="btn btn-primary" onclick="saveSettings()">ุญูุธ ุงูุฅุนุฏุงุฏุงุช</button>
+            <button class="btn btn-secondary" onclick="closeSettings()">ลแÛวม</button>
+            <button class="btn btn-primary" onclick="saveSettings()">อÝู วแลฺฯวฯวส</button>
         </div>
     </div>
 </div>
 
-<!-- ูุงูุฐุฉ ุทุจุงุนุฉ ุงูุจุงุฑููุฏ -->
+<!-- ไวÝะษ ุศวฺษ วแศวั฿ๆฯ -->
 <div id="barcodeModalBackdrop" class="modal-backdrop">
     <div class="modal">
         <div class="modal-header">
-            <h2>ู…ุนุงููุฉ ุจุงุฑููุฏ ุงูู…ูุชุฌ</h2>
-            <button class="btn btn-secondary" onclick="closeBarcodeModal()">ุฅุบูุงู โ•</button>
+            <h2>ใฺวํไษ ศวั฿ๆฯ วแใไสฬ</h2>
+            <button class="btn btn-secondary" onclick="closeBarcodeModal()">ลÛแวÞ ?</button>
         </div>
         <div class="modal-body" style="grid-template-columns: 1fr;">
             <div class="form-group">
-                <label>ุจุงุฑููุฏ</label>
+                <label>ศวั฿ๆฯ</label>
                 <div id="barcodePreviewText" class="hint"></div>
             </div>
             <div id="barcodeCanvasWrapper" style="margin-top:10px; text-align:center;">
@@ -405,7 +405,7 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-primary" onclick="printBarcode()">ุทุจุงุนุฉ ุงูุจุงุฑููุฏ</button>
+            <button class="btn btn-primary" onclick="printBarcode()">ุศวฺษ วแศวั฿ๆฯ</button>
         </div>
     </div>
 </div>
@@ -428,14 +428,14 @@
         try {
             const res = await fetch("/api/products");
             if (!res.ok) {
-                alert("ุญุฏุซ ุฎุทุฃ ูู ุชุญู…ูู ุงูู…ูุชุฌุงุช ู…ู ุงูุฎุงุฏู….");
+                alert("อฯห ฮุร Ýํ สอใํแ วแใไสฬวส ใไ วแฮวฯใ.");
                 return;
             }
             products = await res.json();
             applyFilters();
         } catch (e) {
             console.error(e);
-            alert("ุชุนุฐุฑ ุงูุงุชุตุงู ุจุงูุฎุงุฏู….");
+            alert("สฺะั วแวสีวแ ศวแฮวฯใ.");
         }
     }
 
@@ -482,7 +482,7 @@
             const tr = document.createElement("tr");
             const td = document.createElement("td");
             td.colSpan = 10;
-            td.textContent = "ูุง ุชูุฌุฏ ู…ูุชุฌุงุช ู…ุทุงุจูุฉ.";
+            td.textContent = "แว สๆฬฯ ใไสฬวส ใุวศÞษ.";
             tr.appendChild(td);
             body.appendChild(tr);
         } else {
@@ -496,19 +496,19 @@
                 const tr = document.createElement("tr");
                 const remaining = (p.quantity || 0) - (p.soldQuantity || 0);
 
-                let statusText = "ู…ุชููุฑ";
+                let statusText = "ใสๆÝั";
                 let statusClass = "badge-success";
                 if (remaining <= 0) {
-                    statusText = "ูุงูุฏ";
+                    statusText = "ไวÝฯ";
                     statusClass = "badge-danger";
                 } else if (remaining > 0 && remaining <= (p.minQuantity || 0)) {
-                    statusText = "ู…ูุฎูุถ";
+                    statusText = "ใไฮÝึ";
                     statusClass = "badge-warning";
                 }
 
                 let offerBadge = "-";
                 if (p.offerEnabled && p.offerPrice != null) {
-                    offerBadge = "<span class=\"badge badge-offer\">ุนุฑุถ: " + p.offerPrice + "</span>";
+                    offerBadge = "<span class=\"badge badge-offer\">ฺัึ: " + p.offerPrice + "</span>";
                 }
 
                 let expiryText = p.expiryDate ? p.expiryDate.toString().substring(0,10) : "";
@@ -529,19 +529,19 @@
                 const actionsTd = tr.lastElementChild;
                 const editBtn = document.createElement("button");
                 editBtn.className = "btn btn-secondary";
-                editBtn.textContent = "ุชุนุฏูู";
+                editBtn.textContent = "สฺฯํแ";
                 editBtn.onclick = () => openEditProduct(p.id);
 
                 const delBtn = document.createElement("button");
                 delBtn.className = "btn btn-danger";
                 delBtn.style.marginRight = "4px";
-                delBtn.textContent = "ุญุฐู";
+                delBtn.textContent = "อะÝ";
                 delBtn.onclick = () => deleteProduct(p.id);
 
                 const bcBtn = document.createElement("button");
                 bcBtn.className = "btn btn-outline";
                 bcBtn.style.marginRight = "4px";
-                bcBtn.textContent = "ุจุงุฑููุฏ";
+                bcBtn.textContent = "ศวั฿ๆฯ";
                 bcBtn.onclick = () => openBarcodeModal(p);
 
                 actionsTd.appendChild(editBtn);
@@ -553,9 +553,9 @@
 
             const countsLabel = document.getElementById("countsLabel");
             countsLabel.textContent =
-                "ุนุฏุฏ ุงูู…ูุชุฌุงุช ุงูููู: " + products.length +
-                " | ุงูู…ุนุฑูุถ: " + (start + 1) + "โ€“" + end +
-                " ู…ู " + total + " ุญุณุจ ุงูุจุญุซ";
+                "ฺฯฯ วแใไสฬวส วแ฿แํ: " + products.length +
+                " | วแใฺัๆึ: " + (start + 1) + "–" + end +
+                " ใไ " + total + " อำศ วแศอห";
         }
     }
 
@@ -589,7 +589,7 @@
 
     function openNewProduct() {
         editingId = null;
-        document.getElementById("productModalTitle").textContent = "ุฅุถุงูุฉ ู…ูุชุฌ ุฌุฏูุฏ";
+        document.getElementById("productModalTitle").textContent = "ลึวÝษ ใไสฬ ฬฯํฯ";
         resetProductForm();
         openProductModal();
     }
@@ -598,7 +598,7 @@
         const p = products.find(x => x.id === id);
         if (!p) return;
         editingId = id;
-        document.getElementById("productModalTitle").textContent = "ุชุนุฏูู ู…ูุชุฌ";
+        document.getElementById("productModalTitle").textContent = "สฺฯํแ ใไสฬ";
 
         document.getElementById("productId").value = p.id;
         document.getElementById("barcode").value = p.barcode || "";
@@ -641,7 +641,7 @@
         document.getElementById("offerVatIncluded").checked = true;
         document.getElementById("offerStart").value = "";
         document.getElementById("offerEnd").value = "";
-        document.getElementById("offerInfo").textContent = "ุงูุนุฑุถ ุบูุฑ ู…ูุนู‘ู.";
+        document.getElementById("offerInfo").textContent = "วแฺัึ Ûํั ใÝฺ๘แ.";
     }
 
     function openProductModal() {
@@ -659,21 +659,21 @@
         const info = document.getElementById("offerInfo");
 
         if (!enabled) {
-            info.textContent = "ุงูุนุฑุถ ุบูุฑ ู…ูุนู‘ู.";
+            info.textContent = "วแฺัึ Ûํั ใÝฺ๘แ.";
             return;
         }
         if (!startVal || !endVal) {
-            info.textContent = "ุนูุฏ ุชูุนูู ุงูุนุฑุถ ูุฌุจ ุชุญุฏูุฏ ุชุงุฑูุฎ ุจุฏุงูุฉ ูููุงูุฉ ุงูุนุฑุถ ูุจู ุงูุญูุธ.";
+            info.textContent = "ฺไฯ สÝฺํแ วแฺัึ ํฬศ สอฯํฯ สวัํฮ ศฯวํษ ๆไๅวํษ วแฺัึ Þศแ วแอÝู.";
             return;
         }
         const s = new Date(startVal);
         const e = new Date(endVal);
         if (isNaN(s) || isNaN(e) || e < s) {
-            info.textContent = "ุชุฃูุฏ ุฃู ุชุงุฑูุฎ ููุงูุฉ ุงูุนุฑุถ ุจุนุฏ ุฃู ูุณุงูู ุชุงุฑูุฎ ุงูุจุฏุงูุฉ.";
+            info.textContent = "สร฿ฯ รไ สวัํฮ ไๅวํษ วแฺัึ ศฺฯ รๆ ํำวๆํ สวัํฮ วแศฯวํษ.";
             return;
         }
         const diffDays = Math.round((e - s) / (1000*60*60*24)) + 1;
-        info.textContent = "ู…ุฏุฉ ุงูุนุฑุถ " + diffDays + " ููู…ุ ู…ู " + startVal + " ุฅูู " + endVal + ".";
+        info.textContent = "ใฯษ วแฺัึ " + diffDays + " ํๆใก ใไ " + startVal + " ลแ์ " + endVal + ".";
     }
 
     async function saveProduct() {
@@ -683,13 +683,13 @@
 
         if (offerEnabled) {
             if (!offerStartVal || !offerEndVal) {
-                alert("ุนูุฏ ุชูุนูู ุงูุนุฑุถ ูุฌุจ ุชุญุฏูุฏ ุชุงุฑูุฎ ุจุฏุงูุฉ ูููุงูุฉ ุงูุนุฑุถ.");
+                alert("ฺไฯ สÝฺํแ วแฺัึ ํฬศ สอฯํฯ สวัํฮ ศฯวํษ ๆไๅวํษ วแฺัึ.");
                 return;
             }
             const s = new Date(offerStartVal);
             const e = new Date(offerEndVal);
             if (isNaN(s) || isNaN(e) || e < s) {
-                alert("ุชุฃูุฏ ุฃู ุชุงุฑูุฎ ููุงูุฉ ุงูุนุฑุถ ุจุนุฏ ุฃู ูุณุงูู ุชุงุฑูุฎ ุงูุจุฏุงูุฉ.");
+                alert("สร฿ฯ รไ สวัํฮ ไๅวํษ วแฺัึ ศฺฯ รๆ ํำวๆํ สวัํฮ วแศฯวํษ.");
                 return;
             }
         }
@@ -715,7 +715,7 @@
         };
 
         try {
-            // ููุง ูุชูุฑุจ ู…ู PUT ููุงุฆูุง ูุชูุงุฏู 500
+            // ๅไว ไสๅัศ ใไ PUT ไๅวฦํว แสÝวฯํ 500
             if (editingId) {
                 await fetch("/api/products/" + editingId, { method: "DELETE" });
             }
@@ -726,29 +726,29 @@
             });
             if (!res.ok) {
                 console.error("Save error", await res.text());
-                alert("ุญุฏุซ ุฎุทุฃ ุฃุซูุงุก ุญูุธ ุงูู…ูุชุฌ.");
+                alert("อฯห ฮุร รหไวม อÝู วแใไสฬ.");
                 return;
             }
             closeProductModal();
             await reloadProducts();
         } catch (e) {
             console.error(e);
-            alert("ุชุนุฐุฑ ุงูุงุชุตุงู ุจุงูุฎุงุฏู… ุฃุซูุงุก ุญูุธ ุงูู…ูุชุฌ.");
+            alert("สฺะั วแวสีวแ ศวแฮวฯใ รหไวม อÝู วแใไสฬ.");
         }
     }
 
     async function deleteProduct(id) {
-        if (!confirm("ุชุฃููุฏ ุญุฐู ุงูู…ูุชุฌุ")) return;
+        if (!confirm("สร฿ํฯ อะÝ วแใไสฬฟ")) return;
         try {
             const res = await fetch("/api/products/" + id, { method: "DELETE" });
             if (!res.ok) {
-                alert("ุชุนุฐุฑ ุญุฐู ุงูู…ูุชุฌ.");
+                alert("สฺะั อะÝ วแใไสฬ.");
                 return;
             }
             await reloadProducts();
         } catch (e) {
             console.error(e);
-            alert("ุชุนุฐุฑ ุงูุงุชุตุงู ุจุงูุฎุงุฏู… ุฃุซูุงุก ุงูุญุฐู.");
+            alert("สฺะั วแวสีวแ ศวแฮวฯใ รหไวม วแอะÝ.");
         }
     }
 
@@ -772,7 +772,7 @@
             bcLabelTotal: Number(document.getElementById("bcLabelTotal").value || 0)
         };
         localStorage.setItem("productsScreenSettings", JSON.stringify(settings));
-        alert("ุชู… ุญูุธ ุงูุฅุนุฏุงุฏุงุช ูู ุงููุธุงู… (ุงูู…ุชุตูุญ).");
+        alert("สใ อÝู วแลฺฯวฯวส Ýํ วแไูวใ (วแใสีÝอ).");
         closeSettings();
     }
 
@@ -795,7 +795,7 @@
     function openBarcodeModal(p) {
         barcodeProduct = p;
         document.getElementById("barcodePreviewText").textContent =
-            "ุงูุจุงุฑููุฏ: " + (p.barcode || "") + " | " + (p.name || "");
+            "วแศวั฿ๆฯ: " + (p.barcode || "") + " | " + (p.name || "");
         document.getElementById("barcodeModalBackdrop").style.display = "flex";
         try {
             JsBarcode("#barcodeSvg", p.barcode || "", {
@@ -814,7 +814,7 @@
     function printBarcode() {
         if (!barcodeProduct) return;
         const w = window.open("", "_blank");
-        w.document.write("<html><head><meta charset='utf-8'><title>ุทุจุงุนุฉ ุจุงุฑููุฏ</title></head><body style='text-align:center;'>");
+        w.document.write("<html><head><meta charset='utf-8'><title>ุศวฺษ ศวั฿ๆฯ</title></head><body style='text-align:center;'>");
         w.document.write("<svg id='bar'></svg>");
         w.document.write("<script src='https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js'><\/script>");
         w.document.write("<script>JsBarcode('#bar', '" + (barcodeProduct.barcode || "") + "', {format:'EAN13',displayValue:true});<\/script>");
@@ -829,11 +829,11 @@
     }
 
     function importProducts() {
-        alert("ุงุณุชูุฑุงุฏ ุงูู…ูุชุฌุงุช ุณูุชู… ุฑุจุทู ูุงุญูุงู (CSV/Excel).");
+        alert("วำสํัวฯ วแใไสฬวส ำํสใ ัศุๅ แวอÞว๐ (CSV/Excel).");
     }
 
     function exportProducts() {
-        alert("ุชุตุฏูุฑ ุงูู…ูุชุฌุงุช ุณูุชู… ุฑุจุทู ูุงุญูุงู (CSV/Excel).");
+        alert("สีฯํั วแใไสฬวส ำํสใ ัศุๅ แวอÞว๐ (CSV/Excel).");
     }
 </script>
 </body>
