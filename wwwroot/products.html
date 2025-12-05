@@ -3,397 +3,345 @@
 <head>
     <meta charset="utf-8" />
     <title>شاشة المنتجات</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f5f7fb; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        .page-wrapper { padding: 20px; }
-        .card-main { border-radius: 16px; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08); }
-        .table thead th { background: #f1f5f9; position: sticky; top: 0; z-index: 1; }
-        .badge-status { min-width: 70px; }
-        .btn-primary { background: #2563eb; border-color: #2563eb; }
-        .btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
-        .offer-pill { font-size: 0.75rem; }
-        .navbar-top { border-radius: 12px; background: #0f172a; color: #e2e8f0; padding: 10px 16px; margin-bottom: 16px; }
-        .navbar-top a { color: #e5e7eb; text-decoration: none; }
-        .navbar-top a:hover { text-decoration: underline; }
-        .time-label { font-size: 0.9rem; color: #cbd5f5; }
-        .pagination-summary { font-size: 0.85rem; color: #64748b; }
+        body {
+            font-family: "Segoe UI", Tahoma, sans-serif;
+            background: #f3f5f9;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background: #1f3b70;
+            color: #fff;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary {
+            background: #2563eb;
+            color: #fff;
+        }
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #111827;
+        }
+        .btn-danger {
+            background: #ef4444;
+            color: #fff;
+        }
+        .btn:disabled {
+            opacity: .6;
+            cursor: default;
+        }
+        main {
+            padding: 16px 24px 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        .toolbar input[type="text"] {
+            flex: 1;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, .08);
+        }
+        thead {
+            background: #e5e7eb;
+        }
+        th, td {
+            padding: 8px 10px;
+            font-size: 14px;
+            border-bottom: 1px solid #f3f4f6;
+            text-align: center;
+        }
+        tbody tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+        }
+        .badge-success {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        .badge-warning {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+        .badge-danger {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        .badge-offer {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, .45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+        .modal {
+            background: #fff;
+            border-radius: 10px;
+            max-width: 850px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 16px 20px 20px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        .modal-header h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .modal-body {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px 16px;
+        }
+        .modal-footer {
+            margin-top: 16px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 10px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 13px;
+        }
+        .form-group label {
+            font-weight: 600;
+            color: #374151;
+        }
+        .form-group input,
+        .form-group select {
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            font-size: 13px;
+        }
+        .form-inline {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+        .hint {
+            font-size: 11px;
+            color: #6b7280;
+        }
+        @media (max-width: 768px) {
+            .modal-body {
+                grid-template-columns: minmax(0, 1fr);
+            }
+            header {
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
     </style>
 </head>
 <body>
-<div class="container-fluid page-wrapper">
+<header>
+    <h1>شاشة المنتجات</h1>
+    <div class="header-actions">
+        <a href="index.html" class="btn btn-secondary">⬅ العودة للرئيسية</a>
+    </div>
+</header>
 
-    <!-- شريط علوي -->
-    <div class="navbar-top d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <strong>نظام إدارة المتجر</strong> – شاشة المنتجات
-        </div>
-        <div class="d-flex align-items-center gap-3">
-            <a href="/index.html" class="me-3">العودة للرئيسية</a>
-            <span class="time-label" id="clockLabel"></span>
-        </div>
+<main>
+    <div class="toolbar">
+        <input id="searchBox" type="text" placeholder="بحث بالاسم أو الباركود..." oninput="filterProducts()" />
+        <button class="btn btn-primary" onclick="openNewProduct()">منتج جديد +</button>
+        <button class="btn btn-secondary" onclick="reloadProducts()">تحديث القائمة ⟳</button>
     </div>
 
-    <!-- الكارد الرئيسي -->
-    <div class="card card-main">
-        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <div class="d-flex flex-wrap gap-2">
-                <button class="btn btn-primary" onclick="openNewProduct()">
-                    منتج جديد +
-                </button>
-                <button class="btn btn-outline-secondary" onclick="reloadProducts()">
-                    إعادة تحميل
-                </button>
-            </div>
-            <div class="d-flex flex-wrap gap-2">
-                <input id="searchInput" class="form-control form-control-sm" style="min-width: 220px;" placeholder="بحث بالاسم أو الباركود..." oninput="applyFilters()" />
-                <select id="statusFilter" class="form-select form-select-sm" onchange="applyFilters()">
-                    <option value="">كل الحالات</option>
-                    <option value="available">متوفر</option>
-                    <option value="low">منخفض</option>
-                    <option value="out">نافد</option>
-                </select>
-            </div>
-        </div>
+    <table>
+        <thead>
+        <tr>
+            <th>الباركود</th>
+            <th>اسم المنتج</th>
+            <th>المورد</th>
+            <th>التصنيف</th>
+            <th>السعر</th>
+            <th>الكمية المتبقية</th>
+            <th>الحالة</th>
+            <th>العرض</th>
+            <th>إجراءات</th>
+        </tr>
+        </thead>
+        <tbody id="productsBody">
+        <!-- بيانات المنتجات -->
+        </tbody>
+    </table>
+</main>
 
-        <div class="card-body p-0">
-            <div class="table-responsive" style="max-height: 480px;">
-                <table class="table table-hover mb-0 align-middle" id="productsTable">
-                    <thead>
-                        <tr>
-                            <th style="width: 90px;">الإجراءات</th>
-                            <th>الحالة</th>
-                            <th>الكمية المتبقية</th>
-                            <th>السعر</th>
-                            <th>المورد</th>
-                            <th>التصنيف</th>
-                            <th>اسم المنتج</th>
-                            <th>الباركود</th>
-                        </tr>
-                    </thead>
-                    <tbody id="productsBody">
-                        <!-- الصفوف تُحقن برمجياً -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="card-footer d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <div class="pagination-summary" id="summaryLabel">
-                <!-- مثال: المعروض 1–50 من 160 منتج -->
-            </div>
-            <div class="btn-group btn-group-sm" role="group">
-                <button class="btn btn-outline-secondary" onclick="firstPage()">الأول</button>
-                <button class="btn btn-outline-secondary" onclick="prevPage()">السابق</button>
-                <button class="btn btn-outline-secondary" onclick="nextPage()">التالي</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- نافذة المنتج -->
-<div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content">
-      <form id="productForm" onsubmit="saveProduct(event)">
+<!-- نافذة إضافة / تعديل منتج -->
+<div id="productModalBackdrop" class="modal-backdrop">
+    <div class="modal">
         <div class="modal-header">
-          <h5 class="modal-title" id="modalTitle">منتج جديد</h5>
-          <button type="button" class="btn-close ms-0" data-bs-dismiss="modal" aria-label="Close"></button>
+            <h2 id="modalTitle">إضافة منتج جديد</h2>
+            <button class="btn btn-secondary" onclick="closeProductModal()">إغلاق ✕</button>
         </div>
         <div class="modal-body">
-
-          <input type="hidden" id="productId" />
-
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label class="form-label">الباركود</label>
-              <input type="text" id="barcode" class="form-control" required />
+            <div class="form-group">
+                <label for="barcode">رقم الباركود</label>
+                <input id="barcode" type="text" />
             </div>
-            <div class="col-md-4">
-              <label class="form-label">اسم المنتج</label>
-              <input type="text" id="name" class="form-control" required />
+            <div class="form-group">
+                <label for="name">اسم المنتج</label>
+                <input id="name" type="text" />
             </div>
-            <div class="col-md-4">
-              <label class="form-label">المورد</label>
-              <input type="text" id="supplierName" class="form-control" />
+            <div class="form-group">
+                <label for="supplierName">المورد</label>
+                <input id="supplierName" type="text" />
             </div>
-
-            <div class="col-md-4">
-              <label class="form-label">التصنيف</label>
-              <input type="text" id="category" class="form-control" />
+            <div class="form-group">
+                <label for="category">التصنيف</label>
+                <input id="category" type="text" />
             </div>
-            <div class="col-md-4">
-              <label class="form-label">الكمية</label>
-              <input type="number" id="quantity" class="form-control" min="0" />
+            <div class="form-group">
+                <label for="quantity">الكمية</label>
+                <input id="quantity" type="number" min="0" />
             </div>
-            <div class="col-md-4">
-              <label class="form-label">حد أدنى للمخزون</label>
-              <input type="number" id="minQuantity" class="form-control" min="0" />
+            <div class="form-group">
+                <label for="minQuantity">حد أدنى للمخزون</label>
+                <input id="minQuantity" type="number" min="0" />
             </div>
-
-            <div class="col-md-4">
-              <label class="form-label">سعر الشراء</label>
-              <input type="number" step="0.01" id="purchasePrice" class="form-control" />
+            <div class="form-group">
+                <label for="purchasePrice">سعر الشراء</label>
+                <input id="purchasePrice" type="number" min="0" step="0.01" />
             </div>
-            <div class="col-md-4">
-              <label class="form-label">سعر البيع</label>
-              <input type="number" step="0.01" id="salePrice" class="form-control" />
+            <div class="form-group">
+                <label for="salePrice">سعر البيع</label>
+                <input id="salePrice" type="number" min="0" step="0.01" />
             </div>
-            <div class="col-md-4 d-flex align-items-end">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="isVatIncluded" checked />
-                <label class="form-check-label" for="isVatIncluded">
-                  السعر شامل الضريبة
-                </label>
-              </div>
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label">تاريخ الصلاحية</label>
-              <input type="date" id="expiryDate" class="form-control" />
-            </div>
-
-            <hr class="mt-3" />
-
-            <div class="col-12 d-flex justify-content-between align-items-center">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="offerEnabled" onchange="toggleOfferSection()" />
-                    <label class="form-check-label fw-bold" for="offerEnabled">
-                        تفعيل العرض
-                    </label>
+            <div class="form-group">
+                <label>الضريبة</label>
+                <div class="form-inline">
+                    <input id="isVatIncluded" type="checkbox" checked />
+                    <span>السعر شامل الضريبة</span>
                 </div>
-                <span class="text-muted small" id="offerInfoLabel"></span>
+            </div>
+            <div class="form-group">
+                <label for="expiryDate">تاريخ الصلاحية</label>
+                <input id="expiryDate" type="date" />
             </div>
 
-            <div id="offerSection" class="row g-3 mt-1" style="display:none;">
-              <div class="col-md-4">
-                <label class="form-label">اسم العرض</label>
-                <input type="text" id="offerName" class="form-control" />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">سعر العرض</label>
-                <input type="number" step="0.01" id="offerPrice" class="form-control" />
-              </div>
-              <div class="col-md-4 d-flex align-items-end">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="offerVatIncluded" checked />
-                  <label class="form-check-label" for="offerVatIncluded">
-                    سعر العرض شامل الضريبة
-                  </label>
+            <!-- إعدادات العرض -->
+            <div class="form-group">
+                <label>تفعيل العرض</label>
+                <div class="form-inline">
+                    <input id="offerEnabled" type="checkbox" />
+                    <span>تشغيل عرض للمنتج</span>
                 </div>
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label">تاريخ بداية العرض</label>
-                <input type="date" id="offerStart" class="form-control" />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">تاريخ نهاية العرض</label>
-                <input type="date" id="offerEnd" class="form-control" />
-              </div>
+                <div class="hint">عند تفعيل العرض يجب تحديد اسم العرض والسعر وتواريخ البداية والنهاية.</div>
             </div>
-
-          </div>
+            <div class="form-group">
+                <label for="offerName">اسم العرض</label>
+                <input id="offerName" type="text" />
+            </div>
+            <div class="form-group">
+                <label for="offerPrice">سعر العرض</label>
+                <input id="offerPrice" type="number" min="0" step="0.01" />
+            </div>
+            <div class="form-group">
+                <label>ضريبة السعر في العرض</label>
+                <div class="form-inline">
+                    <input id="offerVatIncluded" type="checkbox" checked />
+                    <span>سعر العرض شامل الضريبة</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="offerStart">بداية العرض</label>
+                <input id="offerStart" type="date" />
+            </div>
+            <div class="form-group">
+                <label for="offerEnd">نهاية العرض</label>
+                <input id="offerEnd" type="date" />
+                <div class="hint">إذا كان العرض مفعَّلًا ولا يوجد تاريخ بداية أو نهاية، لن يتم الحفظ وسيظهر تنبيه.</div>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label>ملاحظات عن مدة العرض</label>
+                <div id="offerInfo" class="hint">لم يتم حساب المدة بعد.</div>
+            </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
-          <button type="submit" class="btn btn-primary">حفظ</button>
+            <button class="btn btn-secondary" onclick="closeProductModal()">إلغاء</button>
+            <button class="btn btn-primary" onclick="saveProduct()">حفظ</button>
         </div>
-      </form>
     </div>
-  </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     let products = [];
-    let filteredProducts = [];
-    let currentPage = 1;
-    const pageSize = 50;
-    let productModal;
+    let editingProductId = null;
 
-    document.addEventListener("DOMContentLoaded", () => {
-        productModal = new bootstrap.Modal(document.getElementById("productModal"));
-        initClock();
-        loadProducts();
-    });
-
-    function initClock() {
-        const lbl = document.getElementById("clockLabel");
-        function tick() {
-            const now = new Date();
-            const days = ["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
-            const d = days[now.getDay()];
-            const date = now.toLocaleDateString("ar-SA");
-            const time = now.toLocaleTimeString("ar-SA", { hour12: false });
-            lbl.textContent = d + " - " + date + " - " + time;
-        }
-        tick();
-        setInterval(tick, 1000);
+    function showProductModal() {
+        document.getElementById("productModalBackdrop").style.display = "flex";
     }
 
-    async function loadProducts() {
-        try {
-            const res = await fetch("/api/products");
-            if (!res.ok) throw new Error("فشل تحميل المنتجات");
-            products = await res.json();
-            filteredProducts = [...products];
-            currentPage = 1;
-            renderProducts();
-        } catch (err) {
-            console.error(err);
-            alert("تعذر تحميل المنتجات من الخادم");
-        }
+    function closeProductModal() {
+        document.getElementById("productModalBackdrop").style.display = "none";
     }
 
-    function reloadProducts() {
-        loadProducts();
-    }
-
-    function applyFilters() {
-        const term = document.getElementById("searchInput").value.trim().toLowerCase();
-        const status = document.getElementById("statusFilter").value;
-
-        filteredProducts = products.filter(p => {
-            const textMatch =
-                !term ||
-                (p.name && p.name.toLowerCase().includes(term)) ||
-                (p.barcode && p.barcode.toLowerCase().includes(term));
-
-            let statusMatch = true;
-            const remaining = (p.quantity || 0) - (p.soldQuantity || 0);
-
-            if (status === "available") statusMatch = remaining > 0;
-            if (status === "low") statusMatch = remaining > 0 && remaining <= (p.minQuantity || 0);
-            if (status === "out") statusMatch = remaining <= 0;
-
-            return textMatch && statusMatch;
-        });
-
-        currentPage = 1;
-        renderProducts();
-    }
-
-    function renderProducts() {
-        const tbody = document.getElementById("productsBody");
-        tbody.innerHTML = "";
-
-        const total = filteredProducts.length;
-        const startIndex = (currentPage - 1) * pageSize;
-        const endIndex = Math.min(startIndex + pageSize, total);
-        const pageItems = filteredProducts.slice(startIndex, endIndex);
-
-        for (const p of pageItems) {
-            const remaining = (p.quantity || 0) - (p.soldQuantity || 0);
-            let statusText = "متوفر";
-            let statusClass = "bg-success";
-
-            if (remaining <= 0) {
-                statusText = "نافد";
-                statusClass = "bg-danger";
-            } else if (remaining > 0 && remaining <= (p.minQuantity || 0)) {
-                statusText = "منخفض";
-                statusClass = "bg-warning text-dark";
-            }
-
-            const tr = document.createElement("tr");
-
-            const actionsTd = document.createElement("td");
-            actionsTd.innerHTML = 
-                <button class="btn btn-sm btn-outline-primary me-1" onclick="editProduct()">تعديل</button>
-            ;
-
-            const statusTd = document.createElement("td");
-            statusTd.innerHTML = <span class="badge badge-status "></span> +
-                (p.offerEnabled ? <div><span class="badge rounded-pill text-bg-info offer-pill">عرض ساري</span></div> : "");
-
-            const remainingTd = document.createElement("td");
-            remainingTd.textContent = remaining;
-
-            const priceTd = document.createElement("td");
-            if (p.offerEnabled && p.offerPrice != null) {
-                priceTd.innerHTML = 
-                    <div><s class="text-muted small"></s></div>
-                    <div class="text-success fw-bold"></div>
-                ;
-            } else {
-                priceTd.textContent = p.salePrice ?? "";
-            }
-
-            const supplierTd = document.createElement("td");
-            supplierTd.textContent = p.supplierName ?? "";
-
-            const categoryTd = document.createElement("td");
-            categoryTd.textContent = p.category ?? "";
-
-            const nameTd = document.createElement("td");
-            nameTd.textContent = p.name ?? "";
-
-            const barcodeTd = document.createElement("td");
-            barcodeTd.textContent = p.barcode ?? "";
-
-            tr.appendChild(actionsTd);
-            tr.appendChild(statusTd);
-            tr.appendChild(remainingTd);
-            tr.appendChild(priceTd);
-            tr.appendChild(supplierTd);
-            tr.appendChild(categoryTd);
-            tr.appendChild(nameTd);
-            tr.appendChild(barcodeTd);
-
-            tbody.appendChild(tr);
-        }
-
-        const summaryLabel = document.getElementById("summaryLabel");
-        if (total === 0) {
-            summaryLabel.textContent = "لا توجد منتجات مطابقة.";
-        } else {
-            summaryLabel.textContent =
-                المعروض – من  منتج;
-        }
-    }
-
-    function nextPage() {
-        const totalPages = Math.ceil(filteredProducts.length / pageSize);
-        if (currentPage < totalPages) {
-            currentPage++;
-            renderProducts();
-        }
-    }
-
-    function prevPage() {
-        if (currentPage > 1) {
-            currentPage--;
-            renderProducts();
-        }
-    }
-
-    function firstPage() {
-        currentPage = 1;
-        renderProducts();
-    }
-
-    function openNewProduct() {
-        clearForm();
-        document.getElementById("modalTitle").textContent = "منتج جديد";
-        productModal.show();
-    }
-
-    function toggleOfferSection() {
-        const enabled = document.getElementById("offerEnabled").checked;
-        document.getElementById("offerSection").style.display = enabled ? "flex" : "none";
-        document.getElementById("offerInfoLabel").textContent = "";
-        if (!enabled) {
-            document.getElementById("offerName").value = "";
-            document.getElementById("offerPrice").value = "";
-            document.getElementById("offerStart").value = "";
-            document.getElementById("offerEnd").value = "";
-        }
-    }
-
-    function clearForm() {
-        document.getElementById("productId").value = "";
+    function resetProductForm() {
+        editingProductId = null;
         document.getElementById("barcode").value = "";
         document.getElementById("name").value = "";
         document.getElementById("supplierName").value = "";
@@ -407,108 +355,252 @@
         document.getElementById("offerEnabled").checked = false;
         document.getElementById("offerName").value = "";
         document.getElementById("offerPrice").value = "";
+        document.getElementById("offerVatIncluded").checked = true;
         document.getElementById("offerStart").value = "";
         document.getElementById("offerEnd").value = "";
-        document.getElementById("offerVatIncluded").checked = true;
-        toggleOfferSection();
+        document.getElementById("offerInfo").textContent = "لم يتم حساب المدة بعد.";
     }
 
-    function editProduct(id) {
+    function openNewProduct() {
+        resetProductForm();
+        document.getElementById("modalTitle").textContent = "إضافة منتج جديد";
+        showProductModal();
+    }
+
+    function openEditProduct(id) {
         const p = products.find(x => x.id === id);
         if (!p) return;
 
-        clearForm();
+        editingProductId = id;
         document.getElementById("modalTitle").textContent = "تعديل منتج";
 
-        document.getElementById("productId").value = p.id;
-        document.getElementById("barcode").value = p.barcode ?? "";
-        document.getElementById("name").value = p.name ?? "";
-        document.getElementById("supplierName").value = p.supplierName ?? "";
-        document.getElementById("category").value = p.category ?? "";
+        document.getElementById("barcode").value = p.barcode || "";
+        document.getElementById("name").value = p.name || "";
+        document.getElementById("supplierName").value = p.supplierName || "";
+        document.getElementById("category").value = p.category || "";
         document.getElementById("quantity").value = p.quantity ?? "";
         document.getElementById("minQuantity").value = p.minQuantity ?? "";
         document.getElementById("purchasePrice").value = p.purchasePrice ?? "";
         document.getElementById("salePrice").value = p.salePrice ?? "";
         document.getElementById("isVatIncluded").checked = !!p.isVatIncluded;
-        if (p.expiryDate) {
-            document.getElementById("expiryDate").value = p.expiryDate.substring(0, 10);
-        }
-
+        document.getElementById("expiryDate").value = p.expiryDate ? p.expiryDate.substring(0, 10) : "";
         document.getElementById("offerEnabled").checked = !!p.offerEnabled;
-        document.getElementById("offerName").value = p.offerName ?? "";
+        document.getElementById("offerName").value = p.offerName || "";
         document.getElementById("offerPrice").value = p.offerPrice ?? "";
-        if (p.offerStart) document.getElementById("offerStart").value = p.offerStart.substring(0, 10);
-        if (p.offerEnd) document.getElementById("offerEnd").value = p.offerEnd.substring(0, 10);
-        document.getElementById("offerVatIncluded").checked = !!p.offerVatIncluded;
-
-        toggleOfferSection();
-        productModal.show();
+        document.getElementById("offerVatIncluded").checked = p.offerVatIncluded !== false;
+        document.getElementById("offerStart").value = p.offerStart ? p.offerStart.substring(0, 10) : "";
+        document.getElementById("offerEnd").value = p.offerEnd ? p.offerEnd.substring(0, 10) : "";
+        updateOfferInfo();
+        showProductModal();
     }
 
-    async function saveProduct(event) {
-        event.preventDefault();
+    function updateOfferInfo() {
+        const startVal = document.getElementById("offerStart").value;
+        const endVal = document.getElementById("offerEnd").value;
+        const enabled = document.getElementById("offerEnabled").checked;
+        const info = document.getElementById("offerInfo");
 
-        const id = document.getElementById("productId").value;
-        const offerEnabled = document.getElementById("offerEnabled").checked;
-        const offerStart = document.getElementById("offerStart").value;
-        const offerEnd = document.getElementById("offerEnd").value;
-
-        if (offerEnabled && (!offerStart || !offerEnd)) {
-            alert("حدد تاريخ بداية ونهاية العرض");
+        if (!enabled) {
+            info.textContent = "العرض غير مفعَّل.";
             return;
         }
 
-        const product = {
-            id: id ? parseInt(id) : 0,
+        if (!startVal || !endVal) {
+            info.textContent = "عند تفعيل العرض يجب تحديد تاريخ البداية والنهاية قبل الحفظ.";
+            return;
+        }
+
+        const start = new Date(startVal);
+        const end = new Date(endVal);
+        if (isNaN(start) || isNaN(end) || end < start) {
+            info.textContent = "تأكد أن تاريخ النهاية أكبر أو يساوي تاريخ البداية.";
+            return;
+        }
+
+        const diffDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        info.textContent = "مدة العرض " + diffDays + " يوم/أيام من " + startVal + " إلى " + endVal + ".";
+    }
+
+    document.getElementById("offerStart").addEventListener("change", updateOfferInfo);
+    document.getElementById("offerEnd").addEventListener("change", updateOfferInfo);
+    document.getElementById("offerEnabled").addEventListener("change", updateOfferInfo);
+
+    async function reloadProducts() {
+        try {
+            const res = await fetch("/api/products");
+            if (!res.ok) {
+                alert("حدث خطأ في تحميل المنتجات من الخادم.");
+                return;
+            }
+            products = await res.json();
+            renderProducts(products);
+        } catch (e) {
+            console.error(e);
+            alert("تعذر الاتصال بالخادم.");
+        }
+    }
+
+    function renderProducts(list) {
+        const body = document.getElementById("productsBody");
+        body.innerHTML = "";
+        if (!list || list.length === 0) {
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+            td.colSpan = 9;
+            td.textContent = "لا توجد منتجات مسجلة.";
+            tr.appendChild(td);
+            body.appendChild(tr);
+            return;
+        }
+
+        for (const p of list) {
+            const tr = document.createElement("tr");
+
+            const stateBadge = document.createElement("span");
+            stateBadge.classList.add("badge");
+            if (p.remainingQuantity <= 0) {
+                stateBadge.classList.add("badge-danger");
+                stateBadge.textContent = "نافد";
+            } else if (p.remainingQuantity <= (p.minQuantity ?? 0)) {
+                stateBadge.classList.add("badge-warning");
+                stateBadge.textContent = "منخفض";
+            } else {
+                stateBadge.classList.add("badge-success");
+                stateBadge.textContent = "متوفر";
+            }
+
+            const offerBadge = document.createElement("span");
+            if (p.offerEnabled) {
+                offerBadge.classList.add("badge", "badge-offer");
+                offerBadge.textContent = "عرض مفعَّل";
+            } else {
+                offerBadge.textContent = "-";
+            }
+
+            tr.innerHTML = `
+                <td>${p.barcode ?? ""}</td>
+                <td>${p.name ?? ""}</td>
+                <td>${p.supplierName ?? ""}</td>
+                <td>${p.category ?? ""}</td>
+                <td>${p.salePrice != null ? p.salePrice.toFixed(2) : ""}</td>
+                <td>${p.remainingQuantity ?? ""}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+            `;
+
+            tr.children[6].appendChild(stateBadge);
+            tr.children[7].appendChild(offerBadge);
+
+            const actionsTd = tr.children[8];
+            const editBtn = document.createElement("button");
+            editBtn.className = "btn btn-secondary";
+            editBtn.textContent = "تعديل";
+            editBtn.onclick = () => openEditProduct(p.id);
+
+            const delBtn = document.createElement("button");
+            delBtn.className = "btn btn-danger";
+            delBtn.style.marginRight = "4px";
+            delBtn.textContent = "حذف";
+            delBtn.onclick = () => deleteProduct(p.id);
+
+            actionsTd.appendChild(editBtn);
+            actionsTd.appendChild(delBtn);
+
+            body.appendChild(tr);
+        }
+    }
+
+    function filterProducts() {
+        const q = document.getElementById("searchBox").value.trim();
+        if (!q) {
+            renderProducts(products);
+            return;
+        }
+        const lower = q.toLowerCase();
+        const filtered = products.filter(p =>
+            (p.name || "").toLowerCase().includes(lower) ||
+            (p.barcode || "").toLowerCase().includes(lower)
+        );
+        renderProducts(filtered);
+    }
+
+    async function saveProduct() {
+        const offerEnabled = document.getElementById("offerEnabled").checked;
+        const offerStartVal = document.getElementById("offerStart").value;
+        const offerEndVal = document.getElementById("offerEnd").value;
+
+        if (offerEnabled) {
+            if (!offerStartVal || !offerEndVal) {
+                alert("عند تفعيل العرض يجب تحديد تاريخ بداية ونهاية العرض.");
+                return;
+            }
+            const s = new Date(offerStartVal);
+            const e = new Date(offerEndVal);
+            if (isNaN(s) || isNaN(e) || e < s) {
+                alert("تأكد أن تاريخ نهاية العرض بعد أو يساوي تاريخ البداية.");
+                return;
+            }
+        }
+
+        const payload = {
             barcode: document.getElementById("barcode").value.trim(),
             name: document.getElementById("name").value.trim(),
             supplierName: document.getElementById("supplierName").value.trim(),
             category: document.getElementById("category").value.trim(),
-            quantity: parseInt(document.getElementById("quantity").value || "0"),
-            minQuantity: parseInt(document.getElementById("minQuantity").value || "0"),
+            quantity: Number(document.getElementById("quantity").value || 0),
+            minQuantity: Number(document.getElementById("minQuantity").value || 0),
             soldQuantity: 0,
-            purchasePrice: parseFloat(document.getElementById("purchasePrice").value || "0"),
-            salePrice: parseFloat(document.getElementById("salePrice").value || "0"),
+            purchasePrice: Number(document.getElementById("purchasePrice").value || 0),
+            salePrice: Number(document.getElementById("salePrice").value || 0),
             isVatIncluded: document.getElementById("isVatIncluded").checked,
             expiryDate: document.getElementById("expiryDate").value || null,
             offerEnabled: offerEnabled,
-            offerName: document.getElementById("offerName").value.trim(),
-            offerPrice: document.getElementById("offerPrice").value ? parseFloat(document.getElementById("offerPrice").value) : null,
-            offerStart: offerStart || null,
-            offerEnd: offerEnd || null,
-            offerVatIncluded: document.getElementById("offerVatIncluded").checked
+            offerName: offerEnabled ? document.getElementById("offerName").value.trim() : "",
+            offerPrice: offerEnabled ? Number(document.getElementById("offerPrice").value || 0) : null,
+            offerStart: offerEnabled ? offerStartVal : null,
+            offerEnd: offerEnabled ? offerEndVal : null,
+            offerVatIncluded: offerEnabled ? document.getElementById("offerVatIncluded").checked : true
         };
 
-        const isEdit = !!id;
-        const url = isEdit ? /api/products/ : "/api/products";
-        const method = isEdit ? "PUT" : "POST";
+        const url = editingProductId ? `/api/products/${editingProductId}` : "/api/products";
+        const method = editingProductId ? "PUT" : "POST";
 
         try {
             const res = await fetch(url, {
-                method,
+                method: method,
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(product)
+                body: JSON.stringify(payload)
             });
-
-            if (!res.ok) throw new Error("فشل حفظ المنتج");
-
-            const saved = await res.json();
-
-            if (isEdit) {
-                const index = products.findIndex(p => p.id === saved.id);
-                if (index !== -1) products[index] = saved;
-            } else {
-                products.push(saved);
+            if (!res.ok) {
+                console.error("Save error", await res.text());
+                alert("حدث خطأ أثناء حفظ المنتج.");
+                return;
             }
-
-            filteredProducts = [...products];
-            applyFilters();
-            productModal.hide();
-        } catch (err) {
-            console.error(err);
-            alert("تعذر حفظ المنتج");
+            closeProductModal();
+            await reloadProducts();
+        } catch (e) {
+            console.error(e);
+            alert("تعذر الاتصال بالخادم أثناء حفظ المنتج.");
         }
     }
+
+    async function deleteProduct(id) {
+        if (!confirm("تأكيد حذف المنتج؟")) return;
+        try {
+            const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+            if (!res.ok) {
+                alert("تعذر حذف المنتج.");
+                return;
+            }
+            await reloadProducts();
+        } catch (e) {
+            console.error(e);
+            alert("تعذر الاتصال بالخادم أثناء الحذف.");
+        }
+    }
+
+    window.addEventListener("load", reloadProducts);
 </script>
 </body>
 </html>
