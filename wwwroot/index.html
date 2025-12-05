@@ -2,271 +2,148 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="utf-8" />
-    <title>الصفحة الرئيسية - نظام إدارة المتجر</title>
+    <title>الرئيسية - نظام إدارة المتجر</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-        * {
-            box-sizing: border-box;
-            font-family: "Tahoma", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        }
         body {
             margin: 0;
-            padding: 0;
-            background: #f3f5fb;
-            color: #222;
-        }
-        .layout {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+            background: #f4f6fb;
+            font-family: "Tahoma", sans-serif;
         }
         header {
             background: linear-gradient(135deg, #3246d3, #6079ff);
+            padding: 20px;
             color: #fff;
-            padding: 20px 8vw;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
-        .header-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-        .title-block h1 {
-            margin: 0;
-            font-size: 26px;
-        }
-        .title-block p {
-            margin: 4px 0 0;
-            opacity: 0.9;
+        #clock {
+            margin-top: 5px;
             font-size: 14px;
+            opacity: 0.9;
         }
-        .clock {
-            font-size: 15px;
-            background: rgba(0,0,0,0.25);
-            border-radius: 999px;
-            padding: 8px 18px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-        }
-        .clock span.icon {
-            font-size: 18px;
-        }
-        main {
-            flex: 1;
-            padding: 24px 8vw 32px;
-        }
-        .cards-grid {
+        .container {
+            padding: 25px;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 18px;
+            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
         }
         .card {
             background: #fff;
-            border-radius: 16px;
-            padding: 18px 16px;
-            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.10);
-            border: 1px solid #e1e4ff;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
             cursor: pointer;
-            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-            position: relative;
-            overflow: hidden;
+            border: 1px solid #e3e6ff;
+            transition: 0.2s;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
         }
         .card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
-            border-color: #b9c4ff;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 18px rgba(0,0,0,0.12);
         }
-        .card-icon {
-            width: 34px;
-            height: 34px;
-            border-radius: 12px;
-            background: #eef1ff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .icon {
+            font-size: 35px;
             margin-bottom: 10px;
-            font-size: 18px;
         }
-        .card-title {
-            font-size: 17px;
-            font-weight: 600;
-            margin-bottom: 4px;
+        .title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
         }
-        .card-desc {
+        .desc {
             font-size: 13px;
-            color: #6b7280;
-            margin: 0;
-        }
-        .card-tag {
-            position: absolute;
-            left: 12px;
-            top: 12px;
-            font-size: 11px;
-            padding: 3px 8px;
-            border-radius: 999px;
-            background: #eef2ff;
-            color: #4f46e5;
-        }
-        .logout-btn {
-            margin-top: 24px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 999px;
-            border: 1px solid #fee2e2;
-            background: #fff1f2;
-            color: #b91c1c;
-            font-size: 13px;
-            cursor: pointer;
-        }
-        .logout-btn:hover {
-            background: #fee2e2;
-        }
-        footer {
-            text-align: center;
-            font-size: 11px;
-            color: #9ca3af;
-            padding: 8px 0 16px;
-        }
-        @media (max-width: 640px) {
-            header {
-                padding-inline: 16px;
-            }
-            main {
-                padding-inline: 16px;
-            }
+            color: #777;
         }
     </style>
 </head>
 <body>
-<div class="layout">
-    <header>
-        <div class="header-top">
-            <div class="title-block">
-                <h1>نظام إدارة المتجر</h1>
-                <p>لوحة التحكم الرئيسية لجميع شاشات النظام (المنتجات، الكاشير، الفواتير، العملاء، الموردين، والمزيد).</p>
-            </div>
-            <div class="clock" id="clock">
-                <span class="icon">⏰</span>
-                <span id="clock-text">...</span>
-            </div>
-        </div>
-    </header>
 
-    <main>
-        <div class="cards-grid">
+<header>
+    نظام إدارة المتجر
+    <div id="clock"></div>
+</header>
 
-            <!-- المنتجات -->
-            <div class="card" onclick="goTo('products.html')">
-                <div class="card-tag">رئيسية</div>
-                <div class="card-icon">📦</div>
-                <div class="card-title">المنتجات والمخزون</div>
-                <p class="card-desc">إدارة المنتجات، الكميات، العروض، وطباعة الباركود. (مرتبطة بالشاشة الحالية.)</p>
-            </div>
+<div class="container">
 
-            <!-- العملاء والدفع المؤجل -->
-            <div class="card" onclick="goTo('customers.html')">
-                <div class="card-icon">👥</div>
-                <div class="card-title">العملاء والدفع المؤجل</div>
-                <p class="card-desc">إدارة عملاء المتجر، أرصدة الدفع المؤجل، وسقوف الائتمان. (قريبًا.)</p>
-            </div>
+    <div class="card" onclick="go('products.html')">
+        <div class="icon">📦</div>
+        <div class="title">المنتجات</div>
+        <div class="desc">إدارة المنتجات والعروض والباركود</div>
+    </div>
 
-            <!-- الموردين -->
-            <div class="card" onclick="goTo('suppliers.html')">
-                <div class="card-icon">📑</div>
-                <div class="card-title">الموردون والمشتريات</div>
-                <p class="card-desc">تسجيل فواتير الموردين وتتبع المستحقات والمدفوعات. (قريبًا.)</p>
-            </div>
+    <div class="card" onclick="go('customers.html')">
+        <div class="icon">👥</div>
+        <div class="title">العملاء والدفع المؤجل</div>
+        <div class="desc">إدارة عملاء المتجر</div>
+    </div>
 
-            <!-- مصروفات المتجر -->
-            <div class="card" onclick="goTo('expenses.html')">
-                <div class="card-icon">💸</div>
-                <div class="card-title">مصروفات المتجر</div>
-                <p class="card-desc">تسجيل المصروفات اليومية والشهرية وتصنيفها. (قريبًا.)</p>
-            </div>
+    <div class="card" onclick="go('suppliers.html')">
+        <div class="icon">📑</div>
+        <div class="title">الموردين</div>
+        <div class="desc">فواتير الموردين والمستحقات</div>
+    </div>
 
-            <!-- شاشة الكاشير -->
-            <div class="card" onclick="goTo('cashier.html')">
-                <div class="card-tag">كاشير</div>
-                <div class="card-icon">🧾</div>
-                <div class="card-title">شاشة الكاشير</div>
-                <p class="card-desc">نقطة البيع السريعة: سلة المشتريات، طرق الدفع، وطباعة الفاتورة. (تصميم مميز قريبًا.)</p>
-            </div>
+    <div class="card" onclick="go('expenses.html')">
+        <div class="icon">💸</div>
+        <div class="title">مصروفات المتجر</div>
+        <div class="desc">إدارة المصروفات</div>
+    </div>
 
-            <!-- فواتير المبيعات -->
-            <div class="card" onclick="goTo('invoices.html')">
-                <div class="card-icon">📄</div>
-                <div class="card-title">فواتير المبيعات</div>
-                <p class="card-desc">أرشيف الفواتير، البحث والطباعة والتصدير مع باركود الفاتورة. (قريبًا.)</p>
-            </div>
+    <div class="card" onclick="go('cashier.html')">
+        <div class="icon">🧾</div>
+        <div class="title">شاشة الكاشير</div>
+        <div class="desc">نقطة البيع السريعة</div>
+    </div>
 
-            <!-- الموظفون والصلاحيات -->
-            <div class="card" onclick="goTo('employees.html')">
-                <div class="card-icon">🧑‍💼</div>
-                <div class="card-title">الموظفون والصلاحيات</div>
-                <p class="card-desc">إدارة مستخدمي النظام، الصلاحيات، وسجلات الدخول. (قريبًا.)</p>
-            </div>
+    <div class="card" onclick="go('invoices.html')">
+        <div class="icon">📄</div>
+        <div class="title">فواتير المبيعات</div>
+        <div class="desc">عرض فواتير النظام</div>
+    </div>
 
-            <!-- الإعدادات -->
-            <div class="card" onclick="goTo('settings.html')">
-                <div class="card-icon">⚙️</div>
-                <div class="card-title">إعدادات النظام</div>
-                <p class="card-desc">إعدادات الباركود، الضريبة، المتجر، اللغة، والشعار. (قريبًا.)</p>
-            </div>
+    <div class="card" onclick="go('employees.html')">
+        <div class="icon">🧑‍💼</div>
+        <div class="title">الموظفين والصلاحيات</div>
+        <div class="desc">إدارة المستخدمين</div>
+    </div>
 
-            <!-- النسخ الاحتياطي -->
-            <div class="card" onclick="goTo('backup.html')">
-                <div class="card-icon">🗂️</div>
-                <div class="card-title">النسخ الاحتياطي</div>
-                <p class="card-desc">إعداد وتنفيذ النسخ الاحتياطي لقاعدة البيانات والملفات. (قريبًا.)</p>
-            </div>
+    <div class="card" onclick="go('settings.html')">
+        <div class="icon">⚙️</div>
+        <div class="title">الإعدادات</div>
+        <div class="desc">إعدادات النظام والمتجر</div>
+    </div>
 
-            <!-- خطة الاشتراك -->
-            <div class="card" onclick="goTo('plans.html')">
-                <div class="card-icon">💼</div>
-                <div class="card-title">خطة الاشتراك</div>
-                <p class="card-desc">اختيار خطة الاستخدام، عدد الفروع، وعدد المستخدمين. (قريبًا.)</p>
-            </div>
+    <div class="card" onclick="go('backup.html')">
+        <div class="icon">🗂️</div>
+        <div class="title">النسخ الاحتياطي</div>
+        <div class="desc">حفظ واستعادة البيانات</div>
+    </div>
 
-        </div>
+    <div class="card" onclick="go('plans.html')">
+        <div class="icon">💼</div>
+        <div class="title">خطة الاشتراك</div>
+        <div class="desc">إدارة باقات النظام</div>
+    </div>
 
-        <button class="logout-btn" onclick="logout()">
-            🚪 تسجيل الخروج
-        </button>
-    </main>
-
-    <footer>
-        نادر لإدارة المتاجر &copy; <span id="year"></span>
-    </footer>
 </div>
 
 <script>
-    function goTo(path) {
-        // حاليًا: موجودة فعليًا products.html، والباقي نضعها كصفحات لاحقًا
-        window.location.href = path;
-    }
+function go(page) {
+    window.location.href = page;
+}
 
-    function logout() {
-        // لاحقًا نضيف مسح التوكن أو الجلسة
-        alert('تسجيل الخروج (سيتم ربطها لاحقًا بنظام الدخول).');
-    }
-
-    function updateClock() {
-        const now = new Date();
-        const days = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-        const dayName = days[now.getDay()];
-        const dateStr = now.toLocaleDateString('ar-SA');
-        const timeStr = now.toLocaleTimeString('ar-SA', { hour12: false });
-        document.getElementById('clock-text').textContent = `${dayName} ${dateStr} - ${timeStr}`;
-        document.getElementById('year').textContent = now.getFullYear();
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
+function updateClock() {
+    const now = new Date();
+    const days = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+    const text = `${days[now.getDay()]} - ${now.toLocaleDateString('ar-SA')} - ${now.toLocaleTimeString('ar-SA',{hour12:false})}`;
+    document.getElementById("clock").textContent = text;
+}
+setInterval(updateClock, 1000);
+updateClock();
 </script>
+
 </body>
 </html>
