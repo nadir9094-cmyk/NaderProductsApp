@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NaderProductsApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3e97048f9110f7176ae146beb6e1857b4828b178")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7e33c7c59031654a2e813990ce708dbea640ecdb")]
 [assembly: System.Reflection.AssemblyProductAttribute("NaderProductsApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NaderProductsApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

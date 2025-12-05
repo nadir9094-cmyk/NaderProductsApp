@@ -585,36 +585,47 @@
 </div>
 
 <script>
-// ====== بيانات تجريبية ======
-let customers = [
-    { id:1, name:"عميل نقدي", phone:"0500000000", address:"", notes:"", status:"active" },
-    { id:2, name:"مؤسسة الندى التجارية", phone:"0551234567", address:"طريف - الشارع العام", notes:"فاتورة شهرية", status:"active" },
-    { id:3, name:"سوبرماركت طريف", phone:"0549876543", address:"حي البلد", notes:"يتم السداد كل أسبوع", status:"suspended_temp" }
-];
-
-let invoices = [
-    { id:1, customerId:1, date:"2025-01-01T10:30:00", description:"حليب طويل الأجل", amount:50 },
-    { id:2, customerId:1, date:"2025-01-01T10:30:00", description:"خبز ومخبوزات", amount:20 },
-    { id:3, customerId:1, date:"2025-01-05T18:15:00", description:"مشتريات بقالة متنوعة", amount:430 },
-
-    { id:4, customerId:2, date:"2025-01-02T09:20:00", description:"مواد غذائية جملة", amount:1500 },
-    { id:5, customerId:2, date:"2025-01-02T09:20:00", description:"مشروبات غازية", amount:300 },
-    { id:6, customerId:2, date:"2025-01-10T11:45:00", description:"مشروبات وبقالة", amount:1400 },
-
-    { id:7, customerId:3, date:"2025-01-03T14:00:00", description:"مشتريات أسبوعية", amount:800 }
-];
-
-let payments = [
-    { id:1, customerId:1, date:"2025-01-03T12:00:00", amount:400, note:"دفع كاش", method:"كاش" },
-    { id:2, customerId:2, date:"2025-01-12T13:30:00", amount:1000, note:"تحويل بنكي", method:"شبكة" },
-    { id:3, customerId:3, date:"2025-01-05T16:00:00", amount:800, note:"سداد كامل", method:"شبكة" }
-];
-
+// =================== بيانات من الـ API ===================
+let customersData = [];
 let selectedCustomerId = null;
 let currentInvoicesCustomerId = null;
 let currentPaymentsCustomerId = null;
+let editingCustomerId = null;
 
-// ====== دوال مساعدة ======
+// --------- API Helpers ----------
+async function apiJson(url, options = {}) {
+    const opts = {
+        headers: { "Content-Type": "application/json" },
+        ...options
+    };
+    const res = await fetch(url, opts);
+    if (!res.ok) {
+        let msg = "";
+        try { msg = await res.text(); } catch {}
+        throw new Error(msg || ("خطأ في الاتصال: " + res.status));
+    }
+    try {
+        return await res.json();
+    } catch {
+        return null;
+    }
+}
+
+async function loadCustomersFromApi() {
+    try {
+        const res = await fetch("/api/customers/full");
+        if (!res.ok) throw new Error();
+        customersData = await res.json();
+        renderMainTable();
+        renderAllCustomersModal();
+        if (currentPaymentsCustomerId) renderPaymentsList();
+    } catch (e) {
+        console.error(e);
+        alert("تعذر الاتصال بقاعدة البيانات.\nتأكد أن السيرفر يعمل ثم أعد المحاولة.");
+    }
+}
+
+// =================== دوال مساعدة في الواجهة ===================
 function formatAmount(v){ return (v || 0).toFixed(2); }
 
 function parseDate(value){
@@ -622,31 +633,43 @@ function parseDate(value){
 }
 
 function getCustomerById(id){
-    return customers.find(c=>c.id===id) || null;
+    return customersData.find(c=>c.id===id) || null;
 }
 
 function getCustomerInvoices(id){
-    return invoices.filter(i=>i.customerId===id);
+    const c = getCustomerById(id);
+    return c && Array.isArray(c.invoices) ? c.invoices : [];
 }
 
 function getCustomerPayments(id){
-    return payments.filter(p=>p.customerId===id);
+    const c = getCustomerById(id);
+    return c && Array.isArray(c.payments) ? c.payments : [];
 }
 
-function getCustomerTotals(id){
-    const inv = getCustomerInvoices(id);
-    const pay = getCustomerPayments(id);
-    const totalInv = inv.reduce((s,x)=>s+x.amount,0);
-    const totalPay = pay.reduce((s,x)=>s+x.amount,0);
+function getCustomerTotals(cOrId){
+    let c = typeof cOrId === "number" ? getCustomerById(cOrId) : cOrId;
+    if (!c) return { invoicesTotal:0, paymentsTotal:0, remaining:0 };
+    // نفضّل استخدام القيم الجاهزة من الـ API
+    if (typeof c.invoicesTotal === "number" && typeof c.paymentsTotal === "number" && typeof c.remaining === "number") {
+        return {
+            invoicesTotal: c.invoicesTotal,
+            paymentsTotal: c.paymentsTotal,
+            remaining: c.remaining
+        };
+    }
+    const invList = getCustomerInvoices(c.id);
+    const payList = getCustomerPayments(c.id);
+    const invoicesTotal = invList.reduce((s,x)=>s+(x.amount||0),0);
+    const paymentsTotal = payList.reduce((s,x)=>s+(x.amount||0),0);
     return {
-        invoicesTotal: totalInv,
-        paymentsTotal: totalPay,
-        remaining: totalInv - totalPay
+        invoicesTotal,
+        paymentsTotal,
+        remaining: invoicesTotal - paymentsTotal
     };
 }
 
 function getCustomerStatusType(c){
-    const totals = getCustomerTotals(c.id);
+    const totals = getCustomerTotals(c);
     if (totals.remaining <= 0.001) return "paid";
     const inv = getCustomerInvoices(c.id);
     if (!inv.length) return "has_debt";
@@ -659,11 +682,11 @@ function getCustomerStatusType(c){
     return "has_debt";
 }
 
-// ====== ملخص حسب البحث ======
+// =================== ملخص حسب البحث ===================
 function updateSummary(filteredCustomers){
     let totalInv=0,totalPay=0,remaining=0,count=0;
     filteredCustomers.forEach(c=>{
-        const t = getCustomerTotals(c.id);
+        const t = getCustomerTotals(c);
         totalInv += t.invoicesTotal;
         totalPay += t.paymentsTotal;
         remaining += t.remaining;
@@ -675,7 +698,7 @@ function updateSummary(filteredCustomers){
     document.getElementById("summaryRemaining").textContent = formatAmount(remaining);
 }
 
-// ====== تطبيق الفلاتر ======
+// =================== تطبيق الفلاتر ===================
 function applyFilters(includePaid=false){
     const name = document.getElementById("filterName").value.trim();
     const phone = document.getElementById("filterPhone").value.trim();
@@ -683,15 +706,16 @@ function applyFilters(includePaid=false){
     const toDate   = parseDate(document.getElementById("filterToDate").value);
     const status   = document.getElementById("filterStatus").value;
 
-    let result = customers.slice();
+    let result = customersData.slice();
 
     if (name){
-        result = result.filter(c=>c.name.includes(name));
+        result = result.filter(c=>c.name && c.name.includes(name));
     }
     if (phone){
-        result = result.filter(c=>c.phone.includes(phone));
+        result = result.filter(c=>c.phone && c.phone.includes(phone));
     }
 
+    // فلترة حسب الفترة الزمنية من الفواتير
     result = result.filter(c=>{
         const invList = getCustomerInvoices(c.id);
         if (!invList.length) return false;
@@ -710,13 +734,13 @@ function applyFilters(includePaid=false){
     }
 
     if (!includePaid){
-        result = result.filter(c=>getCustomerTotals(c.id).remaining > 0.001);
+        result = result.filter(c=>getCustomerTotals(c).remaining > 0.001);
     }
 
     return result;
 }
 
-// ====== رسم جدول العملاء في الشاشة الرئيسية ======
+// =================== رسم جدول العملاء في الشاشة الرئيسية ===================
 function renderMainTable(){
     const tbody = document.getElementById("customersTableBody");
     tbody.innerHTML = "";
@@ -737,7 +761,7 @@ function renderMainTable(){
     }
 
     filtered.forEach(c=>{
-        const totals = getCustomerTotals(c.id);
+        const totals = getCustomerTotals(c);
         const statusType = getCustomerStatusType(c);
 
         const tr = document.createElement("tr");
@@ -751,7 +775,7 @@ function renderMainTable(){
             tr.appendChild(td);
         }
 
-        addTd(c.name);
+        addTd(c.name || "");
         addTd(c.phone || "-");
 
         const statusTd = document.createElement("td");
@@ -830,29 +854,30 @@ function updateSelectedSummary(){
         remEl.textContent = "0.00";
         return;
     }
-    const totals = getCustomerTotals(c.id);
-    nameEl.textContent = c.name;
+    const totals = getCustomerTotals(c);
+    nameEl.textContent = c.name || "";
     remEl.textContent = formatAmount(totals.remaining);
 }
 
-// ====== نافذة جميع العملاء ======
+// =================== نافذة جميع العملاء ===================
 function renderAllCustomersModal(){
     const tbody = document.getElementById("allCustomersTableBody");
+    if (!tbody) return;
     tbody.innerHTML = "";
 
     const nameFilter = (document.getElementById("allCustFilterName")?.value || "").trim();
     const phoneFilter = (document.getElementById("allCustFilterPhone")?.value || "").trim();
 
-    let list = customers.slice();
+    let list = customersData.slice();
     if (nameFilter){
-        list = list.filter(c=>c.name.includes(nameFilter));
+        list = list.filter(c=>c.name && c.name.includes(nameFilter));
     }
     if (phoneFilter){
         list = list.filter(c=>c.phone && c.phone.includes(phoneFilter));
     }
 
     list.forEach(c=>{
-        const totals = getCustomerTotals(c.id);
+        const totals = getCustomerTotals(c);
         const tr = document.createElement("tr");
         function td(text){
             const cell = document.createElement("td");
@@ -861,7 +886,7 @@ function renderAllCustomersModal(){
             cell.textContent = text;
             return cell;
         }
-        tr.appendChild(td(c.name));
+        tr.appendChild(td(c.name || ""));
         tr.appendChild(td(c.phone || "-"));
 
         const statusCell = td("");
@@ -890,7 +915,7 @@ function renderAllCustomersModal(){
         };
         actionsCell.appendChild(mkBtn("تعديل", ()=>openCustomerModal(c.id)));
         actionsCell.appendChild(mkBtn("إضافة مبلغ", ()=>addAmountToCustomer(c.id)));
-        actionsCell.appendChild(mkBtn("خصم مبلغ", ()=>addPaymentToCustomer(c.id)));
+        actionsCell.appendChild(mkBtn("خصم مبلغ", ()=>addPaymentToCustomerQuick(c.id)));
         actionsCell.appendChild(mkBtn(c.status==="active"?"إيقاف":"تفعيل", ()=>toggleCustomerStatus(c.id)));
         actionsCell.appendChild(mkBtn("حذف", ()=>deleteCustomer(c.id),"#b91c1c"));
         tr.appendChild(actionsCell);
@@ -899,74 +924,102 @@ function renderAllCustomersModal(){
     });
 }
 
-// ====== إضافة/خصم مبالغ من نافذة العملاء ======
-function addAmountToCustomer(id){
+// إضافة مبلغ (فاتورة يدوية) على العميل
+async function addAmountToCustomer(id){
     const c = getCustomerById(id);
     if (!c) return;
     const val = prompt("مبلغ سيتم إضافته على العميل (يزيد المبالغ المؤجلة):","0");
     const amount = parseFloat(val || "0");
     if (isNaN(amount) || amount<=0) return;
     const desc = prompt("اسم المنتج / وصف الفاتورة:","تعديل رصيد يدوي") || "تعديل رصيد يدوي";
-    const newId = invoices.length ? Math.max(...invoices.map(x=>x.id))+1 : 1;
-    invoices.push({id:newId,customerId:id,date:new Date().toISOString(),description:desc,amount:amount});
-    renderMainTable();
-    renderAllCustomersModal();
+
+    try{
+        await apiJson(`/api/customers/${id}/invoices`, {
+            method:"POST",
+            body: JSON.stringify({
+                amount,
+                description: desc,
+                invoiceDate: null
+            })
+        });
+        await loadCustomersFromApi();
+    }catch(e){
+        alert(e.message);
+    }
 }
 
-function addPaymentToCustomer(id){
+// خصم مبلغ (تسجيل دفعة سريعة من إطار جميع العملاء)
+async function addPaymentToCustomerQuick(id){
     const c = getCustomerById(id);
     if (!c) return;
-    const totals = getCustomerTotals(id);
+    const totals = getCustomerTotals(c);
     const val = prompt("مبلغ سيتم خصمه (كتسجيل دفعة على العميل)، المتبقي الحالي "+formatAmount(totals.remaining)+" ر.س:","0");
     const amount = parseFloat(val || "0");
     if (isNaN(amount) || amount<=0) return;
     const method = prompt("طريقة الدفع (كاش / شبكة):","كاش") || "كاش";
     const note = prompt("ملاحظة الدفع:","دفعة من نافذة العملاء") || "";
-    const newId = payments.length ? Math.max(...payments.map(x=>x.id))+1 : 1;
-    payments.push({id:newId,customerId:id,date:new Date().toISOString(),amount:amount,note:note,method:method});
-    renderMainTable();
-    renderAllCustomersModal();
+
+    try{
+        await apiJson(`/api/customers/${id}/payments`, {
+            method:"POST",
+            body: JSON.stringify({
+                amount,
+                method,
+                note,
+                paymentDate: null
+            })
+        });
+        await loadCustomersFromApi();
+    }catch(e){
+        alert(e.message);
+    }
 }
 
-// ====== تغيير حالة الحساب ======
-function toggleCustomerStatus(id){
+// تغيير حالة الحساب
+async function toggleCustomerStatus(id){
     const c = getCustomerById(id);
     if (!c) return;
+    let newStatus = "active";
     if (c.status === "active"){
         const type = prompt("نوع الإيقاف: 1=مؤقت, 2=دائم","1");
-        if (type === "2") c.status = "suspended_perm";
-        else c.status = "suspended_temp";
+        newStatus = (type === "2") ? "suspended_perm" : "suspended_temp";
     }else{
-        c.status = "active";
+        newStatus = "active";
     }
-    renderMainTable();
-    renderAllCustomersModal();
+    try{
+        await fetch(`/api/customers/${id}/status?status=${encodeURIComponent(newStatus)}`, { method:"POST" });
+        await loadCustomersFromApi();
+    }catch(e){
+        alert("فشل تغيير حالة العميل.");
+    }
 }
 
-// ====== حذف عميل ======
-function deleteCustomer(id){
+// حذف عميل
+async function deleteCustomer(id){
     const c = getCustomerById(id);
     if (!c) return;
-    const totals = getCustomerTotals(id);
-    if (totals.remaining > 0.001){
-        alert("لا يمكن حذف العميل طالما عليه مبالغ متبقية. يرجى سداد جميع المبالغ أولاً.");
-        return;
+    if (!confirm("سيتم حذف العميل وجميع سجلاته (إن كانت متاحة للحذف)، هل أنت متأكد؟")) return;
+
+    try{
+        const res = await fetch(`/api/customers/${id}`, { method:"DELETE" });
+        if (!res.ok){
+            let msg = "";
+            try { msg = await res.text(); } catch {}
+            alert(msg || "لا يمكن حذف العميل.");
+            return;
+        }
+        if (selectedCustomerId === id) selectedCustomerId = null;
+        await loadCustomersFromApi();
+    }catch(e){
+        alert("حدث خطأ أثناء حذف العميل.");
     }
-    if (!confirm("سيتم حذف العميل وجميع سجلاته، هل أنت متأكد؟")) return;
-    customers = customers.filter(x=>x.id!==id);
-    invoices  = invoices.filter(x=>x.customerId!==id);
-    payments  = payments.filter(x=>x.customerId!==id);
-    if (selectedCustomerId === id) selectedCustomerId = null;
-    renderMainTable();
-    renderAllCustomersModal();
 }
 
-// ====== النوافذ ======
+// =================== النوافذ ===================
 function openModal(id){ document.getElementById(id).style.display="flex"; }
 function closeModal(id){ document.getElementById(id).style.display="none"; }
 
-// ====== نافذة العميل (إضافة / تعديل) ======
-let editingCustomerId = null;
+// نافذة العميل (إضافة / تعديل)
 function openCustomerModal(id){
     editingCustomerId = id || null;
     const title = document.getElementById("customerModalTitle");
@@ -981,7 +1034,7 @@ function openCustomerModal(id){
         const c = getCustomerById(editingCustomerId);
         if (!c) return;
         title.textContent = "تعديل بيانات العميل";
-        name.value = c.name;
+        name.value = c.name || "";
         phone.value = c.phone || "";
         address.value = c.address || "";
         notes.value = c.notes || "";
@@ -1000,7 +1053,7 @@ function openCustomerModal(id){
     openModal("customerModalBackdrop");
 }
 
-function saveCustomerFromModal(){
+async function saveCustomerFromModal(){
     const name = document.getElementById("custName").value.trim();
     const phone = document.getElementById("custPhone").value.trim();
     const address = document.getElementById("custAddress").value.trim();
@@ -1013,33 +1066,35 @@ function saveCustomerFromModal(){
         return;
     }
 
-    if (editingCustomerId){
-        const c = getCustomerById(editingCustomerId);
-        if (!c) return;
-        c.name = name;
-        c.phone = phone;
-        c.address = address;
-        c.notes = notes;
-        c.status = status;
-        if (opening > 0){
-            const newId = invoices.length ? Math.max(...invoices.map(x=>x.id))+1 : 1;
-            invoices.push({id:newId,customerId:c.id,date:new Date().toISOString(),description:"رصيد افتتاحي مضاف من التعديل",amount:opening});
-        }
-    }else{
-        const newId = customers.length ? Math.max(...customers.map(x=>x.id))+1 : 1;
-        customers.push({id:newId,name,phone,address,notes,status});
-        if (opening > 0){
-            const invId = invoices.length ? Math.max(...invoices.map(x=>x.id))+1 : 1;
-            invoices.push({id:invId,customerId:newId,date:new Date().toISOString(),description:"رصيد افتتاحي",amount:opening});
-        }
-    }
+    const payload = {
+        name,
+        phone: phone || null,
+        address: address || null,
+        notes: notes || null,
+        status,
+        openingBalance: isNaN(opening) ? 0 : opening
+    };
 
-    closeModal("customerModalBackdrop");
-    renderMainTable();
-    renderAllCustomersModal();
+    try{
+        if (editingCustomerId){
+            await apiJson(`/api/customers/${editingCustomerId}`, {
+                method:"PUT",
+                body: JSON.stringify(payload)
+            });
+        }else{
+            await apiJson("/api/customers", {
+                method:"POST",
+                body: JSON.stringify(payload)
+            });
+        }
+        closeModal("customerModalBackdrop");
+        await loadCustomersFromApi();
+    }catch(e){
+        alert(e.message);
+    }
 }
 
-// ====== العملاء تم السداد ======
+// =================== العملاء تم السداد ===================
 function renderPaidCustomersModal(){
     const tbody = document.getElementById("paidCustomersTableBody");
     tbody.innerHTML = "";
@@ -1047,10 +1102,10 @@ function renderPaidCustomersModal(){
     const nameFilter = (document.getElementById("paidCustFilterName")?.value || "").trim();
     const phoneFilter = (document.getElementById("paidCustFilterPhone")?.value || "").trim();
 
-    const list = customers.filter(c=>getCustomerTotals(c.id).remaining<=0.001);
+    const list = customersData.filter(c=>getCustomerTotals(c).remaining<=0.001);
     let filtered = list;
     if (nameFilter){
-        filtered = filtered.filter(c=>c.name.includes(nameFilter));
+        filtered = filtered.filter(c=>c.name && c.name.includes(nameFilter));
     }
     if (phoneFilter){
         filtered = filtered.filter(c=>c.phone && c.phone.includes(phoneFilter));
@@ -1077,7 +1132,7 @@ function renderPaidCustomersModal(){
             cell.textContent=text;
             return cell;
         }
-        tr.appendChild(td(c.name));
+        tr.appendChild(td(c.name || ""));
         tr.appendChild(td(c.phone || "-"));
         const invList = getCustomerInvoices(c.id);
         let lastMove="-";
@@ -1098,7 +1153,7 @@ function openPaidCustomersModal(){
     openModal("paidCustomersModalBackdrop");
 }
 
-// ====== فواتير العميل ======
+// =================== فواتير العميل ===================
 function openInvoicesModal(customerId){
     currentInvoicesCustomerId = customerId;
     const c = getCustomerById(customerId);
@@ -1150,7 +1205,7 @@ function renderInvoicesTable(){
         }
         tr.appendChild(cell(dateStr));
         tr.appendChild(cell(timeStr));
-        tr.appendChild(cell(i.description));
+        tr.appendChild(cell(i.description || ""));
         tr.appendChild(cell(formatAmount(i.amount)));
         tbody.appendChild(tr);
     });
@@ -1196,7 +1251,7 @@ function printInvoicesForCustomer(){
             const timeStr=d.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
             html += `
                 <div class="row"><span class="label">التاريخ:</span><span>${dateStr} ${timeStr}</span></div>
-                <div class="row"><span class="label">المنتج:</span><span>${i.description}</span></div>
+                <div class="row"><span class="label">المنتج:</span><span>${i.description || ""}</span></div>
                 <div class="row"><span class="label">المبلغ:</span><span>${formatAmount(i.amount)} ر.س</span></div>
                 <div class="line"></div>
             `;
@@ -1213,7 +1268,7 @@ function printInvoicesForCustomer(){
     w.document.close();
 }
 
-// ====== الدفعات ======
+// =================== الدفعات ===================
 function getFilteredPaymentsForCurrent(){
     if (!currentPaymentsCustomerId) return [];
     const from = parseDate(document.getElementById("paymentFilterFrom").value);
@@ -1232,7 +1287,7 @@ function openPaymentsModal(customerId){
     currentPaymentsCustomerId = customerId;
     const c = getCustomerById(customerId);
     if (!c) return;
-    document.getElementById("paymentsCustomerName").textContent = c.name;
+    document.getElementById("paymentsCustomerName").textContent = c.name || "";
     document.getElementById("paymentAmount").value = "";
     document.getElementById("paymentNote").value = "";
     document.getElementById("paymentMethod").value = "كاش";
@@ -1310,7 +1365,7 @@ function renderPaymentsList(){
     });
 }
 
-function addQuickPayment(){
+async function addQuickPayment(){
     if (!currentPaymentsCustomerId) return;
     const amountVal=document.getElementById("paymentAmount").value;
     const note=document.getElementById("paymentNote").value;
@@ -1320,17 +1375,31 @@ function addQuickPayment(){
         alert("الرجاء إدخال مبلغ صحيح.");
         return;
     }
-    const newId=payments.length?Math.max(...payments.map(x=>x.id))+1:1;
-    payments.push({id:newId,customerId:currentPaymentsCustomerId,date:new Date().toISOString(),amount:amount,note:note,method:method});
-    renderPaymentsList();
-    renderMainTable();
-    renderAllCustomersModal();
-    document.getElementById("paymentAmount").value = "";
-    document.getElementById("paymentNote").value = "";
+    try{
+        await apiJson(`/api/customers/${currentPaymentsCustomerId}/payments`, {
+            method:"POST",
+            body: JSON.stringify({
+                amount,
+                method,
+                note,
+                paymentDate: null
+            })
+        });
+        document.getElementById("paymentAmount").value = "";
+        document.getElementById("paymentNote").value = "";
+        await loadCustomersFromApi();
+        // إعادة فتح قائمة الدفعات لنفس العميل
+        if (currentPaymentsCustomerId) renderPaymentsList();
+    }catch(e){
+        alert(e.message);
+    }
 }
 
-function editPayment(id){
-    const p = payments.find(x=>x.id===id);
+async function editPayment(id){
+    const cId = currentPaymentsCustomerId;
+    const c = getCustomerById(cId);
+    const list = getCustomerPayments(cId);
+    const p = list.find(x=>x.id===id);
     if (!p) return;
     const val = prompt("تعديل مبلغ الدفعة:", formatAmount(p.amount));
     if (val===null) return;
@@ -1338,29 +1407,41 @@ function editPayment(id){
     if (isNaN(amount) || amount<=0) return;
     const method=prompt("تعديل طريقة الدفع (كاش / شبكة):", p.method || "كاش") || "كاش";
     const note=prompt("تعديل الملاحظة:", p.note || "") || "";
-    p.amount=amount;
-    p.method=method;
-    p.note=note;
-    renderPaymentsList();
-    renderMainTable();
-    renderAllCustomersModal();
+    try{
+        await apiJson(`/api/customer-payments/${id}`, {
+            method:"PUT",
+            body: JSON.stringify({
+                amount,
+                method,
+                note,
+                paymentDate: null
+            })
+        });
+        await loadCustomersFromApi();
+        if (currentPaymentsCustomerId) renderPaymentsList();
+    }catch(e){
+        alert(e.message);
+    }
 }
 
-function deletePayment(id){
-    const p = payments.find(x=>x.id===id);
-    if (!p) return;
+async function deletePayment(id){
     if (!confirm("هل تريد حذف هذه الدفعة؟")) return;
-    payments = payments.filter(x=>x.id!==id);
-    renderPaymentsList();
-    renderMainTable();
-    renderAllCustomersModal();
+    try{
+        await fetch(`/api/customer-payments/${id}`, { method:"DELETE" });
+        await loadCustomersFromApi();
+        if (currentPaymentsCustomerId) renderPaymentsList();
+    }catch(e){
+        alert("فشل حذف الدفعة.");
+    }
 }
 
 // إيصال دفع بحجم ورقة الكاشير
 function printPaymentReceipt(id){
-    const p = payments.find(x=>x.id===id);
+    if (!currentPaymentsCustomerId) return;
+    const c = getCustomerById(currentPaymentsCustomerId);
+    const list = getCustomerPayments(currentPaymentsCustomerId);
+    const p = list.find(x=>x.id===id);
     if (!p) return;
-    const c = getCustomerById(p.customerId);
     const w = window.open("", "_blank", "width=380,height=600");
     const d = new Date(p.date);
     const dateStr=d.toLocaleDateString("ar-SA");
@@ -1441,7 +1522,7 @@ function printPaymentsReport(){
     w.document.close();
 }
 
-// ====== طباعة التقرير حسب البحث (ورقة كاشير) ======
+// =================== طباعة التقرير حسب البحث ===================
 function printCurrentReport(){
     const filtered = applyFilters(false);
     let html = `
@@ -1460,9 +1541,9 @@ function printCurrentReport(){
         <div class="line"></div>
     `;
     filtered.forEach(c=>{
-        const t=getCustomerTotals(c.id);
+        const t=getCustomerTotals(c);
         html += `
-            <div class="row"><span class="label">العميل:</span><span>${c.name}</span></div>
+            <div class="row"><span class="label">العميل:</span><span>${c.name || ""}</span></div>
             <div class="row"><span class="label">الهاتف:</span><span>${c.phone || "-"}</span></div>
             <div class="row"><span class="label">إجمالي الفواتير:</span><span>${formatAmount(t.invoicesTotal)}</span></div>
             <div class="row"><span class="label">المدفوع:</span><span>${formatAmount(t.paymentsTotal)}</span></div>
@@ -1479,7 +1560,7 @@ function printCurrentReport(){
     w.document.close();
 }
 
-// ====== أحداث أولية ======
+// =================== أحداث أولية ===================
 document.addEventListener("DOMContentLoaded",function(){
     // فلاتر الشاشة الرئيسية
     ["filterName","filterPhone","filterFromDate","filterToDate","filterStatus"].forEach(id=>{
@@ -1540,7 +1621,8 @@ document.addEventListener("DOMContentLoaded",function(){
     document.getElementById("paymentFilterFrom").addEventListener("change",renderPaymentsList);
     document.getElementById("paymentFilterTo").addEventListener("change",renderPaymentsList);
 
-    renderMainTable();
+    // تحميل البيانات من الـ API عند البداية
+    loadCustomersFromApi();
 });
 </script>
 </body>
