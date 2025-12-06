@@ -1,6 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using NaderProductsApp.Data;
 using NaderProductsApp.Models;
+using Npgsql;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace NaderProductsApp
 {
@@ -47,12 +50,42 @@ namespace NaderProductsApp
         public static (decimal invoicesTotal, decimal paymentsTotal, decimal remaining, DateTime? lastInvoiceDate)
             CalculateTotals(Customer c)
         {
-            var invoicesTotal = c.Invoices?.Sum(i => i.Amount) ?? 0m;
-            var paymentsTotal = c.Payments?.Sum(p => p.Amount) ?? 0m;
+            // 1) إجمالي الفواتير من CustomerInvoices
+            var invoicesTotalFromInvoices = c.Invoices?.Sum(i => i.Amount) ?? 0m;
+
+            // 2) فواتير مؤجلة من الكاشير محفوظة في CustomerPayments كـ Method = "deferred" ومبلغ موجب
+            var deferredFromPayments = c.Payments?
+                .Where(p => p.Method != null && p.Method.ToLower() == "deferred" && p.Amount > 0)
+                .Sum(p => p.Amount) ?? 0m;
+
+            var invoicesTotal = invoicesTotalFromInvoices + deferredFromPayments;
+
+            // 3) المدفوع = جميع المدفوعات غير المؤجلة وبمبالغ موجبة
+            var paymentsTotal = c.Payments?
+                .Where(p => p.Method == null || p.Method.ToLower() != "deferred")
+                .Where(p => p.Amount > 0)
+                .Sum(p => p.Amount) ?? 0m;
+
+            // 4) المتبقي
             var remaining = invoicesTotal - paymentsTotal;
-            DateTime? lastInvoiceDate = c.Invoices?
+
+            // 5) آخر تاريخ فاتورة
+            DateTime? lastInvoiceDateFromInvoices = c.Invoices?
                 .OrderByDescending(i => i.InvoiceDate)
                 .FirstOrDefault()?.InvoiceDate;
+
+            DateTime? lastDeferredDate = c.Payments?
+                .Where(p => p.Method != null && p.Method.ToLower() == "deferred" && p.Amount > 0)
+                .OrderByDescending(p => p.PaymentDate)
+                .FirstOrDefault()?.PaymentDate;
+
+            DateTime? lastInvoiceDate = lastInvoiceDateFromInvoices;
+
+            if (lastDeferredDate.HasValue)
+            {
+                if (!lastInvoiceDate.HasValue || lastDeferredDate > lastInvoiceDate)
+                    lastInvoiceDate = lastDeferredDate;
+            }
 
             return (invoicesTotal, paymentsTotal, remaining, lastInvoiceDate);
         }
@@ -66,19 +99,36 @@ namespace NaderProductsApp
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Configure database provider (PostgreSQL on Render, SQLite locally by default)
-            var provider = Environment.GetEnvironmentVariable("DB_PROVIDER");
-            var conn = Environment.GetEnvironmentVariable("DB_CONNECTION");
-            var isPostgres = string.Equals(provider, "postgres", StringComparison.OrdinalIgnoreCase)
-                             && !string.IsNullOrWhiteSpace(conn);
+            // ================= إعداد الاتصال بقاعدة البيانات =================
+            // نحاول القراءة من:
+            // DB_CONNECTION   أو   POSTGRES_CONNECTION
+            var providerEnv = Environment.GetEnvironmentVariable("DB_PROVIDER");
+            var connFromDbConnection = Environment.GetEnvironmentVariable("DB_CONNECTION");
+            var connFromPostgres = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
+
+            var connStr = !string.IsNullOrWhiteSpace(connFromDbConnection)
+                ? connFromDbConnection
+                : connFromPostgres;
+
+            var hasPostgresConn = !string.IsNullOrWhiteSpace(connStr);
+
+            // إذا ما فيه DB_PROVIDER لكن فيه connStr نفترض postgres
+            if (string.IsNullOrWhiteSpace(providerEnv) && hasPostgresConn)
+            {
+                providerEnv = "postgres";
+            }
+
+            var isPostgres = string.Equals(providerEnv, "postgres", StringComparison.OrdinalIgnoreCase)
+                             && hasPostgresConn;
 
             if (isPostgres)
             {
                 builder.Services.AddDbContext<AppDbContext>(opt =>
-                    opt.UseNpgsql(conn));
+                    opt.UseNpgsql(connStr));
             }
             else
             {
+                // قاعدة بيانات محلية SQLite
                 builder.Services.AddDbContext<AppDbContext>(opt =>
                     opt.UseSqlite("Data Source=products.db"));
             }
@@ -98,10 +148,8 @@ namespace NaderProductsApp
             {
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-                // يضمن وجود products.db محلياً + جدول Products
                 db.Database.EnsureCreated();
 
-                // على Render (PostgreSQL) ننشئ جداول العملاء إذا كانت غير موجودة
                 if (isPostgres)
                 {
                     var sql = @"
@@ -202,7 +250,6 @@ CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
 
             // ---------------- CUSTOMERS / DEFERRED PAYMENTS API ----------------
 
-            // Get all customers with balances + nested invoices/payments (used by customers.html)
             app.MapGet("/api/customers/full", async (AppDbContext db) =>
             {
                 var list = await db.Customers
@@ -214,6 +261,45 @@ CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
                 var result = list.Select(c =>
                 {
                     var totals = CustomerCalc.CalculateTotals(c);
+
+                    var invoicesManual = c.Invoices
+                        .OrderBy(i => i.InvoiceDate)
+                        .Select(i => new
+                        {
+                            id = i.Id,
+                            customerId = i.CustomerId,
+                            date = i.InvoiceDate,
+                            description = i.Description,
+                            amount = i.Amount
+                        });
+
+                    var invoicesDeferredFromPayments = c.Payments
+                        .Where(p => p.Method != null && p.Method.ToLower() == "deferred" && p.Amount > 0)
+                        .OrderBy(p => p.PaymentDate)
+                        .Select(p => new
+                        {
+                            id = -p.Id,
+                            customerId = p.CustomerId,
+                            date = p.PaymentDate,
+                            description = p.Note ?? "فاتورة مؤجلة من شاشة الكاشير",
+                            amount = p.Amount
+                        });
+
+                    var invoicesAll = invoicesManual.Concat(invoicesDeferredFromPayments);
+
+                    var paymentsNormal = c.Payments
+                        .Where(p => p.Method == null || p.Method.ToLower() != "deferred")
+                        .OrderBy(p => p.PaymentDate)
+                        .Select(p => new
+                        {
+                            id = p.Id,
+                            customerId = p.CustomerId,
+                            date = p.PaymentDate,
+                            amount = p.Amount,
+                            method = p.Method,
+                            note = p.Note
+                        });
+
                     return new
                     {
                         c.Id,
@@ -226,34 +312,14 @@ CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
                         paymentsTotal = totals.paymentsTotal,
                         remaining = totals.remaining,
                         lastInvoiceDate = totals.lastInvoiceDate,
-                        invoices = c.Invoices
-                            .OrderBy(i => i.InvoiceDate)
-                            .Select(i => new
-                            {
-                                i.Id,
-                                customerId = i.CustomerId,
-                                date = i.InvoiceDate,
-                                description = i.Description,
-                                amount = i.Amount
-                            }),
-                        payments = c.Payments
-                            .OrderBy(p => p.PaymentDate)
-                            .Select(p => new
-                            {
-                                p.Id,
-                                customerId = p.CustomerId,
-                                date = p.PaymentDate,
-                                amount = p.Amount,
-                                method = p.Method,
-                                note = p.Note
-                            })
+                        invoices = invoicesAll,
+                        payments = paymentsNormal
                     };
                 });
 
                 return Results.Ok(result);
             });
 
-            // Create customer (with optional opening balance)
             app.MapPost("/api/customers", async (AppDbContext db, CustomerEditRequest req) =>
             {
                 if (string.IsNullOrWhiteSpace(req.Name))
@@ -288,7 +354,6 @@ CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
                 return Results.Ok(new { success = true, id = customer.Id });
             });
 
-            // Update customer (can also add an extra opening balance if > 0)
             app.MapPut("/api/customers/{id:int}", async (AppDbContext db, int id, CustomerEditRequest req) =>
             {
                 var customer = await db.Customers.FindAsync(id);
@@ -316,7 +381,6 @@ CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
                 return Results.Ok(new { success = true, id = customer.Id });
             });
 
-            // Change status (activate / suspend)
             app.MapPost("/api/customers/{id:int}/status", async (AppDbContext db, int id, string status) =>
             {
                 var customer = await db.Customers.FindAsync(id);
@@ -327,7 +391,6 @@ CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
                 return Results.Ok(new { success = true, id = customer.Id, status = customer.Status });
             });
 
-            // Delete customer (only if remaining == 0)
             app.MapDelete("/api/customers/{id:int}", async (AppDbContext db, int id) =>
             {
                 var customer = await db.Customers
@@ -346,7 +409,6 @@ CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
                 return Results.NoContent();
             });
 
-            // Add manual invoice (increase customer deferred amount)
             app.MapPost("/api/customers/{id:int}/invoices", async (AppDbContext db, int id, CustomerInvoiceRequest req) =>
             {
                 var customer = await db.Customers.FindAsync(id);
@@ -367,7 +429,6 @@ CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
                 return Results.Ok(new { success = true, id = inv.Id });
             });
 
-            // Add payment
             app.MapPost("/api/customers/{id:int}/payments", async (AppDbContext db, int id, CustomerPaymentInput input) =>
             {
                 try
@@ -411,7 +472,6 @@ CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
                 }
             });
 
-            // Edit payment
             app.MapPut("/api/customer-payments/{paymentId:int}", async (AppDbContext db, int paymentId, CustomerPaymentInput input) =>
             {
                 try
@@ -450,7 +510,6 @@ CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
                 }
             });
 
-            // Delete payment
             app.MapDelete("/api/customer-payments/{paymentId:int}", async (AppDbContext db, int paymentId) =>
             {
                 var payment = await db.CustomerPayments.FindAsync(paymentId);
@@ -459,6 +518,413 @@ CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
                 db.CustomerPayments.Remove(payment);
                 await db.SaveChangesAsync();
                 return Results.NoContent();
+            });
+
+            // ---------------- CASHIER INVOICES API ----------------
+
+            app.MapPost("/api/cashier/invoices", async (HttpRequest http) =>
+            {
+                if (!hasPostgresConn)
+                {
+                    return Results.Problem("لم يتم إعداد اتصال PostgreSQL بشكل صحيح (يرجى ضبط DB_CONNECTION أو POSTGRES_CONNECTION).");
+                }
+
+                using var doc = await JsonDocument.ParseAsync(http.Body);
+                var root = doc.RootElement;
+
+                if (!root.TryGetProperty("items", out var itemsElement)
+                    || itemsElement.ValueKind != JsonValueKind.Array
+                    || itemsElement.GetArrayLength() == 0)
+                {
+                    return Results.BadRequest("لا يمكن حفظ فاتورة بدون بنود.");
+                }
+
+                await using var conn = new NpgsqlConnection(connStr);
+                await conn.OpenAsync();
+
+                var createSql = @"
+CREATE TABLE IF NOT EXISTS ""Invoices"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""CustomerId"" INT NULL,
+    ""InvoiceDate"" TIMESTAMPTZ NOT NULL,
+    ""PaymentMethod"" VARCHAR(20) NOT NULL,
+    ""TaxEnabled"" BOOLEAN NOT NULL,
+    ""VatPercent"" NUMERIC(5,2) NOT NULL,
+    ""Total"" NUMERIC(18,2) NOT NULL,
+    ""Notes"" TEXT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ""InvoiceItems"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""InvoiceId"" INT NOT NULL REFERENCES ""Invoices""(""Id"") ON DELETE CASCADE,
+    ""ProductName"" VARCHAR(255) NOT NULL,
+    ""Price"" NUMERIC(18,2) NOT NULL,
+    ""Quantity"" NUMERIC(18,2) NOT NULL,
+    ""Discount"" NUMERIC(18,2) NOT NULL,
+    ""TaxIncluded"" BOOLEAN NOT NULL,
+    ""HasOffer"" BOOLEAN NOT NULL,
+    ""OfferName"" VARCHAR(255),
+    ""OfferEnd"" TIMESTAMPTZ NULL
+);
+";
+
+                await using (var cmdCreate = new NpgsqlCommand(createSql, conn))
+                {
+                    await cmdCreate.ExecuteNonQueryAsync();
+                }
+
+                string paymentMethod = "unknown";
+                if (root.TryGetProperty("paymentMethod", out var pmElem) &&
+                    pmElem.ValueKind == JsonValueKind.String)
+                {
+                    paymentMethod = pmElem.GetString() ?? "unknown";
+                }
+
+                bool taxEnabled = true;
+                if (root.TryGetProperty("taxEnabled", out var teElem))
+                {
+                    taxEnabled = teElem.ValueKind == JsonValueKind.True;
+                }
+
+                decimal vatPercent = 15m;
+                if (root.TryGetProperty("vatPercent", out var vpElem) &&
+                    vpElem.ValueKind == JsonValueKind.Number)
+                {
+                    vpElem.TryGetDecimal(out vatPercent);
+                }
+
+                decimal total = 0m;
+                if (root.TryGetProperty("total", out var totalElem) &&
+                    totalElem.ValueKind == JsonValueKind.Number)
+                {
+                    totalElem.TryGetDecimal(out total);
+                }
+
+                string? notes = null;
+                if (root.TryGetProperty("notes", out var notesElem) &&
+                    notesElem.ValueKind == JsonValueKind.String)
+                {
+                    notes = notesElem.GetString();
+                }
+
+                int? customerId = null;
+                if (root.TryGetProperty("customerId", out var cidElem) &&
+                    cidElem.ValueKind == JsonValueKind.Number &&
+                    cidElem.TryGetInt32(out var cidVal))
+                {
+                    customerId = cidVal;
+                }
+
+                await using var tx = await conn.BeginTransactionAsync();
+
+                try
+                {
+                    const string insertInvoiceSql = @"
+INSERT INTO ""Invoices""
+(""CustomerId"", ""InvoiceDate"", ""PaymentMethod"", ""TaxEnabled"", ""VatPercent"", ""Total"", ""Notes"")
+VALUES (@customerId, @invoiceDate, @paymentMethod, @taxEnabled, @vatPercent, @total, @notes)
+RETURNING ""Id"";";
+
+                    await using var cmdInvoice = new NpgsqlCommand(insertInvoiceSql, conn, tx);
+                    cmdInvoice.Parameters.AddWithValue("@customerId", (object?)customerId ?? DBNull.Value);
+                    cmdInvoice.Parameters.AddWithValue("@invoiceDate", DateTime.UtcNow);
+                    cmdInvoice.Parameters.AddWithValue("@paymentMethod", paymentMethod);
+                    cmdInvoice.Parameters.AddWithValue("@taxEnabled", taxEnabled);
+                    cmdInvoice.Parameters.AddWithValue("@vatPercent", vatPercent);
+                    cmdInvoice.Parameters.AddWithValue("@total", total);
+                    cmdInvoice.Parameters.AddWithValue("@notes", (object?)notes ?? DBNull.Value);
+
+                    var invoiceIdObj = await cmdInvoice.ExecuteScalarAsync();
+                    var invoiceId = Convert.ToInt32(invoiceIdObj);
+
+                    const string insertItemSql = @"
+INSERT INTO ""InvoiceItems""
+(""InvoiceId"", ""ProductName"", ""Price"", ""Quantity"", ""Discount"", ""TaxIncluded"", ""HasOffer"", ""OfferName"", ""OfferEnd"")
+VALUES (@invoiceId, @name, @price, @qty, @discount, @taxIncluded, @hasOffer, @offerName, @offerEnd);";
+
+                    foreach (var itemElement in itemsElement.EnumerateArray())
+                    {
+                        if (itemElement.ValueKind != JsonValueKind.Object)
+                            continue;
+
+                        string name = "";
+                        if (itemElement.TryGetProperty("name", out var nameElem) &&
+                            nameElem.ValueKind == JsonValueKind.String)
+                        {
+                            name = nameElem.GetString() ?? "";
+                        }
+
+                        decimal price = 0m;
+                        if (itemElement.TryGetProperty("price", out var priceElem) &&
+                            priceElem.ValueKind == JsonValueKind.Number)
+                        {
+                            priceElem.TryGetDecimal(out price);
+                        }
+
+                        decimal qty = 0m;
+                        if (itemElement.TryGetProperty("qty", out var qtyElem) &&
+                            qtyElem.ValueKind == JsonValueKind.Number)
+                        {
+                            qtyElem.TryGetDecimal(out qty);
+                        }
+
+                        decimal discount = 0m;
+                        if (itemElement.TryGetProperty("discount", out var discElem) &&
+                            discElem.ValueKind == JsonValueKind.Number)
+                        {
+                            discElem.TryGetDecimal(out discount);
+                        }
+
+                        bool taxIncludedItem = false;
+                        if (itemElement.TryGetProperty("taxIncluded", out var tiElem))
+                        {
+                            taxIncludedItem = tiElem.ValueKind == JsonValueKind.True;
+                        }
+
+                        bool hasOffer = false;
+                        if (itemElement.TryGetProperty("hasOffer", out var hoElem))
+                        {
+                            hasOffer = hoElem.ValueKind == JsonValueKind.True;
+                        }
+
+                        string? offerName = null;
+                        if (itemElement.TryGetProperty("offerName", out var onElem) &&
+                            onElem.ValueKind == JsonValueKind.String)
+                        {
+                            offerName = onElem.GetString();
+                        }
+
+                        DateTime? offerEnd = null;
+                        if (itemElement.TryGetProperty("offerEnd", out var oeElem) &&
+                            oeElem.ValueKind == JsonValueKind.String &&
+                            DateTime.TryParse(oeElem.GetString(), out var dt))
+                        {
+                            offerEnd = dt;
+                        }
+
+                        await using var cmdItem = new NpgsqlCommand(insertItemSql, conn, tx);
+                        cmdItem.Parameters.AddWithValue("@invoiceId", invoiceId);
+                        cmdItem.Parameters.AddWithValue("@name", name);
+                        cmdItem.Parameters.AddWithValue("@price", price);
+                        cmdItem.Parameters.AddWithValue("@qty", qty);
+                        cmdItem.Parameters.AddWithValue("@discount", discount);
+                        cmdItem.Parameters.AddWithValue("@taxIncluded", taxIncludedItem);
+                        cmdItem.Parameters.AddWithValue("@hasOffer", hasOffer);
+                        cmdItem.Parameters.AddWithValue("@offerName", (object?)offerName ?? DBNull.Value);
+                        cmdItem.Parameters.AddWithValue("@offerEnd", (object?)offerEnd ?? DBNull.Value);
+
+                        await cmdItem.ExecuteNonQueryAsync();
+                    }
+
+                    if (paymentMethod == "deferred" && customerId.HasValue)
+                    {
+                        const string insertDeferredSql = @"
+INSERT INTO ""CustomerPayments""
+(""CustomerId"", ""PaymentDate"", ""Amount"", ""Method"", ""Note"")
+VALUES (@custId, @paymentDate, @amount, @method, @note);";
+
+                        await using (var cmdDeferred = new NpgsqlCommand(insertDeferredSql, conn, tx))
+                        {
+                            cmdDeferred.Parameters.AddWithValue("@custId", customerId.Value);
+                            cmdDeferred.Parameters.AddWithValue("@paymentDate", DateTime.UtcNow);
+                            cmdDeferred.Parameters.AddWithValue("@amount", total);
+                            cmdDeferred.Parameters.AddWithValue("@method", "deferred");
+
+                            var deferredNote = notes;
+                            if (string.IsNullOrWhiteSpace(deferredNote))
+                            {
+                                deferredNote = "فاتورة مؤجلة من شاشة الكاشير رقم " + invoiceId;
+                            }
+                            else
+                            {
+                                deferredNote = deferredNote + " (فاتورة رقم " + invoiceId + ")";
+                            }
+
+                            cmdDeferred.Parameters.AddWithValue("@note", deferredNote);
+                            await cmdDeferred.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    await tx.CommitAsync();
+                    var resultStatus = paymentMethod == "deferred" ? "deferred" : "paid";
+
+                    return Results.Ok(new { invoiceId, status = resultStatus });
+                }
+                catch (Exception ex)
+                {
+                    await tx.RollbackAsync();
+                    return Results.Problem("حدث خطأ أثناء حفظ الفاتورة: " + ex.Message);
+                }
+            });
+
+            // ================= عرض مواد الفاتورة المؤجلة =================
+            app.MapGet("/api/customers/deferred-invoice-items/{paymentId:int}", async (AppDbContext db, int paymentId) =>
+            {
+                if (!hasPostgresConn)
+                    return Results.Problem("عرض مواد الفاتورة متاح فقط عند الاتصال بـ PostgreSQL، ولم يتم إعداد اتصال PostgreSQL.");
+
+                var payment = await db.CustomerPayments.FindAsync(paymentId);
+                if (payment is null)
+                    return Results.NotFound("لم يتم العثور على الحركة.");
+
+                int? invoiceId = null;
+
+                if (!string.IsNullOrWhiteSpace(payment.Note))
+                {
+                    var m = Regex.Match(payment.Note, "(\\d+)$");
+                    if (m.Success && int.TryParse(m.Groups[1].Value, out var parsed))
+                    {
+                        invoiceId = parsed;
+                    }
+                }
+
+                await using var conn = new NpgsqlConnection(connStr);
+                await conn.OpenAsync();
+
+                if (!invoiceId.HasValue)
+                {
+                    const string findSql = @"
+SELECT ""Id""
+FROM ""Invoices""
+WHERE ""CustomerId"" = @custId AND ""Total"" = @total
+ORDER BY ABS(EXTRACT(EPOCH FROM (""InvoiceDate"" - @pDate)))
+LIMIT 1;";
+
+                    await using var cmdFind = new NpgsqlCommand(findSql, conn);
+                    cmdFind.Parameters.AddWithValue("@custId", payment.CustomerId);
+                    cmdFind.Parameters.AddWithValue("@total", payment.Amount);
+                    cmdFind.Parameters.AddWithValue("@pDate", payment.PaymentDate);
+
+                    var obj = await cmdFind.ExecuteScalarAsync();
+                    if (obj != null && obj != DBNull.Value)
+                    {
+                        invoiceId = Convert.ToInt32(obj);
+                    }
+                }
+
+                if (!invoiceId.HasValue)
+                    return Results.NotFound("لم يتم العثور على رقم الفاتورة.");
+
+                const string itemsSql = @"
+SELECT ""ProductName"", ""Price"", ""Quantity"", ""Discount""
+FROM ""InvoiceItems""
+WHERE ""InvoiceId"" = @invId;";
+
+                await using var cmdItems = new NpgsqlCommand(itemsSql, conn);
+                cmdItems.Parameters.AddWithValue("@invId", invoiceId.Value);
+
+                var items = new List<object>();
+
+                await using (var reader = await cmdItems.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var name = reader.GetString(0);
+                        var price = reader.GetDecimal(1);
+                        var qty = reader.GetDecimal(2);
+                        var discount = reader.GetDecimal(3);
+                        var totalItem = (price - discount) * qty;
+
+                        items.Add(new
+                        {
+                            productName = name,
+                            price,
+                            quantity = qty,
+                            discount,
+                            total = totalItem
+                        });
+                    }
+                }
+
+                return Results.Ok(new { invoiceId = invoiceId.Value, items });
+            });
+
+            // ---------------- CASHIER INVOICE ITEMS API ----------------
+
+            // إرجاع مواد فاتورة واحدة حسب رقم الفاتورة من شاشة الكاشير
+            app.MapGet("/api/cashier/invoices/{invoiceId:int}/items", async (int invoiceId) =>
+            {
+                if (!hasPostgresConn)
+                {
+                    return Results.Problem("عرض مواد الفاتورة متاح فقط عند استخدام PostgreSQL، ولم يتم إعداد اتصال PostgreSQL.");
+                }
+
+                await using var conn = new NpgsqlConnection(connStr);
+                await conn.OpenAsync();
+
+                const string sql = @"
+SELECT ""ProductName"", ""Price"", ""Quantity"", ""Discount"", ""TaxIncluded"", ""HasOffer"", ""OfferName""
+FROM ""InvoiceItems""
+WHERE ""InvoiceId"" = @id
+ORDER BY ""Id"";";
+
+                await using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@id", invoiceId);
+
+                var reader = await cmd.ExecuteReaderAsync();
+                var list = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        productName = reader.GetString(0),
+                        price = reader.GetDecimal(1),
+                        qty = reader.GetDecimal(2),
+                        discount = reader.GetDecimal(3),
+                        taxIncluded = reader.GetBoolean(4),
+                        hasOffer = reader.GetBoolean(5),
+                        offerName = reader.IsDBNull(6) ? null : reader.GetString(6)
+                    });
+                }
+
+                return Results.Ok(list);
+            });
+
+            // إرجاع مواد جميع فواتير الكاشير للعميل حسب فترة التاريخ (للتقرير التجميعي)
+            app.MapGet("/api/customers/{customerId:int}/all-invoice-items", async (int customerId, DateTime from, DateTime to) =>
+            {
+                if (!hasPostgresConn)
+                {
+                    return Results.Problem("عرض مواد الفواتير متاح فقط عند استخدام PostgreSQL، ولم يتم إعداد اتصال PostgreSQL.");
+                }
+
+                await using var conn = new NpgsqlConnection(connStr);
+                await conn.OpenAsync();
+
+                const string sql = @"
+SELECT i.""Id"", i.""InvoiceDate"", i.""Total"",
+       it.""ProductName"", it.""Price"", it.""Quantity"", it.""Discount""
+FROM ""Invoices"" AS i
+JOIN ""InvoiceItems"" AS it ON it.""InvoiceId"" = i.""Id""
+WHERE i.""CustomerId"" = @custId
+  AND i.""InvoiceDate"" >= @from
+  AND i.""InvoiceDate"" <= @to
+ORDER BY i.""InvoiceDate"", i.""Id"", it.""Id"";";
+
+                await using var cmd = new NpgsqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@custId", customerId);
+                cmd.Parameters.AddWithValue("@from", from.ToUniversalTime());
+                cmd.Parameters.AddWithValue("@to", to.ToUniversalTime());
+
+                var reader = await cmd.ExecuteReaderAsync();
+                var list = new List<object>();
+
+                while (await reader.ReadAsync())
+                {
+                    list.Add(new
+                    {
+                        invoiceId = reader.GetInt32(0),
+                        invoiceDate = reader.GetDateTime(1),
+                        invoiceTotal = reader.GetDecimal(2),
+                        productName = reader.GetString(3),
+                        price = reader.GetDecimal(4),
+                        qty = reader.GetDecimal(5),
+                        discount = reader.GetDecimal(6)
+                    });
+                }
+
+                return Results.Ok(list);
             });
 
             app.Run();
