@@ -764,11 +764,9 @@
     }
 
     function getRemaining(product) {
+        // المتبقي في المخزون = الكمية الحالية نفسها
         var q = product.quantity != null ? product.quantity : (product.Quantity || 0);
-        var sold = product.soldQuantity != null ? product.soldQuantity : (product.SoldQuantity || 0);
-        if (product.remainingQuantity != null) return product.remainingQuantity;
-        if (product.RemainingQuantity != null) return product.RemainingQuantity;
-        return q - sold;
+        return q;
     }
 
     function getStockBadge(product) {
@@ -1063,6 +1061,24 @@
             alert("الباركود واسم المنتج حقول إلزامية.");
             return;
         }
+
+        // منع تكرار الباركود عند إضافة/تعديل منتج
+        var normalizedBarcode = Barcode;
+        var currentId = id ? parseInt(id, 10) : null;
+
+        var duplicate = allProducts.find(function (p) {
+            var existingId = p.id || p.Id;
+            var existingBarcode = String(p.barcode || p.Barcode || "").trim();
+            if (!existingBarcode) return false;
+            if (currentId != null && existingId === currentId) return false;
+            return existingBarcode === normalizedBarcode;
+        });
+
+        if (duplicate) {
+            alert("رقم الباركود مستخدم بالفعل لمنتج آخر، لا يمكن تكراره.");
+            return;
+        }
+
 
         if (OfferEnabled) {
             if (!OfferName || !OfferStartVal || !OfferEndVal || !OfferPriceVal || isNaN(OfferPrice)) {
