@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="utf-8" />
@@ -37,7 +37,7 @@
             margin-bottom:14px;
             flex-wrap:wrap;
         }
-        button{
+        button,a.button-link{
             border:none;
             border-radius:999px;
             padding:8px 18px;
@@ -49,6 +49,7 @@
             justify-content:center;
             gap:6px;
             white-space:nowrap;
+            text-decoration:none;
         }
         .btn-link{background:#fff;border:1px solid var(--border);color:var(--primary);text-decoration:none;}
         .btn-orange{background:var(--warning);color:#fff;}
@@ -275,7 +276,7 @@
             flex-wrap:wrap;
         }
 
-        /* Payments modal (أكبر) */
+        /* Payments modal (bottom sheet) */
         .payments-modal-backdrop{
             position:fixed;
             inset:0;
@@ -312,6 +313,11 @@
         }
         .payment-row:last-child{border-bottom:none;}
 
+        /* Invoice items modal */
+        .invoice-items-modal .modal{
+            max-width:900px;
+        }
+
         @media(max-width:900px){
             .summary-row{grid-template-columns:repeat(2,minmax(0,1fr));}
             .filters-grid{grid-template-columns:1fr 1fr;}
@@ -328,10 +334,11 @@
 
     <!-- الشريط العلوي -->
     <div class="top-bar">
-        <a href="https://naderproductsapp.onrender.com/index.html" class="btn-link">⬅ العودة للرئيسية</a>
-        <button class="btn-blue" id="btnPrintReport">🖨 طباعة التقرير حسب البحث</button>
+        <a href="index.html" class="btn-link">⬅ العودة للرئيسية</a>
+        <button class="btn-blue" id="btnPrintReport">🖨 طباعة تقرير العملاء (حسب البحث)</button>
         <button class="btn-green" id="btnAddCustomer">+ إضافة عميل جديد</button>
         <button class="btn-orange" id="btnShowAllCustomers">👥 عرض جميع العملاء</button>
+        <button class="btn-gray" id="btnShowPaidCustomers">✔ العملاء تم السداد</button>
     </div>
 
     <!-- العنوان -->
@@ -376,7 +383,6 @@
             <button class="btn-gray" id="btnResetFilters">تصفية / إلغاء البحث</button>
         </div>
         <div class="filters-bottom">
-            <button class="btn-outline" id="btnShowPaidCustomers">👁 عرض العملاء تم السداد</button>
             <span style="font-size:12px;color:var(--muted);">
                 ملاحظة: الجدول أدناه يعرض فقط العملاء الذين عليهم مبالغ حسب الفلاتر.
             </span>
@@ -403,16 +409,16 @@
     <div class="table-card">
         <table>
             <thead>
-                <tr>
-                    <th>العميل</th>
-                    <th>الهاتف</th>
-                    <th>الحالة</th>
-                    <th>إجمالي الفواتير</th>
-                    <th>المدفوع</th>
-                    <th>المتبقي</th>
-                    <th>آخر حركة</th>
-                    <th>إجراءات</th>
-                </tr>
+            <tr>
+                <th>العميل</th>
+                <th>الهاتف</th>
+                <th>الحالة</th>
+                <th>إجمالي الفواتير</th>
+                <th>المدفوع</th>
+                <th>المتبقي</th>
+                <th>آخر حركة</th>
+                <th>إجراءات</th>
+            </tr>
             </thead>
             <tbody id="customersTableBody"></tbody>
         </table>
@@ -421,7 +427,7 @@
 
 <!-- نافذة إضافة/تعديل عميل -->
 <div class="modal-backdrop" id="customerModalBackdrop">
-    <div class="modal" id="customerModal">
+    <div class="modal">
         <div class="modal-header">
             <div class="modal-title" id="customerModalTitle">إضافة عميل جديد</div>
             <button class="close-btn" data-close="customerModalBackdrop">✕</button>
@@ -478,15 +484,15 @@
             </div>
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead>
-                    <tr style="background:#f3f4f6;">
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">العميل</th>
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الهاتف</th>
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الحالة</th>
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">إجمالي الفواتير</th>
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">المدفوع</th>
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">المتبقي</th>
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">إجراءات</th>
-                    </tr>
+                <tr style="background:#f3f4f6;">
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">العميل</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الهاتف</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الحالة</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">إجمالي الفواتير</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">المدفوع</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">المتبقي</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">إجراءات</th>
+                </tr>
                 </thead>
                 <tbody id="allCustomersTableBody"></tbody>
             </table>
@@ -509,11 +515,11 @@
             </div>
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead>
-                    <tr style="background:#f3f4f6;">
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">العميل</th>
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الهاتف</th>
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">آخر حركة</th>
-                    </tr>
+                <tr style="background:#f3f4f6;">
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">العميل</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الهاتف</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">آخر حركة</th>
+                </tr>
                 </thead>
                 <tbody id="paidCustomersTableBody"></tbody>
             </table>
@@ -534,15 +540,18 @@
                 <input type="date" id="invFilterTo" class="input-pill" style="max-width:180px;">
                 <button class="btn-gray" id="btnFilterInvoices">تطبيق الفترة</button>
                 <button class="btn-blue" id="btnPrintInvoices">🖨 طباعة فواتير العميل (ورقة كاشير)</button>
+                <button class="btn-orange" id="btnPrintInvoiceItemsReport">🧾 طباعة مواد فواتير العميل</button>
             </div>
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead>
-                    <tr style="background:#f3f4f6;">
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">التاريخ</th>
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الوقت</th>
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">اسم المنتج</th>
-                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">المبلغ</th>
-                    </tr>
+                <tr style="background:#f3f4f6;">
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">التاريخ</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الوقت</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">رقم الفاتورة</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">اسم المنتج / الوصف</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">عرض مواد الفاتورة</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">المبلغ</th>
+                </tr>
                 </thead>
                 <tbody id="invoicesTableBody"></tbody>
             </table>
@@ -550,7 +559,7 @@
     </div>
 </div>
 
-<!-- نافذة الدفعات (ثابتة أسفل الشاشة) -->
+<!-- نافذة الدفعات (أسفل الشاشة) -->
 <div class="payments-modal-backdrop" id="paymentsBackdrop">
     <div class="payments-modal" id="paymentsModal">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
@@ -563,7 +572,6 @@
             المتبقي الحالي: <span id="paymentsRemaining">0.00</span> ر.س
         </div>
 
-        <!-- فلاتر الفترة في السداد -->
         <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;align-items:center;">
             <input type="date" id="paymentFilterFrom" style="flex:1 1 120px;border-radius:10px;border:1px solid var(--border);padding:5px 8px;font-size:13px;">
             <input type="date" id="paymentFilterTo" style="flex:1 1 120px;border-radius:10px;border:1px solid var(--border);padding:5px 8px;font-size:13px;">
@@ -584,8 +592,31 @@
     </div>
 </div>
 
+<!-- نافذة عرض مواد الفاتورة -->
+<div class="modal-backdrop invoice-items-modal" id="invoiceItemsModalBackdrop">
+    <div class="modal modal-wide">
+        <div class="modal-header">
+            <div class="modal-title" id="invoiceItemsModalTitle">مواد الفاتورة</div>
+            <button class="close-btn" data-close="invoiceItemsModalBackdrop">✕</button>
+        </div>
+        <div class="modal-body">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;text-align:center;">
+                <thead>
+                <tr style="background:#f3f4f6;">
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">اسم المنتج</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الكمية</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">السعر شامل الضريبة</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الخصم</th>
+                </tr>
+                </thead>
+                <tbody id="invoiceItemsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <script>
-// =================== بيانات من الـ API ===================
+// =================== بيانات عامة من الـ API ===================
 let customersData = [];
 let selectedCustomerId = null;
 let currentInvoicesCustomerId = null;
@@ -625,7 +656,7 @@ async function loadCustomersFromApi() {
     }
 }
 
-// =================== دوال مساعدة في الواجهة ===================
+// =================== دوال مساعدة ===================
 function formatAmount(v){ return (v || 0).toFixed(2); }
 
 function parseDate(value){
@@ -649,7 +680,6 @@ function getCustomerPayments(id){
 function getCustomerTotals(cOrId){
     let c = typeof cOrId === "number" ? getCustomerById(cOrId) : cOrId;
     if (!c) return { invoicesTotal:0, paymentsTotal:0, remaining:0 };
-    // نفضّل استخدام القيم الجاهزة من الـ API
     if (typeof c.invoicesTotal === "number" && typeof c.paymentsTotal === "number" && typeof c.remaining === "number") {
         return {
             invoicesTotal: c.invoicesTotal,
@@ -740,7 +770,7 @@ function applyFilters(includePaid=false){
     return result;
 }
 
-// =================== رسم جدول العملاء في الشاشة الرئيسية ===================
+// =================== جدول العملاء الرئيسي ===================
 function renderMainTable(){
     const tbody = document.getElementById("customersTableBody");
     tbody.innerHTML = "";
@@ -808,7 +838,8 @@ function renderMainTable(){
                 const d = new Date(x.date);
                 return d>max?d:max;
             }, new Date(0));
-            lastMove = last.toLocaleDateString("ar-SA") + " " + last.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+            lastMove = last.toLocaleDateString("en-GB") + " " +
+                       last.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
         }
         addTd(lastMove);
 
@@ -820,7 +851,7 @@ function renderMainTable(){
 
         const btnInvoices = document.createElement("button");
         btnInvoices.className = "action-btn";
-        btnInvoices.textContent = "عرض الفواتير";
+        btnInvoices.textContent = "الفواتير";
         btnInvoices.onclick = ()=>openInvoicesModal(c.id);
 
         const btnPayments = document.createElement("button");
@@ -1015,7 +1046,7 @@ async function deleteCustomer(id){
     }
 }
 
-// =================== النوافذ ===================
+// =================== النوافذ العامة ===================
 function openModal(id){ document.getElementById(id).style.display="flex"; }
 function closeModal(id){ document.getElementById(id).style.display="none"; }
 
@@ -1141,7 +1172,7 @@ function renderPaidCustomersModal(){
                 const d=new Date(x.date);
                 return d>max?d:max;
             }, new Date(0));
-            lastMove = last.toLocaleDateString("ar-SA")+" "+last.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+            lastMove = last.toLocaleDateString("en-GB")+" "+last.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
         }
         tr.appendChild(td(lastMove));
         tbody.appendChild(tr);
@@ -1164,13 +1195,10 @@ function openInvoicesModal(customerId){
     openModal("invoicesModalBackdrop");
 }
 
-function renderInvoicesTable(){
-    const tbody = document.getElementById("invoicesTableBody");
-    tbody.innerHTML = "";
-    if (!currentInvoicesCustomerId) return;
+function getFilteredInvoicesForCurrent(){
+    if (!currentInvoicesCustomerId) return [];
     const from = parseDate(document.getElementById("invFilterFrom").value);
     const to   = parseDate(document.getElementById("invFilterTo").value);
-
     let list = getCustomerInvoices(currentInvoicesCustomerId);
     list = list.filter(i=>{
         const d=new Date(i.date);
@@ -1178,11 +1206,27 @@ function renderInvoicesTable(){
         if (to && d>to) return false;
         return true;
     });
+    return list;
+}
+
+// محاولة استخراج رقم الفاتورة من النص، مثل: "فاتورة مؤجلة من شاشة الكاشير رقم 27"
+function parseInvoiceNumberFromText(text){
+    if (!text) return null;
+    const m = text.match(/رقم\s+(\d+)/);
+    return m ? parseInt(m[1],10) : null;
+}
+
+function renderInvoicesTable(){
+    const tbody = document.getElementById("invoicesTableBody");
+    tbody.innerHTML = "";
+    if (!currentInvoicesCustomerId) return;
+
+    const list = getFilteredInvoicesForCurrent();
 
     if (!list.length){
         const tr=document.createElement("tr");
         const td=document.createElement("td");
-        td.colSpan=4;
+        td.colSpan=6;
         td.textContent="لا توجد فواتير في الفترة المحددة.";
         td.style.padding="20px";
         td.style.color="#6b7280";
@@ -1194,8 +1238,12 @@ function renderInvoicesTable(){
     list.forEach(i=>{
         const tr=document.createElement("tr");
         const d=new Date(i.date);
-        const dateStr=d.toLocaleDateString("ar-SA");
-        const timeStr=d.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+        const dateStr=d.toLocaleDateString("en-GB");
+        const timeStr=d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+
+        const invoiceNumber = i.invoiceNumber || i.cashierInvoiceId || parseInvoiceNumberFromText(i.description) || "-";
+        const numericInvoiceId = typeof invoiceNumber === "number" ? invoiceNumber : parseInvoiceNumberFromText(String(invoiceNumber)) || null;
+
         function cell(text){
             const td=document.createElement("td");
             td.style.padding="6px 8px";
@@ -1203,9 +1251,25 @@ function renderInvoicesTable(){
             td.textContent=text;
             return td;
         }
+
         tr.appendChild(cell(dateStr));
         tr.appendChild(cell(timeStr));
+        tr.appendChild(cell(invoiceNumber === "-" ? "-" : String(invoiceNumber)));
         tr.appendChild(cell(i.description || ""));
+
+        // زر مواد الفاتورة
+        const itemsTd = document.createElement("td");
+        if (numericInvoiceId){
+            const btn = document.createElement("button");
+            btn.className = "action-btn";
+            btn.textContent = "عرض المواد";
+            btn.onclick = ()=>openInvoiceItemsModal(numericInvoiceId, dateStr, String(invoiceNumber));
+            itemsTd.appendChild(btn);
+        }else{
+            itemsTd.textContent = "-";
+        }
+        tr.appendChild(itemsTd);
+
         tr.appendChild(cell(formatAmount(i.amount)));
         tbody.appendChild(tr);
     });
@@ -1215,15 +1279,7 @@ function renderInvoicesTable(){
 function printInvoicesForCustomer(){
     if (!currentInvoicesCustomerId) return;
     const c = getCustomerById(currentInvoicesCustomerId);
-    const from = parseDate(document.getElementById("invFilterFrom").value);
-    const to   = parseDate(document.getElementById("invFilterTo").value);
-    let list = getCustomerInvoices(currentInvoicesCustomerId);
-    list = list.filter(i=>{
-        const d=new Date(i.date);
-        if (from && d<from) return false;
-        if (to && d>to) return false;
-        return true;
-    });
+    const list = getFilteredInvoicesForCurrent();
 
     let html = `
     <html lang="ar" dir="rtl">
@@ -1247,25 +1303,171 @@ function printInvoicesForCustomer(){
     }else{
         list.forEach(i=>{
             const d=new Date(i.date);
-            const dateStr=d.toLocaleDateString("ar-SA");
-            const timeStr=d.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+            const dateStr=d.toLocaleDateString("en-GB");
+            const timeStr=d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
             html += `
                 <div class="row"><span class="label">التاريخ:</span><span>${dateStr} ${timeStr}</span></div>
-                <div class="row"><span class="label">المنتج:</span><span>${i.description || ""}</span></div>
+                <div class="row"><span class="label">الوصف:</span><span>${i.description || ""}</span></div>
                 <div class="row"><span class="label">المبلغ:</span><span>${formatAmount(i.amount)} ر.س</span></div>
                 <div class="line"></div>
             `;
         });
     }
 
-    html += `
-        <script>window.print();<\/script>
-    </body></html>
-    `;
+    html += `<script>window.print();<\/script></body></html>`;
 
     const w = window.open("","_blank","width=400,height=600");
     w.document.write(html);
     w.document.close();
+}
+
+// تقرير مواد فواتير العميل (لكل الفواتير في الفترة)
+async function printInvoiceItemsReportForCustomer(){
+    if (!currentInvoicesCustomerId) return;
+    const c = getCustomerById(currentInvoicesCustomerId);
+    const invoices = getFilteredInvoicesForCurrent();
+
+    const rows = [];
+
+    for (const inv of invoices){
+        const baseNumber = inv.invoiceNumber || inv.cashierInvoiceId || parseInvoiceNumberFromText(inv.description);
+        const invoiceId = baseNumber ? parseInt(baseNumber,10) : null;
+        if (!invoiceId) continue;
+
+        try{
+            const res = await fetch(`/api/cashier/invoices/${invoiceId}/items`);
+            if (!res.ok) continue;
+            const items = await res.json();
+            const d = new Date(inv.date);
+            const dateStr = d.toLocaleDateString("en-GB");
+            const timeStr = d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+
+            (items || []).forEach(it=>{
+                rows.push({
+                    invoiceId,
+                    date: dateStr+" "+timeStr,
+                    productName: it.productName || "",
+                    qty: (it.qty ?? 0),
+                    price: (it.price ?? 0),
+                    discount: (it.discount ?? 0)
+                });
+            });
+        }catch(e){
+            console.error(e);
+        }
+    }
+
+    let html = `
+    <html lang="ar" dir="rtl">
+    <head><meta charset="utf-8"><title>تقرير مواد فواتير العميل</title>
+    <style>
+        body{font-family:"Tahoma";width:80mm;margin:0 auto;padding:10px;font-size:12px;}
+        h2,h3{text-align:center;margin:4px 0;}
+        table{width:100%;border-collapse:collapse;font-size:12px;}
+        th,td{border:1px solid #ccc;padding:4px 6px;text-align:center;}
+        th{background:#f3f4f6;}
+    </style>
+    </head>
+    <body>
+        <h2>تقرير مواد فواتير العميل</h2>
+        <h3>${c?c.name:""}</h3>
+        <p style="text-align:center;font-size:11px;">تاريخ الطباعة: ${new Date().toLocaleString("en-GB")}</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>تاريخ الفاتورة</th>
+                    <th>اسم المنتج</th>
+                    <th>الكمية</th>
+                    <th>السعر شامل الضريبة</th>
+                    <th>الخصم</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    if (!rows.length){
+        html += `<tr><td colspan="6">لا توجد مواد لفواتير العميل في الفترة المحددة.</td></tr>`;
+    }else{
+        rows.forEach(r=>{
+            html += `
+                <tr>
+                    <td>${r.invoiceId}</td>
+                    <td>${r.date}</td>
+                    <td>${r.productName}</td>
+                    <td>${r.qty.toFixed(2)}</td>
+                    <td>${r.price.toFixed(2)}</td>
+                    <td>${r.discount.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+    }
+
+    html += `</tbody></table><script>window.print();<\/script></body></html>`;
+
+    const w = window.open("","_blank","width=900,height=700");
+    w.document.write(html);
+    w.document.close();
+}
+
+// ======== نافذة مواد الفاتورة (من زر "عرض المواد") =========
+async function openInvoiceItemsModal(invoiceId, invoiceDateText, invoiceNumberText){
+    if (!invoiceId){
+        alert("لا يوجد رقم فاتورة صالح لعرض المواد.");
+        return;
+    }
+    try{
+        const res = await fetch(`/api/cashier/invoices/${invoiceId}/items`);
+        if (!res.ok){
+            alert("تعذر تحميل مواد الفاتورة من الخادم");
+            return;
+        }
+        const items = await res.json();
+        const tbody = document.getElementById("invoiceItemsTableBody");
+        tbody.innerHTML = "";
+        document.getElementById("invoiceItemsModalTitle").textContent =
+            "مواد الفاتورة رقم " + invoiceId + (invoiceDateText ? " - "+invoiceDateText : "");
+
+        if (!items || !items.length){
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+            td.colSpan = 4;
+            td.textContent = "لا توجد مواد محفوظة لهذه الفاتورة.";
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        }else{
+            items.forEach(it=>{
+                const tr = document.createElement("tr");
+
+                const tdName = document.createElement("td");
+                tdName.textContent = it.productName || "";
+                tr.appendChild(tdName);
+
+                const tdQty = document.createElement("td");
+                tdQty.textContent = (it.qty ?? 0).toFixed(2);
+                tr.appendChild(tdQty);
+
+                const tdPrice = document.createElement("td");
+                tdPrice.textContent = (it.price ?? 0).toFixed(2);
+                tr.appendChild(tdPrice);
+
+                const tdDisc = document.createElement("td");
+                tdDisc.textContent = (it.discount ?? 0).toFixed(2);
+                tr.appendChild(tdDisc);
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        openModal("invoiceItemsModalBackdrop");
+    }catch(err){
+        console.error(err);
+        alert("خطأ في الاتصال بالخادم أثناء تحميل مواد الفاتورة");
+    }
+}
+
+function closeInvoiceItemsModal(){
+    closeModal("invoiceItemsModalBackdrop");
 }
 
 // =================== الدفعات ===================
@@ -1326,7 +1528,7 @@ function renderPaymentsList(){
         const row=document.createElement("div");
         row.className="payment-row";
         const date=new Date(p.date);
-        const info=date.toLocaleDateString("ar-SA")+" "+date.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+        const info=date.toLocaleDateString("en-GB")+" "+date.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
         const col1=document.createElement("div");
         col1.textContent=formatAmount(p.amount)+" ر.س ("+(p.method||"كاش")+")";
         const col2=document.createElement("div");
@@ -1388,7 +1590,6 @@ async function addQuickPayment(){
         document.getElementById("paymentAmount").value = "";
         document.getElementById("paymentNote").value = "";
         await loadCustomersFromApi();
-        // إعادة فتح قائمة الدفعات لنفس العميل
         if (currentPaymentsCustomerId) renderPaymentsList();
     }catch(e){
         alert(e.message);
@@ -1397,7 +1598,6 @@ async function addQuickPayment(){
 
 async function editPayment(id){
     const cId = currentPaymentsCustomerId;
-    const c = getCustomerById(cId);
     const list = getCustomerPayments(cId);
     const p = list.find(x=>x.id===id);
     if (!p) return;
@@ -1444,8 +1644,8 @@ function printPaymentReceipt(id){
     if (!p) return;
     const w = window.open("", "_blank", "width=380,height=600");
     const d = new Date(p.date);
-    const dateStr=d.toLocaleDateString("ar-SA");
-    const timeStr=d.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+    const dateStr=d.toLocaleDateString("en-GB");
+    const timeStr=d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
     w.document.write(`
         <html lang="ar" dir="rtl">
         <head><meta charset="utf-8"><title>إيصال دفع</title>
@@ -1502,8 +1702,8 @@ function printPaymentsReport(){
     }else{
         list.forEach(p=>{
             const d=new Date(p.date);
-            const dateStr=d.toLocaleDateString("ar-SA");
-            const timeStr=d.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+            const dateStr=d.toLocaleDateString("en-GB");
+            const timeStr=d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
             html += `
                 <div class="row"><span class="label">المبلغ:</span><span>${formatAmount(p.amount)} ر.س</span></div>
                 <div class="row"><span class="label">التاريخ:</span><span>${dateStr} ${timeStr}</span></div>
@@ -1512,17 +1712,14 @@ function printPaymentsReport(){
         });
     }
 
-    html += `
-        <script>window.print();<\/script>
-        </body></html>
-    `;
+    html += `<script>window.print();<\/script></body></html>`;
 
     const w = window.open("","_blank","width=400,height=600");
     w.document.write(html);
     w.document.close();
 }
 
-// =================== طباعة التقرير حسب البحث ===================
+// =================== طباعة تقرير العملاء حسب البحث ===================
 function printCurrentReport(){
     const filtered = applyFilters(false);
     let html = `
@@ -1551,10 +1748,7 @@ function printCurrentReport(){
             <div class="line"></div>
         `;
     });
-    html += `
-        <script>window.print();<\/script>
-        </body></html>
-    `;
+    html += `<script>window.print();<\/script></body></html>`;
     const w=window.open("","_blank","width=400,height=600");
     w.document.write(html);
     w.document.close();
@@ -1564,8 +1758,9 @@ function printCurrentReport(){
 document.addEventListener("DOMContentLoaded",function(){
     // فلاتر الشاشة الرئيسية
     ["filterName","filterPhone","filterFromDate","filterToDate","filterStatus"].forEach(id=>{
-        document.getElementById(id).addEventListener("input",renderMainTable);
-        document.getElementById(id).addEventListener("change",renderMainTable);
+        const el = document.getElementById(id);
+        el.addEventListener("input",renderMainTable);
+        el.addEventListener("change",renderMainTable);
     });
     document.getElementById("btnResetFilters").addEventListener("click",()=>{
         document.getElementById("filterName").value="";
@@ -1584,6 +1779,7 @@ document.addEventListener("DOMContentLoaded",function(){
     document.getElementById("btnPrintReport").addEventListener("click",printCurrentReport);
     document.getElementById("btnFilterInvoices").addEventListener("click",renderInvoicesTable);
     document.getElementById("btnPrintInvoices").addEventListener("click",printInvoicesForCustomer);
+    document.getElementById("btnPrintInvoiceItemsReport").addEventListener("click",printInvoiceItemsReportForCustomer);
 
     // بحث داخل إطار جميع العملاء
     document.getElementById("allCustFilterName").addEventListener("input",renderAllCustomersModal);
