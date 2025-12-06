@@ -1357,11 +1357,24 @@ async function printInvoiceItemsReportForCustomer(){
         }
     }
 
+    // حساب الإجمالي النهائي لجميع المواد
+    let grandTotal = 0;
+    rows.forEach(r => {
+        const lineTotal = (r.qty * r.price) - r.discount;
+        grandTotal += lineTotal;
+    });
+
     let html = `
     <html lang="ar" dir="rtl">
     <head><meta charset="utf-8"><title>تقرير مواد فواتير العميل</title>
     <style>
-        body{font-family:"Tahoma";width:80mm;margin:0 auto;padding:10px;font-size:12px;}
+        body{
+            font-family:"Tahoma";
+            width:80mm;
+            margin:0 auto;
+            padding:10px;
+            font-size:12px;
+        }
         h2,h3{text-align:center;margin:4px 0;}
         table{width:100%;border-collapse:collapse;font-size:12px;}
         th,td{border:1px solid #ccc;padding:4px 6px;text-align:center;}
@@ -1403,7 +1416,18 @@ async function printInvoiceItemsReportForCustomer(){
         });
     }
 
-    html += `</tbody></table><script>window.print();<\/script></body></html>`;
+    html += `
+            </tbody>
+        </table>
+
+        <div style="margin-top:10px;font-size:14px;text-align:center;font-weight:bold;">
+            الإجمالي: ${grandTotal.toFixed(2)} ر.س
+        </div>
+
+        <script>window.print();<\/script>
+    </body>
+    </html>
+    `;
 
     const w = window.open("","_blank","width=900,height=700");
     w.document.write(html);
