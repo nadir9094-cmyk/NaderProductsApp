@@ -522,7 +522,7 @@ CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
 
             // ---------------- CASHIER INVOICES API ----------------
 
-            app.MapPost("/api/cashier/invoices", async (HttpRequest http) =>
+            app.MapPost("/api/cashier/invoices", async (HttpRequest http, AppDbContext db) =>
             {
                 if (!hasPostgresConn)
                 {
@@ -714,6 +714,31 @@ VALUES (@invoiceId, @name, @price, @qty, @discount, @taxIncluded, @hasOffer, @of
                         cmdItem.Parameters.AddWithValue("@offerEnd", (object?)offerEnd ?? DBNull.Value);
 
                         await cmdItem.ExecuteNonQueryAsync();
+
+                        // === Auto inventory update for NaderPOS (by product name) ===
+                        try
+                        {
+                            if (!string.IsNullOrWhiteSpace(name))
+                            {
+                                var product = await db.Products.FirstOrDefaultAsync(p => p.Name == name);
+                                if (product != null)
+                                {
+                                    var qtyInt = (int)qty;
+                                    var newQty = product.Quantity - qtyInt;
+                                    if (newQty < 0)
+                                        newQty = 0;
+
+                                    product.Quantity = newQty;
+                                    product.SoldQuantity = product.SoldQuantity + qtyInt;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[WARN] inventory update failed: {ex.Message}");
+                        }
+                        // === End auto inventory update ===
+
                     }
 
                     if (paymentMethod == "deferred" && customerId.HasValue)
@@ -746,6 +771,9 @@ VALUES (@custId, @paymentDate, @amount, @method, @note);";
                     }
 
                     await tx.CommitAsync();
+
+                    await db.SaveChangesAsync();
+
                     var resultStatus = paymentMethod == "deferred" ? "deferred" : "paid";
 
                     return Results.Ok(new { invoiceId, status = resultStatus });
@@ -931,3 +959,4 @@ ORDER BY i.""InvoiceDate"", i.""Id"", it.""Id"";";
         }
     }
 }
+
