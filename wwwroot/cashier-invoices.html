@@ -1,0 +1,122 @@
+﻿<!DOCTYPE html>
+<html lang=\"ar\" dir=\"rtl\">
+<head>
+    <meta charset=\"utf-8\" />
+    <title>فواتير الكاشير</title>
+    <style>
+        body { font-family: Tahoma, Arial, sans-serif; background:#f5f5f5; margin:0; padding:20px; direction:rtl; }
+        h1 { margin-bottom:10px; }
+        .toolbar { margin-bottom:15px; display:flex; gap:10px; align-items:center; }
+        button { padding:6px 14px; border-radius:4px; border:none; cursor:pointer; }
+        .btn-refresh { background:#007bff; color:#fff; }
+        table { width:100%; border-collapse:collapse; background:#fff; }
+        thead { background:#e0e0e0; }
+        th,td { border:1px solid #ddd; padding:6px 8px; font-size:13px; text-align:center; }
+        tbody tr:hover { background:#f0f8ff; }
+        .status-ok { color:#0a7f2e; font-weight:bold; }
+        .status-suspended { color:#c0392b; font-weight:bold; }
+        #statusText { font-size:12px; color:#555; }
+    </style>
+</head>
+<body>
+    <h1>فواتير الكاشير (من قاعدة الموقع)</h1>
+
+    <div class=\"toolbar\">
+        <button class=\"btn-refresh\" onclick=\"loadInvoices()\">تحديث الفواتير</button>
+        <span id=\"statusText\"></span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>رقم</th>
+                <th>التاريخ</th>
+                <th>طريقة الدفع</th>
+                <th>العميل</th>
+                <th>الجوال</th>
+                <th>الإجمالي</th>
+                <th>الحالة</th>
+            </tr>
+        </thead>
+        <tbody id=\"invoicesBody\"></tbody>
+    </table>
+
+    <script>
+        async function loadInvoices() {
+            const body = document.getElementById('invoicesBody');
+            const status = document.getElementById('statusText');
+            body.innerHTML = '';
+            status.textContent = 'جاري التحميل...';
+
+            try {
+                const res = await fetch('/api/cashier/invoices', { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    status.textContent = 'لا توجد فواتير.';
+                    return;
+                }
+
+                data.forEach(inv => {
+                    const tr = document.createElement('tr');
+
+                    const tdId = document.createElement('td');
+                    tdId.textContent = inv.id;
+
+                    const tdDate = document.createElement('td');
+                    const d = new Date(inv.invoiceDate);
+                    if (!isNaN(d.getTime())) {
+                        const yyyy = d.getFullYear();
+                        const mm = String(d.getMonth() + 1).padStart(2, '0');
+                        const dd = String(d.getDate()).padStart(2, '0');
+                        const hh = String(d.getHours()).padStart(2, '0');
+                        const mi = String(d.getMinutes()).padStart(2, '0');
+                        tdDate.textContent = ${yyyy}-- :;
+                    } else {
+                        tdDate.textContent = inv.invoiceDate ?? '';
+                    }
+
+                    const tdMethod = document.createElement('td');
+                    tdMethod.textContent = inv.paymentMethod || '';
+
+                    const tdCust = document.createElement('td');
+                    tdCust.textContent = inv.customerName || '';
+
+                    const tdPhone = document.createElement('td');
+                    tdPhone.textContent = inv.customerPhone || '';
+
+                    const tdTotal = document.createElement('td');
+                    tdTotal.textContent = inv.grandTotal != null ? Number(inv.grandTotal).toFixed(2) : '0.00';
+
+                    const tdStatus = document.createElement('td');
+                    if (inv.isSuspended) {
+                        tdStatus.textContent = 'معلّقة';
+                        tdStatus.className = 'status-suspended';
+                    } else {
+                        tdStatus.textContent = 'مدفوعة';
+                        tdStatus.className = 'status-ok';
+                    }
+
+                    tr.appendChild(tdId);
+                    tr.appendChild(tdDate);
+                    tr.appendChild(tdMethod);
+                    tr.appendChild(tdCust);
+                    tr.appendChild(tdPhone);
+                    tr.appendChild(tdTotal);
+                    tr.appendChild(tdStatus);
+
+                    body.appendChild(tr);
+                });
+
+                status.textContent = 'تم التحميل. عدد الفواتير: ' + data.length;
+            } catch (e) {
+                console.error(e);
+                status.textContent = 'خطأ في تحميل الفواتير.';
+            }
+        }
+
+        loadInvoices();
+    </script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+﻿using Microsoft.EntityFrameworkCore;
+
+public static class ReportsEndpointsExtensions
+{
+    public static void MapReportEndpoints(this WebApplication app)
+    {
+        // تقرير فواتير الكاشير
+        app.MapGet("/api/cashier/report-invoices", async (AppDbContext db) =>
+        {
+            var invoices = await db.CashierInvoices
+                .OrderByDescending(c => c.Id)
+                .Select(c => new
+                {
+                    id = c.Id,
+                    invoiceDate = c.InvoiceDate,
+                    paymentMethod = c.PaymentMethod,
+                    customerName = c.CustomerName,
+                    customerPhone = c.CustomerPhone,
+                    subTotal = c.SubTotal,
+                    discountTotal = c.DiscountTotal,
+                    vatTotal = c.VatTotal,
+                    grandTotal = c.GrandTotal,
+                    isSuspended = c.IsSuspended,
+                    notes = c.Notes
+                })
+                .ToListAsync();
+
+            return Results.Ok(invoices);
+        });
+
+        // تقرير المنتجات من سندات الكاشير
+        app.MapGet("/api/reports/products", async (AppDbContext db) =>
+        {
+            var items = await db.CashierInvoiceItems
+                .AsNoTracking()
+                .ToListAsync();
+
+            var report = items
+                .GroupBy(i => new { i.ProductName, i.Barcode })
+                .Select(g => new
+                {
+                    productName = g.Key.ProductName,
+                    barcode = g.Key.Barcode,
+                    linesCount = g.Count()
+                })
+                .OrderByDescending(x => x.linesCount)
+                .ToList();
+
+            return Results.Ok(report);
+        });
+
+        // تقرير خصومات الفواتير (المبالغ غير المصروفة السابقة)
+        app.MapGet("/api/reports/invoice-discounts", async (AppDbContext db) =>
+        {
+            var data = await db.CustomerInvoices
+                .Join(
+                    db.Customers,
+                    inv => inv.CustomerId,
+                    c   => c.Id,
+                    (inv, c) => new
+                    {
+                        id = inv.Id,
+                        customerId = inv.CustomerId,
+                        customerName = c.Name,
+                        invoiceNumber = inv.InvoiceNumber,
+                        invoiceDate = inv.InvoiceDate,
+                        previousNotPaidDiscount = inv.PreviousNotPaidDiscount,
+                        totalWithVat = inv.TotalWithVat
+                    })
+                .OrderByDescending(x => x.id)
+                .ToListAsync();
+
+            return Results.Ok(data);
+        });
+    }
+}

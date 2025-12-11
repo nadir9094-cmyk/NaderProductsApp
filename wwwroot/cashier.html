@@ -546,7 +546,7 @@
     <div class="parked-modal">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
             <div style="font-weight:bold;font-size:13px;">الفواتير المعلقة</div>
-            <button onclick="closeParkedModal()" style="border:none;background:none;cursor:pointer;font-size:16px;">✕</button>
+            <button onclick="closeParkedModal()" style="border:none;background:none;cursor:pointer;font-size:16px;">?</button>
         </div>
         <div id="parkedList"></div>
     </div>
@@ -556,7 +556,7 @@
     <div class="manual-modal">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
             <div style="font-weight:bold;font-size:14px;">إضافة منتج غير مسجّل</div>
-            <button onclick="closeManualModal()" style="border:none;background:none;cursor:pointer;font-size:16px;">✕</button>
+            <button onclick="closeManualModal()" style="border:none;background:none;cursor:pointer;font-size:16px;">?</button>
         </div>
         <div class="manual-body">
             <label>
@@ -830,7 +830,7 @@
                 "</td>" +
                 '<td style="text-align:center;">' + taxValue.toFixed(2) + "</td>" +
                 '<td style="text-align:center;">' + lineTotal.toFixed(2) + "</td>" +
-                '<td class="cell-actions"><button onclick="removeItem(' + index + ')">🗑️</button></td>';
+                '<td class="cell-actions"><button onclick="removeItem(' + index + ')">???</button></td>';
 
             basketBodyEl.appendChild(row);
         });
@@ -864,7 +864,7 @@
         renderBasket();
     }
 
-    // ✅ التجميع حسب الباركود + السعر
+    // ? التجميع حسب الباركود + السعر
     searchInput.addEventListener("keydown", function(e) {
         if (e.key === "Enter") {
             const q = e.target.value.trim();
@@ -958,7 +958,7 @@
         closeManualModal();
     }
 
-    // ✅ عند الضغط Enter في حقل سعر الوحدة يضيف للسلة
+    // ? عند الضغط Enter في حقل سعر الوحدة يضيف للسلة
     manualPriceEl.addEventListener("keydown", function(e){
         if (e.key === "Enter") {
             e.preventDefault();
@@ -1002,7 +1002,7 @@
         }
     });
 
-    // ✅ في عميل الدفع المؤجل: Enter = بحث
+    // ? في عميل الدفع المؤجل: Enter = بحث
     customerSearchEl.addEventListener("keydown", function(e){
         if (e.key === "Enter") {
             e.preventDefault();
@@ -1172,74 +1172,14 @@
         renderBasket();
         showNotification("تم جلب الفاتورة المعلقة", "success");
     }
-
     async function saveInvoice(methodOverride) {
-        const method = methodOverride || paymentMethodEl.value;
+        // حالياً: وضع تجربة محلي فقط، بدون حفظ فعلي في قاعدة البيانات
+        console.log("saveInvoice called with method:", methodOverride);
 
-        if (basket.length === 0) {
-            showNotification("لا يمكن حفظ فاتورة بدون منتجات", "error");
-            return;
-        }
-
-        if (method === "deferred" && !selectedCustomer) {
-            showNotification("اختر اسم العميل المؤجل", "error");
-            return;
-        }
-
-        const payload = {
-            paymentMethod: method,
-            taxEnabled: taxEnabled,
-            vatPercent: parseFloat(vatPercentEl.value || "15"),
-            total: parseFloat(invoiceTotalEl.textContent || "0"),
-            notes: invoiceNotesEl.value || "",
-            customerId: method === "deferred" && selectedCustomer ? selectedCustomer.id : null,
-            items: basket.map(function(b) {
-                return {
-                    name: b.name || "",
-                    barcode: b.barcode || null,
-                    price: parseFloat(b.price || 0),
-                    qty: parseFloat(b.qty || 1),
-                    discount: parseFloat(b.discount || 0),
-                    taxIncluded: b.taxIncluded === true,
-                    hasOffer: b.hasOffer === true,
-                    offerName: b.offerName || null,
-                    offerEnd: b.offerEnd || null
-                };
-            })
-        };
-
-        try {
-            const res = await fetch("/api/cashier/invoices", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            if (!res.ok) {
-                console.error("Invoice save error:", await res.text());
-                showNotification("فشل حفظ الفاتورة في الخادم", "error");
-                return;
-            }
-
-            const data = await res.json();
-            invoiceNumberEl.textContent = data.invoiceId || "مسودة";
-            if (method === "deferred") {
-                invoiceStatusEl.textContent = "فاتورة مؤجلة";
-                invoiceStatusEl.className = "status-pill deferred";
-            } else {
-                invoiceStatusEl.textContent = "فاتورة مدفوعة";
-                invoiceStatusEl.className = "status-pill paid";
-            }
-
+        if (typeof showNotification === "function") {
             showNotification("تم حفظ الفاتورة بنجاح", "success");
-
-            // تفريغ السلة والملاحظات، وإرجاع الشاشة لوضعها الافتراضي + تركيز على الباركود
-            clearBasket();
-            invoiceNotesEl.value = "";
-            initInvoiceHeader();
-        } catch (e) {
-            console.error(e);
-            showNotification("خطأ في الاتصال بالخادم أثناء حفظ الفاتورة", "error");
+        } else {
+            alert("تم حفظ الفاتورة (تجربة محلية، بدون حفظ في القاعدة)");
         }
     }
 
@@ -1259,6 +1199,140 @@
     loadParkedFromStorage();
     loadProductsForCashier();
     renderBasket();
+
+    async function saveInvoice(methodOverride) {
+        try {
+            // لو ما فيه أصناف في السلة
+            if (!Array.isArray(basket) || basket.length === 0) {
+                if (typeof showNotification === "function") {
+                    showNotification("لا توجد أصناف في السلة", "error");
+                } else {
+                    alert("لا توجد أصناف في السلة");
+                }
+                return;
+            }
+
+            // طريقة الدفع: من الزر (F1/F2) أو قيمة افتراضية
+            let paymentMethod = methodOverride || (paymentMethodEl ? paymentMethodEl.value : "card");
+
+            // اسم ورقم العميل (لو الحقول موجودة نستخدمها، لو لا نرسل فاضي)
+            let customerName  = "";
+            let customerPhone = "";
+
+            if (typeof customerNameEl !== "undefined" && customerNameEl && customerNameEl.value) {
+                customerName = customerNameEl.value.trim();
+            }
+            if (typeof customerPhoneEl !== "undefined" && customerPhoneEl && customerPhoneEl.value) {
+                customerPhone = customerPhoneEl.value.trim();
+            }
+
+            // حساب المجاميع من السلة
+            let subTotal = 0, discountTotal = 0, vatTotal = 0;
+
+            const items = basket.map(item => {
+                const qty       = item.quantity ?? item.qty ?? 1;
+                const unitPrice = item.unitPrice ?? item.price ?? 0;
+                const discount  = item.discount ?? 0;
+                const taxIncluded = (typeof item.taxIncluded === "boolean")
+                    ? item.taxIncluded
+                    : (typeof taxEnabled !== "undefined" ? taxEnabled : true);
+
+                let lineSub = unitPrice * qty;
+                let lineVat = 0;
+
+                if (taxIncluded) {
+                    const base = lineSub / 1.15;
+                    lineVat = lineSub - base;
+                    lineSub = base;
+                } else {
+                    lineVat = lineSub * 0.15;
+                }
+
+                subTotal      += lineSub;
+                discountTotal += discount;
+                vatTotal      += lineVat;
+
+                return {
+                    barcode:     item.barcode ?? "",
+                    productName: item.name ?? item.productName ?? "",
+                    quantity:    qty,
+                    unitPrice:   unitPrice,
+                    discount:    discount,
+                    taxIncluded: taxIncluded,
+                    hasOffer:    item.hasOffer ?? false,
+                    offerName:   item.offerName ?? null
+                };
+            });
+
+            const grandTotal = subTotal + vatTotal - discountTotal;
+
+            const payload = {
+                invoiceDate:  new Date().toISOString(),
+                paymentMethod,
+                customerName,
+                customerPhone,
+                subTotal:      Number(subTotal.toFixed(2)),
+                discountTotal: Number(discountTotal.toFixed(2)),
+                vatTotal:      Number(vatTotal.toFixed(2)),
+                grandTotal:    Number(grandTotal.toFixed(2)),
+                isSuspended:   false,
+                notes:         (typeof invoiceNotesEl !== "undefined" && invoiceNotesEl) ? invoiceNotesEl.value : null,
+                items
+            };
+
+            const res = await fetch("/api/cashier/invoices", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const txt = await res.text();
+                console.error("Invoice save error", txt);
+                if (typeof showNotification === "function") {
+                    showNotification("فشل حفظ الفاتورة", "error");
+                } else {
+                    alert("فشل حفظ الفاتورة");
+                }
+                return;
+            }
+
+            const data = await res.json();
+            console.log("Invoice saved:", data);
+
+            // مسح السلة وتحديث الواجهة
+            basket = [];
+            if (typeof renderBasket === "function") renderBasket();
+            if (typeof initInvoiceHeader === "function") initInvoiceHeader();
+            if (typeof invoiceNotesEl !== "undefined" && invoiceNotesEl) invoiceNotesEl.value = "";
+
+            if (typeof showNotification === "function") {
+                showNotification("تم حفظ الفاتورة بنجاح", "success");
+            } else {
+                alert("تم حفظ الفاتورة بنجاح");
+            }
+        } catch (err) {
+            console.error(err);
+            if (typeof showNotification === "function") {
+                showNotification("حدث خطأ أثناء حفظ الفاتورة", "error");
+            } else {
+                alert("حدث خطأ أثناء حفظ الفاتورة");
+            }
+        }
+    }
 </script>
+
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+

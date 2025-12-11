@@ -1,0 +1,237 @@
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System.Globalization;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// قاعدة البيانات: SQLite محلياً (naderpos.db)
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite("Data Source=naderpos.db"));
+
+builder.Services.AddEndpointsApiExplorer();
+
+var app = builder.Build();
+
+// ملفات الواجهة (HTML/JS/CSS)
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+
+// =======================
+//   API: المنتجات
+// =======================
+app.MapGet("/api/products", async (AppDbContext db) =>
+{
+    var products = await db.Products
+        .OrderBy(p => p.Name)
+        .Select(p => new
+        {
+            p.Id,
+            p.Name,
+            p.Barcode,
+            p.Category,
+            p.Quantity,
+            p.SoldQuantity,
+            p.MinQuantity,
+            p.PurchasePrice,
+            p.SalePrice,
+            p.IsVatIncluded,
+            p.ExpiryDate,
+            p.OfferEnabled,
+            p.OfferName,
+            p.OfferPrice,
+            p.OfferStart,
+            p.OfferEnd,
+            p.OfferVatIncluded,
+            p.SupplierName
+        })
+        .ToListAsync();
+
+    return Results.Ok(products);
+});
+
+
+// =======================
+//   API: فواتير الكاشير (عرض فقط)
+// =======================
+app.MapGet("/api/cashier/invoices", async (AppDbContext db) =>
+{
+    var invoices = await db.CashierInvoices
+        .OrderByDescending(c => c.Id)
+        .ToListAsync();
+
+    return Results.Ok(invoices);
+});
+
+
+// =======================
+//   تقارير: المنتجات
+// =======================
+app.MapGet("/api/reports/products", async (AppDbContext db) =>
+{
+    var list = await db.Products
+        .OrderBy(p => p.Name)
+        .Select(p => new
+        {
+            id            = p.Id,
+            name          = p.Name,
+            barcode       = p.Barcode,
+            category      = p.Category,
+            quantity      = p.Quantity,
+            soldQuantity  = p.SoldQuantity,
+            minQuantity   = p.MinQuantity,
+            purchasePrice = p.PurchasePrice,
+            salePrice     = p.SalePrice,
+            isVatIncluded = p.IsVatIncluded,
+            supplierName  = p.SupplierName
+        })
+        .ToListAsync();
+
+    return Results.Ok(list);
+});
+
+
+// =======================
+//   تقارير: خصومات الفواتير
+//   (إجماليات على مستوى كل الفواتير)
+// =======================
+app.MapGet("/api/reports/invoice-discounts", async (AppDbContext db) =>
+{
+    // نقرأ الفواتير من قاعدة البيانات
+    var invoices = await db.CashierInvoices
+        .AsNoTracking()
+        .ToListAsync();
+
+    var result = new
+    {
+        invoicesCount = invoices.Count,
+        totalSub      = invoices.Sum(x => NumberHelper.SafeToDouble(x.SubTotal)),
+        totalDiscount = invoices.Sum(x => NumberHelper.SafeToDouble(x.DiscountTotal)),
+        totalVat      = invoices.Sum(x => NumberHelper.SafeToDouble(x.VatTotal)),
+        totalGrand    = invoices.Sum(x => NumberHelper.SafeToDouble(x.GrandTotal))
+    };
+
+    return Results.Ok(result);
+});
+
+
+app.Run();
+
+
+// =======================
+//   الكيانات + DbContext
+// =======================
+
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+    public DbSet<Product>           Products           => Set<Product>();
+    public DbSet<CashierInvoice>    CashierInvoices    => Set<CashierInvoice>();
+    public DbSet<CashierInvoiceItem> CashierInvoiceItems => Set<CashierInvoiceItem>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // ربط الكيانات بالجداول الموجودة فعلاً في SQLite
+        modelBuilder.Entity<Product>().ToTable("Products");
+        modelBuilder.Entity<CashierInvoice>().ToTable("CashierInvoices");
+        modelBuilder.Entity<CashierInvoiceItem>().ToTable("CashierInvoiceItems");
+
+        // FK: CashierInvoiceItem.InvoiceId -> CashierInvoices.Id
+        modelBuilder.Entity<CashierInvoiceItem>()
+            .HasOne<CashierInvoice>()
+            .WithMany()
+            .HasForeignKey(ci => ci.InvoiceId);
+    }
+}
+
+// مطابق لجدول Products في SQLite
+public class Product
+{
+    public int Id { get; set; }
+    public string? Name { get; set; }
+    public string? Barcode { get; set; }
+    public string? Category { get; set; }
+
+    public string Quantity { get; set; } = "0";
+    public string SoldQuantity { get; set; } = "0";
+    public string MinQuantity { get; set; } = "0";
+
+    public string PurchasePrice { get; set; } = "0";
+    public string SalePrice { get; set; } = "0";
+
+    public bool IsVatIncluded { get; set; }
+
+    public string? ExpiryDate { get; set; }
+
+    public bool   OfferEnabled      { get; set; }
+    public string? OfferName        { get; set; }
+    public string? OfferPrice       { get; set; }
+    public string? OfferStart       { get; set; }
+    public string? OfferEnd         { get; set; }
+    public bool   OfferVatIncluded  { get; set; }
+
+    public string? SupplierName { get; set; }
+}
+
+// مطابق لجدول CashierInvoices في SQLite
+public class CashierInvoice
+{
+    public int Id { get; set; }
+
+    public string InvoiceDate { get; set; } = "";
+    public string PaymentMethod { get; set; } = "";
+
+    public string? CustomerName  { get; set; }
+    public string? CustomerPhone { get; set; }
+
+    public string SubTotal      { get; set; } = "0";
+    public string DiscountTotal { get; set; } = "0";
+    public string VatTotal      { get; set; } = "0";
+    public string GrandTotal    { get; set; } = "0";
+
+    public bool   IsSuspended { get; set; }
+    public string? Notes      { get; set; }
+}
+
+// مطابق لجدول CashierInvoiceItems في SQLite
+public class CashierInvoiceItem
+{
+    public int Id { get; set; }
+    public int InvoiceId { get; set; }
+
+    public string  ProductName { get; set; } = "";
+    public string? Barcode     { get; set; }
+
+    public string Quantity { get; set; } = "0";
+    public string Price    { get; set; } = "0";
+    public string Discount { get; set; } = "0";
+
+    public bool TaxIncluded { get; set; }
+    public bool HasOffer    { get; set; }
+    public string? OfferName { get; set; }
+}
+
+// دوال مساعدة لتحويل النص إلى رقم بشكل آمن
+public static class NumberHelper
+{
+    public static double SafeToDouble(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return 0.0;
+
+        // أولاً: محاولة القراءة بالـ InvariantCulture
+        if (double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var d))
+            return d;
+
+        // ثانياً: استبدال الفاصلة العربية أو العادية بنقطة
+        var fixedVal = value.Replace('،', '.').Replace(',', '.');
+
+        if (double.TryParse(fixedVal, NumberStyles.Any, CultureInfo.InvariantCulture, out d))
+            return d;
+
+        return 0.0;
+    }
+}

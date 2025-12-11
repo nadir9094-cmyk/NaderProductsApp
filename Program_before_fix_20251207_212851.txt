@@ -1,0 +1,151 @@
+<
+>
+>
+    // ====== NaderPOS: Invoice Discount Summary API ======
+    app.MapGet("/api/invoices-discount-summary", async () =>
+    {
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync();
+
+        const string sql = @"
+SELECT 
+    ""InvoiceId"",
+    COALESCE(SUM(""Discount""),0) AS ""TotalDiscount""
+FROM ""InvoiceItems""
+GROUP BY ""InvoiceId"";
+";
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+
+        var list = new List<object>();
+        while (await reader.ReadAsync())
+        {
+            list.Add(new {
+                InvoiceId      = reader.GetInt32(0),
+                TotalDiscount  = reader.GetDecimal(1)
+            });
+        }
+
+        return Results.Ok(list);
+    });
+>
+<
+>
+>
+    // ====== NaderPOS: Invoice Items API with Barcode + Discount ======
+    app.MapGet("/api/invoices/{invoiceId:int}/items", async (int invoiceId) =>
+    {
+        await using var conn = new NpgsqlConnection(connStr);
+        await conn.OpenAsync();
+
+        const string sql = @"
+SELECT 
+    ""Id"",
+    ""InvoiceId"",
+    ""ProductName"",
+    ""Barcode"",
+    ""Price"",
+    ""Quantity"",
+    ""Discount""
+FROM ""InvoiceItems""
+WHERE ""InvoiceId"" = @id
+ORDER BY ""Id"";
+";
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@id", invoiceId);
+
+        var items = new List<object>();
+        await using var reader = await cmd.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            items.Add(new {
+                Id          = reader.GetInt32(0),
+                InvoiceId   = reader.GetInt32(1),
+                ProductName = reader.GetString(2),
+                Barcode     = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                Price       = reader.GetDecimal(4),
+                Qty         = reader.GetDecimal(5),
+                Discount    = reader.GetDecimal(6)
+            });
+        }
+
+        return Results.Ok(items);
+    });
+>
+<
+<
+Ö
+Ú
+ 
+å
+ä
+Ç
+ 
+ä
+Ó
+Î
+É
+ 
+P
+r
+o
+g
+r
+a
+m
+.
+c
+s
+ 
+Ç
+á
+Ã
+Õ
+á
+í
+É
+ 
+Ç
+á
+Ê
+í
+ 
+Ñ
+Ý
+Ú
+Ê
+å
+Ç
+ 
+á
+í
+ 
+Ó
+Ç
+È
+Þ
+ð
+Ç
+ 
+æ
+Ó
+Ã
+Ú
+í
+Ï
+å
+Ç
+ 
+á
+ß
+ 
+ä
+Ù
+í
+Ý
+É
+>
+>

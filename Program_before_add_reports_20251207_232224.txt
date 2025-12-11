@@ -1,0 +1,844 @@
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Globalization;
+using System.Text.Json.Serialization;
+using System.Text.Json;
+using System.Text.Encodings.Web;
+using System.Text.Unicode;
+using System.Security.Cryptography;
+using System.Text;
+using Npgsql;
+using System.Data;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ---------------------------
+// إعدادات JSON لدعم العربية
+// ---------------------------
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    options.SerializerOptions.Encoder = JavaScriptEncoder.Create(UnicodeRanges.All);
+    options.SerializerOptions.WriteIndented = true;
+    options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+});
+
+// ---------------------------
+// ربط DbContext (اختيار المزوّد)
+// ---------------------------
+var dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "sqlite";
+var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    if (dbProvider == "postgres")
+    {
+        connectionString = "Host=localhost;Port=5432;Database=naderposdb;Username=postgres;Password=postgres";
+    }
+    else
+    {
+        connectionString = "Data Source=naderpos.db";
+    }
+}
+
+if (dbProvider == "postgres")
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+    {
+        options.UseNpgsql(connectionString);
+    });
+}
+else
+{
+    builder.Services.AddDbContext<AppDbContext>(options =>
+    {
+        options.UseSqlite(connectionString);
+    });
+}
+
+// ---------------------------
+// إضافة CORS للسماح للواجهة الأمامية
+// ---------------------------
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
+// ---------------------------
+// إعداد Swagger (بشكل بسيط بدون OpenApiInfo)
+// ---------------------------
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// ---------------------------
+// تسجيل الخدمات الأخرى
+// ---------------------------
+builder.Services.AddSingleton<ITimeProvider, SystemTimeProvider>();
+
+var app = builder.Build();
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
+app.UseCors("AllowAll");
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+// ---------------------------
+// تشغيل الميغريشن
+// ---------------------------
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+}
+
+// ---------------------------
+// تعريف الـ APIs
+// ---------------------------
+
+// معلومات عامّة عن النظام
+app.MapGet("/api/info", () => new
+{
+    appName = "Nader POS",
+    version = "1.0",
+    provider = dbProvider,
+    connection = connectionString
+});
+
+// ---------------------------
+// إدارة المنتجات
+// ---------------------------
+
+app.MapGet("/api/products", async (AppDbContext db) =>
+{
+    var products = await db.Products
+        .OrderBy(p => p.Id)
+        .ToListAsync();
+
+    return Results.Ok(products);
+});
+
+app.MapPost("/api/products", async (AppDbContext db, Product product) =>
+{
+    db.Products.Add(product);
+    await db.SaveChangesAsync();
+    return Results.Ok(product);
+});
+
+app.MapPut("/api/products/{id:int}", async (AppDbContext db, int id, Product updated) =>
+{
+    var product = await db.Products.FindAsync(id);
+    if (product == null)
+        return Results.NotFound();
+
+    product.Name = updated.Name;
+    product.Barcode = updated.Barcode;
+    product.Category = updated.Category;
+    product.SalePrice = updated.SalePrice;
+    product.PurchasePrice = updated.PurchasePrice;
+    product.Quantity = updated.Quantity;
+    product.MinQuantity = updated.MinQuantity;
+    product.ExpiryDate = updated.ExpiryDate;
+    product.IsVatIncluded = updated.IsVatIncluded;
+    product.OfferEnabled = updated.OfferEnabled;
+    product.OfferName = updated.OfferName;
+    product.OfferPrice = updated.OfferPrice;
+    product.OfferStart = updated.OfferStart;
+    product.OfferEnd = updated.OfferEnd;
+    product.OfferVatIncluded = updated.OfferVatIncluded;
+    product.SupplierName = updated.SupplierName;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(product);
+});
+
+app.MapDelete("/api/products/{id:int}", async (AppDbContext db, int id) =>
+{
+    var product = await db.Products.FindAsync(id);
+    if (product == null)
+        return Results.NotFound();
+
+    db.Products.Remove(product);
+    await db.SaveChangesAsync();
+    return Results.Ok();
+});
+
+// البحث عن منتج بالباركود
+app.MapGet("/api/products/barcode/{barcode}", async (AppDbContext db, string barcode) =>
+{
+    var product = await db.Products
+        .Where(p => p.Barcode == barcode)
+        .FirstOrDefaultAsync();
+
+    if (product == null)
+        return Results.NotFound();
+
+    return Results.Ok(product);
+});
+
+// ---------------------------
+// إدارة العملاء (البيع الآجل)
+// ---------------------------
+
+app.MapGet("/api/customers", async (AppDbContext db) =>
+{
+    var customers = await db.Customers
+        .OrderBy(c => c.Name)
+        .ToListAsync();
+
+    return Results.Ok(customers);
+});
+
+app.MapPost("/api/customers", async (AppDbContext db, Customer customer) =>
+{
+    db.Customers.Add(customer);
+    await db.SaveChangesAsync();
+    return Results.Ok(customer);
+});
+
+app.MapPut("/api/customers/{id:int}", async (AppDbContext db, int id, Customer updated) =>
+{
+    var customer = await db.Customers.FindAsync(id);
+    if (customer == null)
+        return Results.NotFound();
+
+    customer.Name = updated.Name;
+    customer.Phone = updated.Phone;
+    customer.Address = updated.Address;
+    customer.Note = updated.Note;
+    customer.IsActive = updated.IsActive;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(customer);
+});
+
+app.MapDelete("/api/customers/{id:int}", async (AppDbContext db, int id) =>
+{
+    var customer = await db.Customers.FindAsync(id);
+    if (customer == null)
+        return Results.NotFound();
+
+    db.Customers.Remove(customer);
+    await db.SaveChangesAsync();
+    return Results.Ok();
+});
+
+// البحث عن العملاء بالاسم (للدفع الآجل)
+app.MapGet("/api/customers/search", async (AppDbContext db, string query) =>
+{
+    query = query.Trim();
+    if (string.IsNullOrWhiteSpace(query))
+        return Results.Ok(Array.Empty<Customer>());
+
+    var customers = await db.Customers
+        .Where(c => c.Name.Contains(query))
+        .OrderBy(c => c.Name)
+        .Take(50)
+        .ToListAsync();
+
+    return Results.Ok(customers);
+});
+
+// ---------------------------
+// العملاء والفواتير الآجلة (تقرير شاشة عملاء الدفع المؤجل)
+// ---------------------------
+
+app.MapGet("/api/customers/{customerId:int}/summary", async (AppDbContext db, int customerId) =>
+{
+    var customer = await db.Customers.FindAsync(customerId);
+    if (customer == null)
+        return Results.NotFound(new { message = "العميل غير موجود" });
+
+    // الفواتير
+    var invoices = await db.CustomerInvoices
+        .Where(i => i.CustomerId == customerId)
+        .OrderByDescending(i => i.InvoiceDate)
+        .ToListAsync();
+
+    // المدفوعات
+    var payments = await db.CustomerPayments
+        .Where(p => p.CustomerId == customerId)
+        .OrderByDescending(p => p.PaymentDate)
+        .ToListAsync();
+
+    decimal totalInvoices = invoices.Sum(i => i.TotalWithVat);
+    decimal totalDiscounts = invoices.Sum(i => i.PreviousNotPaidDiscount);
+    decimal totalPaid = payments.Sum(p => p.Amount);
+    decimal balance = totalInvoices - totalDiscounts - totalPaid;
+
+    var result = new CustomerSummaryDto
+    {
+        CustomerId = customer.Id,
+        CustomerName = customer.Name,
+        TotalInvoices = totalInvoices,
+        TotalDiscounts = totalDiscounts,
+        TotalPaid = totalPaid,
+        Balance = balance,
+        Invoices = invoices
+            .Select(i => new CustomerInvoiceDto
+            {
+                Id = i.Id,
+                InvoiceNumber = i.InvoiceNumber,
+                InvoiceDate = i.InvoiceDate,
+                TotalWithVat = i.TotalWithVat,
+                PreviousNotPaidDiscount = i.PreviousNotPaidDiscount
+            })
+            .ToList(),
+        Payments = payments
+            .Select(p => new CustomerPaymentDto
+            {
+                Id = p.Id,
+                PaymentDate = p.PaymentDate,
+                Amount = p.Amount,
+                Note = p.Note
+            })
+            .ToList()
+    };
+
+    return Results.Ok(result);
+});
+
+// ---------------------------
+// فواتير الكاشير (البيع النقدي/الشبكة)
+// ---------------------------
+
+// إنشاء فاتورة كاشير جديدة
+app.MapPost("/api/cashier/invoices", async (AppDbContext db, CashierInvoiceRequest request, ITimeProvider timeProvider) =>
+{
+    if (request.Items == null || request.Items.Count == 0)
+    {
+        return Results.BadRequest(new { message = "لا توجد أصناف في الفاتورة." });
+    }
+
+    var now = timeProvider.Now;
+
+    var invoice = new CashierInvoice
+    {
+        InvoiceDate = now,
+        PaymentMethod = request.PaymentMethod,
+        CustomerName = request.CustomerName,
+        CustomerPhone = request.CustomerPhone,
+        SubTotal = request.SubTotal,
+        DiscountTotal = request.DiscountTotal,
+        VatTotal = request.VatTotal,
+        GrandTotal = request.GrandTotal,
+        IsSuspended = request.IsSuspended,
+        Notes = request.Notes
+    };
+
+    db.CashierInvoices.Add(invoice);
+    await db.SaveChangesAsync();
+
+    foreach (var item in request.Items)
+    {
+        var invoiceItem = new CashierInvoiceItem
+        {
+            InvoiceId = invoice.Id,
+            ProductName = item.ProductName,
+            Barcode = item.Barcode,
+            Quantity = item.Quantity,
+            Price = item.Price,
+            Discount = item.Discount,
+            TaxIncluded = item.TaxIncluded,
+            HasOffer = item.HasOffer,
+            OfferName = item.OfferName
+        };
+
+        db.CashierInvoiceItems.Add(invoiceItem);
+
+        // تحديث كمية المخزون
+        var product = await db.Products
+            .Where(p => p.Name == item.ProductName)
+            .FirstOrDefaultAsync();
+
+        if (product != null)
+        {
+            product.Quantity -= item.Quantity;
+            product.SoldQuantity += item.Quantity;
+        }
+    }
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { invoiceId = invoice.Id });
+});
+
+// استرجاع فاتورة الكاشير (التفاصيل + الأصناف)
+app.MapGet("/api/cashier/invoices/{id:int}", async (AppDbContext db, int id) =>
+{
+    var invoice = await db.CashierInvoices.FindAsync(id);
+    if (invoice == null)
+        return Results.NotFound(new { message = "الفاتورة غير موجودة." });
+
+    var items = await db.CashierInvoiceItems
+        .Where(i => i.InvoiceId == id)
+        .OrderBy(i => i.Id)
+        .ToListAsync();
+
+    var result = new
+    {
+        invoice.Id,
+        invoice.InvoiceDate,
+        invoice.PaymentMethod,
+        invoice.CustomerName,
+        invoice.CustomerPhone,
+        invoice.SubTotal,
+        invoice.DiscountTotal,
+        invoice.VatTotal,
+        invoice.GrandTotal,
+        invoice.IsSuspended,
+        invoice.Notes,
+        Items = items.Select(i => new
+        {
+            i.Id,
+            i.ProductName,
+            i.Barcode,
+            i.Quantity,
+            i.Price,
+            i.Discount,
+            i.TaxIncluded,
+            i.HasOffer,
+            i.OfferName
+        }).ToList()
+    };
+
+    return Results.Ok(result);
+});
+
+// حذف فاتورة كاشير
+app.MapDelete("/api/cashier/invoices/{id:int}", async (AppDbContext db, int id) =>
+{
+    var invoice = await db.CashierInvoices.FindAsync(id);
+    if (invoice == null)
+        return Results.NotFound(new { message = "الفاتورة غير موجودة." });
+
+    var items = await db.CashierInvoiceItems
+        .Where(i => i.InvoiceId == id)
+        .ToListAsync();
+
+    // إعادة الكميات للمخزون
+    foreach (var item in items)
+    {
+        var product = await db.Products
+            .Where(p => p.Name == item.ProductName)
+            .FirstOrDefaultAsync();
+
+        if (product != null)
+        {
+            product.Quantity += item.Quantity;
+            product.SoldQuantity -= item.Quantity;
+        }
+    }
+
+    db.CashierInvoiceItems.RemoveRange(items);
+    db.CashierInvoices.Remove(invoice);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { message = "تم حذف الفاتورة بنجاح." });
+});
+
+// تقرير فواتير الكاشير حسب التاريخ وطريقة الدفع
+app.MapGet("/api/cashier/invoices/report", async (AppDbContext db, DateTime? fromDate, DateTime? toDate, string? paymentMethod) =>
+{
+    var query = db.CashierInvoices.AsQueryable();
+
+    if (fromDate.HasValue)
+        query = query.Where(i => i.InvoiceDate.Date >= fromDate.Value.Date);
+
+    if (toDate.HasValue)
+        query = query.Where(i => i.InvoiceDate.Date <= toDate.Value.Date);
+
+    if (!string.IsNullOrWhiteSpace(paymentMethod) && paymentMethod != "all")
+        query = query.Where(i => i.PaymentMethod == paymentMethod);
+
+    var list = await query
+        .OrderByDescending(i => i.InvoiceDate)
+        .ToListAsync();
+
+    var totalSubTotal = list.Sum(i => i.SubTotal);
+    var totalDiscount = list.Sum(i => i.DiscountTotal);
+    var totalVat = list.Sum(i => i.VatTotal);
+    var totalGrand = list.Sum(i => i.GrandTotal);
+
+    return Results.Ok(new
+    {
+        fromDate,
+        toDate,
+        paymentMethod,
+        totalSubTotal,
+        totalDiscount,
+        totalVat,
+        totalGrand,
+        invoices = list
+    });
+});
+
+// ---------------------------
+// إدارة فواتير العملاء (الدفع الآجل)
+// ---------------------------
+
+// إنشاء فاتورة عميل آجل
+app.MapPost("/api/customer-invoices", async (AppDbContext db, CustomerInvoiceRequest request, ITimeProvider timeProvider) =>
+{
+    var now = timeProvider.Now;
+
+    var invoice = new CustomerInvoice
+    {
+        CustomerId = request.CustomerId,
+        InvoiceNumber = request.InvoiceNumber,
+        InvoiceDate = request.InvoiceDate ?? now,
+        TotalWithVat = request.TotalWithVat,
+        PreviousNotPaidDiscount = request.PreviousNotPaidDiscount
+    };
+
+    db.CustomerInvoices.Add(invoice);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(invoice);
+});
+
+// تسجيل دفعة على عميل
+app.MapPost("/api/customer-payments", async (AppDbContext db, CustomerPaymentRequest request, ITimeProvider timeProvider) =>
+{
+    var now = timeProvider.Now;
+
+    var payment = new CustomerPayment
+    {
+        CustomerId = request.CustomerId,
+        PaymentDate = request.PaymentDate ?? now,
+        Amount = request.Amount,
+        Note = request.Note
+    };
+
+    db.CustomerPayments.Add(payment);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(payment);
+});
+
+// ---------------------------
+// نقطة نهاية لفحص الاتصال وقاعدة البيانات
+// ---------------------------
+
+app.MapGet("/api/health", async (AppDbContext db) =>
+{
+    var canConnect = await db.Database.CanConnectAsync();
+    return Results.Ok(new { status = "OK", dbConnection = canConnect });
+});
+
+app.Run();
+
+
+// =======================================================
+// DbContext و النماذج (Models)
+// =======================================================
+
+public class AppDbContext : DbContext
+{
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<CustomerInvoice> CustomerInvoices => Set<CustomerInvoice>();
+    public DbSet<CustomerPayment> CustomerPayments => Set<CustomerPayment>();
+    public DbSet<CashierInvoice> CashierInvoices => Set<CashierInvoice>();
+    public DbSet<CashierInvoiceItem> CashierInvoiceItems => Set<CashierInvoiceItem>();
+
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+    {
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // العلاقات بين العملاء وفواتيرهم والمدفوعات
+        modelBuilder
+            .Entity<CustomerInvoice>()
+            .HasOne<Customer>()
+            .WithMany()
+            .HasForeignKey(ci => ci.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder
+            .Entity<CustomerPayment>()
+            .HasOne<Customer>()
+            .WithMany()
+            .HasForeignKey(cp => cp.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+// ---------------------------
+// نموذج المنتج
+// ---------------------------
+
+public class Product
+{
+    public int Id { get; set; }
+
+    [MaxLength(200)]
+    public string? Name { get; set; }
+
+    [MaxLength(100)]
+    public string? Barcode { get; set; }
+
+    [MaxLength(100)]
+    public string? Category { get; set; }
+
+    public decimal Quantity { get; set; }
+    public decimal SoldQuantity { get; set; }
+    public decimal MinQuantity { get; set; }
+
+    public decimal PurchasePrice { get; set; }
+    public decimal SalePrice { get; set; }
+
+    public bool IsVatIncluded { get; set; }
+
+    public DateTime? ExpiryDate { get; set; }
+
+    public bool OfferEnabled { get; set; }
+
+    [MaxLength(200)]
+    public string? OfferName { get; set; }
+
+    public decimal? OfferPrice { get; set; }
+
+    public DateTime? OfferStart { get; set; }
+    public DateTime? OfferEnd { get; set; }
+
+    public bool OfferVatIncluded { get; set; }
+
+    [MaxLength(200)]
+    public string? SupplierName { get; set; }
+}
+
+// ---------------------------
+// نموذج العميل
+// ---------------------------
+
+public class Customer
+{
+    public int Id { get; set; }
+
+    [MaxLength(200)]
+    public string Name { get; set; } = "";
+
+    [MaxLength(50)]
+    public string? Phone { get; set; }
+
+    [MaxLength(300)]
+    public string? Address { get; set; }
+
+    [MaxLength(500)]
+    public string? Note { get; set; }
+
+    public bool IsActive { get; set; } = true;
+}
+
+// ---------------------------
+// فواتير العملاء (البيع الآجل)
+// ---------------------------
+
+public class CustomerInvoice
+{
+    public int Id { get; set; }
+
+    public int CustomerId { get; set; }
+
+    [MaxLength(100)]
+    public string? InvoiceNumber { get; set; }
+
+    public DateTime InvoiceDate { get; set; }
+
+    // إجمالي الفاتورة شامل الضريبة
+    public decimal TotalWithVat { get; set; }
+
+    // خصم مبالغ سابقة غير مصروفة
+    public decimal PreviousNotPaidDiscount { get; set; }
+}
+
+// ---------------------------
+// مدفوعات العملاء
+// ---------------------------
+
+public class CustomerPayment
+{
+    public int Id { get; set; }
+
+    public int CustomerId { get; set; }
+
+    public DateTime PaymentDate { get; set; }
+
+    public decimal Amount { get; set; }
+
+    [MaxLength(500)]
+    public string? Note { get; set; }
+}
+
+// ---------------------------
+// فواتير الكاشير
+// ---------------------------
+
+public class CashierInvoice
+{
+    public int Id { get; set; }
+
+    public DateTime InvoiceDate { get; set; }
+
+    [MaxLength(20)]
+    public string PaymentMethod { get; set; } = "شبكة"; // شبكة / كاش
+
+    [MaxLength(200)]
+    public string? CustomerName { get; set; }
+
+    [MaxLength(50)]
+    public string? CustomerPhone { get; set; }
+
+    public decimal SubTotal { get; set; }
+    public decimal DiscountTotal { get; set; }
+    public decimal VatTotal { get; set; }
+    public decimal GrandTotal { get; set; }
+
+    public bool IsSuspended { get; set; }
+
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+}
+
+// أصناف فاتورة الكاشير
+public class CashierInvoiceItem
+{
+    public int Id { get; set; }
+
+    public int InvoiceId { get; set; }
+
+    [MaxLength(200)]
+    public string ProductName { get; set; } = "";
+
+    [MaxLength(100)]
+    public string? Barcode { get; set; }
+
+    public decimal Quantity { get; set; }
+    public decimal Price { get; set; }
+    public decimal Discount { get; set; }
+
+    public bool TaxIncluded { get; set; }
+
+    public bool HasOffer { get; set; }
+
+    [MaxLength(200)]
+    public string? OfferName { get; set; }
+}
+
+// ---------------------------
+// DTOs
+// ---------------------------
+
+public class CustomerSummaryDto
+{
+    public int CustomerId { get; set; }
+    public string CustomerName { get; set; } = "";
+    public decimal TotalInvoices { get; set; }
+    public decimal TotalDiscounts { get; set; }
+    public decimal TotalPaid { get; set; }
+    public decimal Balance { get; set; }
+
+    public List<CustomerInvoiceDto> Invoices { get; set; } = new();
+    public List<CustomerPaymentDto> Payments { get; set; } = new();
+}
+
+public class CustomerInvoiceDto
+{
+    public int Id { get; set; }
+    public string? InvoiceNumber { get; set; }
+    public DateTime InvoiceDate { get; set; }
+    public decimal TotalWithVat { get; set; }
+    public decimal PreviousNotPaidDiscount { get; set; }
+}
+
+public class CustomerPaymentDto
+{
+    public int Id { get; set; }
+    public DateTime PaymentDate { get; set; }
+    public decimal Amount { get; set; }
+    public string? Note { get; set; }
+}
+
+// طلب إنشاء فاتورة عميل آجل
+public class CustomerInvoiceRequest
+{
+    public int CustomerId { get; set; }
+    public string? InvoiceNumber { get; set; }
+    public DateTime? InvoiceDate { get; set; }
+    public decimal TotalWithVat { get; set; }
+    public decimal PreviousNotPaidDiscount { get; set; }
+}
+
+// طلب تسجيل دفعة
+public class CustomerPaymentRequest
+{
+    public int CustomerId { get; set; }
+    public DateTime? PaymentDate { get; set; }
+    public decimal Amount { get; set; }
+    public string? Note { get; set; }
+}
+
+// طلب إنشاء فاتورة كاشير
+public class CashierInvoiceRequest
+{
+    public string PaymentMethod { get; set; } = "شبكة";
+    public string? CustomerName { get; set; }
+    public string? CustomerPhone { get; set; }
+    public decimal SubTotal { get; set; }
+    public decimal DiscountTotal { get; set; }
+    public decimal VatTotal { get; set; }
+    public decimal GrandTotal { get; set; }
+    public bool IsSuspended { get; set; }
+    public string? Notes { get; set; }
+
+    public List<CashierInvoiceItemRequest> Items { get; set; } = new();
+}
+
+// صنف داخل فاتورة الكاشير
+public class CashierInvoiceItemRequest
+{
+    public string ProductName { get; set; } = "";
+    public string? Barcode { get; set; }
+    public decimal Quantity { get; set; }
+    public decimal Price { get; set; }
+    public decimal Discount { get; set; }
+    public bool TaxIncluded { get; set; }
+    public bool HasOffer { get; set; }
+    public string? OfferName { get; set; }
+}
+
+// ---------------------------
+// Time Provider
+// ---------------------------
+
+public interface ITimeProvider
+{
+    DateTime Now { get; }
+}
+
+public class SystemTimeProvider : ITimeProvider
+{
+    public DateTime Now => DateTime.Now;
+}
+

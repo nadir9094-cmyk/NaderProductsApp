@@ -1,962 +1,463 @@
-﻿using Microsoft.EntityFrameworkCore;
-using NaderProductsApp.Data;
-using NaderProductsApp.Models;
-using Npgsql;
-using System.Text.Json;
-using System.Text.RegularExpressions;
+﻿using System.Text.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
-namespace NaderProductsApp
+var builder = WebApplication.CreateBuilder(args);
+
+// اتصال PostgreSQL (Render)
+var connectionString =
+    builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=dpg-d4p8e96uk2gs73d7hqv0-a.virginia-postgres.render.com;Port=5432;Database=naderposdb;Username=naderuser;Password=ESleHPj9Ux6m52uDtFkLoWa1lA4XaTMo;Ssl Mode=Require;Trust Server Certificate=true;";
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+var app = builder.Build();
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+// إعادة توجيه للرئيسية
+app.MapGet("/", () => Results.Redirect("/index.html"));
+
+// ================== API المنتجات ==================
+app.MapGet("/api/products", async (AppDbContext db) =>
+    await db.Products.OrderBy(p => p.Id).ToListAsync());
+
+// ================== حفظ فاتورة الكاشير ==================
+app.MapPost("/api/cashier/invoices", async (CashierInvoiceRequest req, AppDbContext db) =>
 {
-    // ================= DTOs + Helper =================
+    Console.WriteLine("=== RAW CASHIER REQUEST JSON ===");
+    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(req));
+    Console.WriteLine($"CASHIER REQ => SubTotal={req.SubTotal}, DiscountTotal={req.DiscountTotal}, VatTotal={req.VatTotal}, GrandTotal={req.GrandTotal}");
 
-    public record CustomerDto(
-        int Id,
-        string Name,
-        string? Phone,
-        string? Address,
-        string? Notes,
-        string Status,
-        decimal InvoicesTotal,
-        decimal PaymentsTotal,
-        decimal Remaining,
-        DateTime? LastInvoiceDate
-    );
-
-    public record CustomerEditRequest(
-        string Name,
-        string? Phone,
-        string? Address,
-        string? Notes,
-        string Status,
-        decimal OpeningBalance
-    );
-
-    public record CustomerInvoiceRequest(
-        decimal Amount,
-        string Description,
-        DateTime? InvoiceDate
-    );
-
-    public class CustomerPaymentInput
+    var invoice = new CashierInvoice
     {
-        public decimal Amount { get; set; }
-        public string? Method { get; set; }
-        public string? Note { get; set; }
-        public DateTime? PaymentDate { get; set; }
-    }
+        InvoiceDate   = DateTime.SpecifyKind(req.InvoiceDate, DateTimeKind.Utc),
+        PaymentMethod = req.PaymentMethod,
+        CustomerName  = req.CustomerName,
+        CustomerPhone = req.CustomerPhone,
+        SubTotal      = req.SubTotal,
+        DiscountTotal = req.DiscountTotal,
+        VatTotal      = req.VatTotal,
+        GrandTotal    = req.GrandTotal,
+        IsSuspended   = req.IsSuspended,
+        Notes         = req.Notes
+    };
 
-    public static class CustomerCalc
+    db.CashierInvoices.Add(invoice);
+    await db.SaveChangesAsync();
+
+    if (req.Items != null)
     {
-        public static (decimal invoicesTotal, decimal paymentsTotal, decimal remaining, DateTime? lastInvoiceDate)
-            CalculateTotals(Customer c)
+        foreach (var item in req.Items)
         {
-            // 1) إجمالي الفواتير من CustomerInvoices
-            var invoicesTotalFromInvoices = c.Invoices?.Sum(i => i.Amount) ?? 0m;
+            Product? product = null;
 
-            // 2) فواتير مؤجلة من الكاشير محفوظة في CustomerPayments كـ Method = "deferred" ومبلغ موجب
-            var deferredFromPayments = c.Payments?
-                .Where(p => p.Method != null && p.Method.ToLower() == "deferred" && p.Amount > 0)
-                .Sum(p => p.Amount) ?? 0m;
-
-            var invoicesTotal = invoicesTotalFromInvoices + deferredFromPayments;
-
-            // 3) المدفوع = جميع المدفوعات غير المؤجلة وبمبالغ موجبة
-            var paymentsTotal = c.Payments?
-                .Where(p => p.Method == null || p.Method.ToLower() != "deferred")
-                .Where(p => p.Amount > 0)
-                .Sum(p => p.Amount) ?? 0m;
-
-            // 4) المتبقي
-            var remaining = invoicesTotal - paymentsTotal;
-
-            // 5) آخر تاريخ فاتورة
-            DateTime? lastInvoiceDateFromInvoices = c.Invoices?
-                .OrderByDescending(i => i.InvoiceDate)
-                .FirstOrDefault()?.InvoiceDate;
-
-            DateTime? lastDeferredDate = c.Payments?
-                .Where(p => p.Method != null && p.Method.ToLower() == "deferred" && p.Amount > 0)
-                .OrderByDescending(p => p.PaymentDate)
-                .FirstOrDefault()?.PaymentDate;
-
-            DateTime? lastInvoiceDate = lastInvoiceDateFromInvoices;
-
-            if (lastDeferredDate.HasValue)
+            if (!string.IsNullOrEmpty(item.Barcode))
             {
-                if (!lastInvoiceDate.HasValue || lastDeferredDate > lastInvoiceDate)
-                    lastInvoiceDate = lastDeferredDate;
+                product = await db.Products.FirstOrDefaultAsync(p => p.Barcode == item.Barcode);
+                if (product != null)
+                {
+                    var qInt = (int)Math.Round(item.Quantity);
+                    product.Quantity     = product.Quantity - qInt;
+                    product.SoldQuantity = product.SoldQuantity + qInt;
+                }
             }
 
-            return (invoicesTotal, paymentsTotal, remaining, lastInvoiceDate);
+            var name = string.IsNullOrWhiteSpace(item.ProductName)
+                ? (product?.Name ?? "")
+                : item.ProductName;
+
+            var invItem = new CashierInvoiceItem
+            {
+                InvoiceId   = invoice.Id,
+                Barcode     = item.Barcode,
+                ProductName = name,
+                Quantity    = item.Quantity,
+                Price       = item.UnitPrice,
+                Discount    = item.Discount,
+                TaxIncluded = item.TaxIncluded ?? false,
+                HasOffer    = item.HasOffer ?? false,
+                OfferName   = string.IsNullOrWhiteSpace(item.OfferName) ? null : item.OfferName
+            };
+
+            db.CashierInvoiceItems.Add(invItem);
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    return Results.Ok(new { invoiceId = invoice.Id });
+});
+
+// ============== مرتجع فاتورة الكاشير ==============
+app.MapPost("/api/cashier/invoices/{id:int}/return", async (int id, ReturnRequest req, AppDbContext db) =>
+{
+    var invoice = await db.CashierInvoices.FindAsync(id);
+    if (invoice == null)
+        return Results.NotFound(new { message = "الفاتورة غير موجودة" });
+
+    if (req.Items == null || req.Items.Count == 0)
+        return Results.BadRequest(new { message = "لم يتم تحديد أصناف للمرتجع" });
+
+    decimal totalReturnAmount = 0m;
+
+    foreach (var rItem in req.Items)
+    {
+        var invItem = await db.CashierInvoiceItems.FindAsync(rItem.ItemId);
+        if (invItem == null || invItem.InvoiceId != id)
+            continue;
+
+        var availableQty = invItem.Quantity;
+        var qty          = rItem.ReturnQuantity;
+
+        if (qty <= 0 || availableQty <= 0)
+            continue;
+
+        if (qty > availableQty)
+            qty = availableQty;
+
+        // قيمة السطر قبل الخصم
+        decimal lineGross    = invItem.Price * qty;
+        decimal lineDiscount = 0m;
+
+        // توزيع الخصم على الوحدات
+        if (availableQty > 0 && invItem.Discount != 0)
+        {
+            var perUnitDiscount = invItem.Discount / availableQty;
+            lineDiscount        = perUnitDiscount * qty;
+        }
+
+        var lineReturn = lineGross - lineDiscount;
+        totalReturnAmount += lineReturn;
+
+        // تعديل الكمية في سطر الفاتورة
+        invItem.Quantity -= qty;
+        if (invItem.Quantity < 0) invItem.Quantity = 0;
+
+        // تعديل مخزون المنتج والكمية المباعة
+        if (!string.IsNullOrWhiteSpace(invItem.Barcode))
+        {
+            var product = await db.Products.FirstOrDefaultAsync(p => p.Barcode == invItem.Barcode);
+            if (product != null)
+            {
+                var qtyInt = (int)Math.Round(qty);
+                product.Quantity += qtyInt;
+
+                if (product.SoldQuantity > 0)
+                {
+                    var newSold = product.SoldQuantity - qtyInt;
+                    product.SoldQuantity = newSold < 0 ? 0 : newSold;
+                }
+            }
         }
     }
 
-    // ================= Main App =================
+    // إجمالي المرتجع على مستوى الفاتورة
+    if (totalReturnAmount > 0)
+        invoice.ReturnTotal += decimal.Round(totalReturnAmount, 2);
 
-    public class Program
+    // ملاحظات المرتجع
+    if (!string.IsNullOrWhiteSpace(req.Note))
     {
-        public static void Main(string[] args)
+        if (string.IsNullOrWhiteSpace(invoice.Notes))
+            invoice.Notes = req.Note;
+        else
+            invoice.Notes = invoice.Notes + " | " + req.Note;
+    }
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new
+    {
+        invoiceId    = invoice.Id,
+        returnAmount = invoice.ReturnTotal,
+        message      = "تم تنفيذ المرتجع"
+    });
+});
+// ============ نهاية مرتجع فاتورة الكاشير ============
+// ============== تقرير فواتير الكاشير ==============
+app.MapGet("/api/cashier/invoices/report", async (
+    int? invoiceId,
+    DateTime? from,
+    DateTime? to,
+    string? paymentMethod,
+    string? status,
+    string? returnFilter,
+    AppDbContext db) =>
+{
+    var query = db.CashierInvoices.AsQueryable();
+
+    if (invoiceId.HasValue)
+        query = query.Where(i => i.Id == invoiceId.Value);
+
+    if (from.HasValue)
+    {
+        var f = DateTime.SpecifyKind(from.Value, DateTimeKind.Utc);
+        query = query.Where(i => i.InvoiceDate >= f);
+    }
+
+    if (to.HasValue)
+    {
+        var t = DateTime.SpecifyKind(to.Value, DateTimeKind.Utc);
+        query = query.Where(i => i.InvoiceDate <= t);
+    }
+
+    if (!string.IsNullOrWhiteSpace(paymentMethod))
+        query = query.Where(i => i.PaymentMethod == paymentMethod);
+
+    if (!string.IsNullOrWhiteSpace(status))
+    {
+        if (status == "suspended")
+            query = query.Where(i => i.IsSuspended);
+        else if (status == "normal")
+            query = query.Where(i => !i.IsSuspended);
+    }
+
+    if (!string.IsNullOrWhiteSpace(returnFilter))
+    {
+        if (returnFilter == "withReturn")
+            query = query.Where(i => i.ReturnTotal > 0);
+        else if (returnFilter == "withoutReturn")
+            query = query.Where(i => i.ReturnTotal == 0);
+    }
+
+    var list = await query
+        .OrderByDescending(i => i.Id)
+        .Take(500)
+        .Select(i => new
         {
-            var builder = WebApplication.CreateBuilder(args);
-
-            // ================= إعداد الاتصال بقاعدة البيانات =================
-            // نحاول القراءة من:
-            // DB_CONNECTION   أو   POSTGRES_CONNECTION
-            var providerEnv = Environment.GetEnvironmentVariable("DB_PROVIDER");
-            var connFromDbConnection = Environment.GetEnvironmentVariable("DB_CONNECTION");
-            var connFromPostgres = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION");
-
-            var connStr = !string.IsNullOrWhiteSpace(connFromDbConnection)
-                ? connFromDbConnection
-                : connFromPostgres;
-
-            var hasPostgresConn = !string.IsNullOrWhiteSpace(connStr);
-
-            // إذا ما فيه DB_PROVIDER لكن فيه connStr نفترض postgres
-            if (string.IsNullOrWhiteSpace(providerEnv) && hasPostgresConn)
-            {
-                providerEnv = "postgres";
-            }
-
-            var isPostgres = string.Equals(providerEnv, "postgres", StringComparison.OrdinalIgnoreCase)
-                             && hasPostgresConn;
-
-            if (isPostgres)
-            {
-                builder.Services.AddDbContext<AppDbContext>(opt =>
-                    opt.UseNpgsql(connStr));
-            }
-            else
-            {
-                // قاعدة بيانات محلية SQLite
-                builder.Services.AddDbContext<AppDbContext>(opt =>
-                    opt.UseSqlite("Data Source=products.db"));
-            }
-
-            builder.Services.AddCors(options =>
-            {
-                options.AddDefaultPolicy(policy =>
-                    policy.AllowAnyOrigin()
-                          .AllowAnyHeader()
-                          .AllowAnyMethod());
-            });
-
-            var app = builder.Build();
-
-            // Ensure database and tables are created
-            using (var scope = app.Services.CreateScope())
-            {
-                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-                db.Database.EnsureCreated();
-
-                if (isPostgres)
-                {
-                    var sql = @"
-CREATE TABLE IF NOT EXISTS ""Customers"" (
-    ""Id"" SERIAL PRIMARY KEY,
-    ""Name"" VARCHAR(200) NOT NULL,
-    ""Phone"" TEXT NULL,
-    ""Address"" TEXT NULL,
-    ""Notes"" TEXT NULL,
-    ""Status"" VARCHAR(32) NOT NULL,
-    ""CreatedAt"" TIMESTAMPTZ NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS ""CustomerInvoices"" (
-    ""Id"" SERIAL PRIMARY KEY,
-    ""CustomerId"" INT NOT NULL REFERENCES ""Customers""(""Id"") ON DELETE CASCADE,
-    ""InvoiceDate"" TIMESTAMPTZ NOT NULL,
-    ""Description"" VARCHAR(500) NOT NULL,
-    ""Amount"" NUMERIC(18,2) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS ""CustomerPayments"" (
-    ""Id"" SERIAL PRIMARY KEY,
-    ""CustomerId"" INT NOT NULL REFERENCES ""Customers""(""Id"") ON DELETE CASCADE,
-    ""PaymentDate"" TIMESTAMPTZ NOT NULL,
-    ""Amount"" NUMERIC(18,2) NOT NULL,
-    ""Method"" VARCHAR(50) NOT NULL,
-    ""Note"" TEXT NULL
-);
-";
-                    db.Database.ExecuteSqlRaw(sql);
-                }
-            }
-
-            app.UseDefaultFiles();
-            app.UseStaticFiles();
-            app.UseCors();
-
-            // ---------------- PRODUCTS API ----------------
-
-            app.MapGet("/api/products", async (AppDbContext db) =>
-                await db.Products
-                    .AsNoTracking()
-                    .OrderBy(p => p.Id)
-                    .ToListAsync());
-
-            app.MapGet("/api/products/{id:int}", async (AppDbContext db, int id) =>
-            {
-                var product = await db.Products.FindAsync(id);
-                return product is null ? Results.NotFound() : Results.Ok(product);
-            });
-
-            app.MapPost("/api/products", async (AppDbContext db, Product input) =>
-            {
-                input.Id = 0;
-                db.Products.Add(input);
-                await db.SaveChangesAsync();
-                return Results.Ok(new { success = true, id = input.Id });
-            });
-
-            app.MapPut("/api/products/{id:int}", async (AppDbContext db, int id, Product input) =>
-            {
-                var product = await db.Products.FindAsync(id);
-                if (product is null) return Results.NotFound();
-
-                product.Barcode = input.Barcode;
-                product.Name = input.Name;
-                product.SupplierName = input.SupplierName;
-                product.Category = input.Category;
-                product.Quantity = input.Quantity;
-                product.MinQuantity = input.MinQuantity;
-                product.SoldQuantity = input.SoldQuantity;
-                product.PurchasePrice = input.PurchasePrice;
-                product.SalePrice = input.SalePrice;
-                product.IsVatIncluded = input.IsVatIncluded;
-                product.ExpiryDate = input.ExpiryDate;
-
-                product.OfferEnabled = input.OfferEnabled;
-                product.OfferName = input.OfferName;
-                product.OfferPrice = input.OfferPrice;
-                product.OfferStart = input.OfferStart;
-                product.OfferEnd = input.OfferEnd;
-                product.OfferVatIncluded = input.OfferVatIncluded;
-
-                await db.SaveChangesAsync();
-                return Results.Ok(new { success = true, id = product.Id });
-            });
-
-            app.MapDelete("/api/products/{id:int}", async (AppDbContext db, int id) =>
-            {
-                var product = await db.Products.FindAsync(id);
-                if (product is null) return Results.NotFound();
-
-                db.Products.Remove(product);
-                await db.SaveChangesAsync();
-                return Results.NoContent();
-            });
-
-            // ---------------- CUSTOMERS / DEFERRED PAYMENTS API ----------------
-
-            app.MapGet("/api/customers/full", async (AppDbContext db) =>
-            {
-                var list = await db.Customers
-                    .Include(c => c.Invoices)
-                    .Include(c => c.Payments)
-                    .OrderBy(c => c.Id)
-                    .ToListAsync();
-
-                var result = list.Select(c =>
-                {
-                    var totals = CustomerCalc.CalculateTotals(c);
-
-                    var invoicesManual = c.Invoices
-                        .OrderBy(i => i.InvoiceDate)
-                        .Select(i => new
-                        {
-                            id = i.Id,
-                            customerId = i.CustomerId,
-                            date = i.InvoiceDate,
-                            description = i.Description,
-                            amount = i.Amount
-                        });
-
-                    var invoicesDeferredFromPayments = c.Payments
-                        .Where(p => p.Method != null && p.Method.ToLower() == "deferred" && p.Amount > 0)
-                        .OrderBy(p => p.PaymentDate)
-                        .Select(p => new
-                        {
-                            id = -p.Id,
-                            customerId = p.CustomerId,
-                            date = p.PaymentDate,
-                            description = p.Note ?? "فاتورة مؤجلة من شاشة الكاشير",
-                            amount = p.Amount
-                        });
-
-                    var invoicesAll = invoicesManual.Concat(invoicesDeferredFromPayments);
-
-                    var paymentsNormal = c.Payments
-                        .Where(p => p.Method == null || p.Method.ToLower() != "deferred")
-                        .OrderBy(p => p.PaymentDate)
-                        .Select(p => new
-                        {
-                            id = p.Id,
-                            customerId = p.CustomerId,
-                            date = p.PaymentDate,
-                            amount = p.Amount,
-                            method = p.Method,
-                            note = p.Note
-                        });
-
-                    return new
-                    {
-                        c.Id,
-                        c.Name,
-                        c.Phone,
-                        c.Address,
-                        c.Notes,
-                        c.Status,
-                        invoicesTotal = totals.invoicesTotal,
-                        paymentsTotal = totals.paymentsTotal,
-                        remaining = totals.remaining,
-                        lastInvoiceDate = totals.lastInvoiceDate,
-                        invoices = invoicesAll,
-                        payments = paymentsNormal
-                    };
-                });
-
-                return Results.Ok(result);
-            });
-
-            app.MapPost("/api/customers", async (AppDbContext db, CustomerEditRequest req) =>
-            {
-                if (string.IsNullOrWhiteSpace(req.Name))
-                    return Results.BadRequest("اسم العميل مطلوب.");
-
-                var customer = new Customer
-                {
-                    Name = req.Name.Trim(),
-                    Phone = req.Phone?.Trim(),
-                    Address = req.Address?.Trim(),
-                    Notes = req.Notes?.Trim(),
-                    Status = string.IsNullOrWhiteSpace(req.Status) ? "active" : req.Status,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                db.Customers.Add(customer);
-                await db.SaveChangesAsync();
-
-                if (req.OpeningBalance > 0)
-                {
-                    var inv = new CustomerInvoice
-                    {
-                        CustomerId = customer.Id,
-                        Amount = req.OpeningBalance,
-                        Description = "رصيد افتتاحي",
-                        InvoiceDate = DateTime.UtcNow
-                    };
-                    db.CustomerInvoices.Add(inv);
-                    await db.SaveChangesAsync();
-                }
-
-                return Results.Ok(new { success = true, id = customer.Id });
-            });
-
-            app.MapPut("/api/customers/{id:int}", async (AppDbContext db, int id, CustomerEditRequest req) =>
-            {
-                var customer = await db.Customers.FindAsync(id);
-                if (customer is null) return Results.NotFound();
-
-                customer.Name = req.Name.Trim();
-                customer.Phone = req.Phone?.Trim();
-                customer.Address = req.Address?.Trim();
-                customer.Notes = req.Notes?.Trim();
-                customer.Status = string.IsNullOrWhiteSpace(req.Status) ? "active" : req.Status;
-
-                if (req.OpeningBalance > 0)
-                {
-                    var inv = new CustomerInvoice
-                    {
-                        CustomerId = customer.Id,
-                        Amount = req.OpeningBalance,
-                        Description = "رصيد افتتاحي مضاف من التعديل",
-                        InvoiceDate = DateTime.UtcNow
-                    };
-                    db.CustomerInvoices.Add(inv);
-                }
-
-                await db.SaveChangesAsync();
-                return Results.Ok(new { success = true, id = customer.Id });
-            });
-
-            app.MapPost("/api/customers/{id:int}/status", async (AppDbContext db, int id, string status) =>
-            {
-                var customer = await db.Customers.FindAsync(id);
-                if (customer is null) return Results.NotFound();
-
-                customer.Status = string.IsNullOrWhiteSpace(status) ? "active" : status;
-                await db.SaveChangesAsync();
-                return Results.Ok(new { success = true, id = customer.Id, status = customer.Status });
-            });
-
-            app.MapDelete("/api/customers/{id:int}", async (AppDbContext db, int id) =>
-            {
-                var customer = await db.Customers
-                    .Include(c => c.Invoices)
-                    .Include(c => c.Payments)
-                    .FirstOrDefaultAsync(c => c.Id == id);
-
-                if (customer is null) return Results.NotFound();
-
-                var totals = CustomerCalc.CalculateTotals(customer);
-                if (totals.remaining > 0)
-                    return Results.BadRequest("لا يمكن حذف العميل طالما عليه مبالغ متبقية.");
-
-                db.Customers.Remove(customer);
-                await db.SaveChangesAsync();
-                return Results.NoContent();
-            });
-
-            app.MapPost("/api/customers/{id:int}/invoices", async (AppDbContext db, int id, CustomerInvoiceRequest req) =>
-            {
-                var customer = await db.Customers.FindAsync(id);
-                if (customer is null) return Results.NotFound();
-
-                if (req.Amount <= 0) return Results.BadRequest("المبلغ يجب أن يكون أكبر من صفر.");
-
-                var inv = new CustomerInvoice
-                {
-                    CustomerId = customer.Id,
-                    Amount = req.Amount,
-                    Description = string.IsNullOrWhiteSpace(req.Description) ? "تعديل رصيد يدوي" : req.Description.Trim(),
-                    InvoiceDate = req.InvoiceDate ?? DateTime.UtcNow
-                };
-
-                db.CustomerInvoices.Add(inv);
-                await db.SaveChangesAsync();
-                return Results.Ok(new { success = true, id = inv.Id });
-            });
-
-            app.MapPost("/api/customers/{id:int}/payments", async (AppDbContext db, int id, CustomerPaymentInput input) =>
-            {
-                try
-                {
-                    if (input == null)
-                        return Results.BadRequest("بيانات الدفع غير صحيحة.");
-
-                    if (input.Amount <= 0)
-                        return Results.BadRequest("المبلغ يجب أن يكون أكبر من صفر.");
-
-                    var customer = await db.Customers.FindAsync(id);
-                    if (customer is null)
-                        return Results.NotFound("العميل غير موجود.");
-
-                    var payment = new CustomerPayment
-                    {
-                        CustomerId = customer.Id,
-                        Amount = input.Amount,
-                        Method = string.IsNullOrWhiteSpace(input.Method) ? "كاش" : input.Method!,
-                        Note = input.Note?.Trim(),
-                        PaymentDate = input.PaymentDate ?? DateTime.UtcNow
-                    };
-
-                    db.CustomerPayments.Add(payment);
-                    await db.SaveChangesAsync();
-
-                    return Results.Ok(new
-                    {
-                        success = true,
-                        id = payment.Id,
-                        customerId = payment.CustomerId,
-                        amount = payment.Amount,
-                        method = payment.Method,
-                        note = payment.Note,
-                        paymentDate = payment.PaymentDate
-                    });
-                }
-                catch (Exception ex)
-                {
-                    return Results.BadRequest("خطأ أثناء حفظ الدفعة: " + ex.Message);
-                }
-            });
-
-            app.MapPut("/api/customer-payments/{paymentId:int}", async (AppDbContext db, int paymentId, CustomerPaymentInput input) =>
-            {
-                try
-                {
-                    if (input == null)
-                        return Results.BadRequest("بيانات الدفع غير صحيحة.");
-
-                    if (input.Amount <= 0)
-                        return Results.BadRequest("المبلغ يجب أن يكون أكبر من صفر.");
-
-                    var payment = await db.CustomerPayments.FindAsync(paymentId);
-                    if (payment is null)
-                        return Results.NotFound("الدفعة غير موجودة.");
-
-                    payment.Amount = input.Amount;
-                    payment.Method = string.IsNullOrWhiteSpace(input.Method) ? "كاش" : input.Method!;
-                    payment.Note = input.Note?.Trim();
-                    payment.PaymentDate = input.PaymentDate ?? payment.PaymentDate;
-
-                    await db.SaveChangesAsync();
-
-                    return Results.Ok(new
-                    {
-                        success = true,
-                        id = payment.Id,
-                        customerId = payment.CustomerId,
-                        amount = payment.Amount,
-                        method = payment.Method,
-                        note = payment.Note,
-                        paymentDate = payment.PaymentDate
-                    });
-                }
-                catch (Exception ex)
-                {
-                    return Results.BadRequest("خطأ أثناء تعديل الدفعة: " + ex.Message);
-                }
-            });
-
-            app.MapDelete("/api/customer-payments/{paymentId:int}", async (AppDbContext db, int paymentId) =>
-            {
-                var payment = await db.CustomerPayments.FindAsync(paymentId);
-                if (payment is null) return Results.NotFound();
-
-                db.CustomerPayments.Remove(payment);
-                await db.SaveChangesAsync();
-                return Results.NoContent();
-            });
-
-            // ---------------- CASHIER INVOICES API ----------------
-
-            app.MapPost("/api/cashier/invoices", async (HttpRequest http, AppDbContext db) =>
-            {
-                if (!hasPostgresConn)
-                {
-                    return Results.Problem("لم يتم إعداد اتصال PostgreSQL بشكل صحيح (يرجى ضبط DB_CONNECTION أو POSTGRES_CONNECTION).");
-                }
-
-                using var doc = await JsonDocument.ParseAsync(http.Body);
-                var root = doc.RootElement;
-
-                if (!root.TryGetProperty("items", out var itemsElement)
-                    || itemsElement.ValueKind != JsonValueKind.Array
-                    || itemsElement.GetArrayLength() == 0)
-                {
-                    return Results.BadRequest("لا يمكن حفظ فاتورة بدون بنود.");
-                }
-
-                await using var conn = new NpgsqlConnection(connStr);
-                await conn.OpenAsync();
-
-                var createSql = @"
-CREATE TABLE IF NOT EXISTS ""Invoices"" (
-    ""Id"" SERIAL PRIMARY KEY,
-    ""CustomerId"" INT NULL,
-    ""InvoiceDate"" TIMESTAMPTZ NOT NULL,
-    ""PaymentMethod"" VARCHAR(20) NOT NULL,
-    ""TaxEnabled"" BOOLEAN NOT NULL,
-    ""VatPercent"" NUMERIC(5,2) NOT NULL,
-    ""Total"" NUMERIC(18,2) NOT NULL,
-    ""Notes"" TEXT NULL
-);
-
-CREATE TABLE IF NOT EXISTS ""InvoiceItems"" (
-    ""Id"" SERIAL PRIMARY KEY,
-    ""InvoiceId"" INT NOT NULL REFERENCES ""Invoices""(""Id"") ON DELETE CASCADE,
-    ""ProductName"" VARCHAR(255) NOT NULL,
-    ""Price"" NUMERIC(18,2) NOT NULL,
-    ""Quantity"" NUMERIC(18,2) NOT NULL,
-    ""Discount"" NUMERIC(18,2) NOT NULL,
-    ""TaxIncluded"" BOOLEAN NOT NULL,
-    ""HasOffer"" BOOLEAN NOT NULL,
-    ""OfferName"" VARCHAR(255),
-    ""OfferEnd"" TIMESTAMPTZ NULL
-);
-";
-
-                await using (var cmdCreate = new NpgsqlCommand(createSql, conn))
-                {
-                    await cmdCreate.ExecuteNonQueryAsync();
-                }
-
-                string paymentMethod = "unknown";
-                if (root.TryGetProperty("paymentMethod", out var pmElem) &&
-                    pmElem.ValueKind == JsonValueKind.String)
-                {
-                    paymentMethod = pmElem.GetString() ?? "unknown";
-                }
-
-                bool taxEnabled = true;
-                if (root.TryGetProperty("taxEnabled", out var teElem))
-                {
-                    taxEnabled = teElem.ValueKind == JsonValueKind.True;
-                }
-
-                decimal vatPercent = 15m;
-                if (root.TryGetProperty("vatPercent", out var vpElem) &&
-                    vpElem.ValueKind == JsonValueKind.Number)
-                {
-                    vpElem.TryGetDecimal(out vatPercent);
-                }
-
-                decimal total = 0m;
-                if (root.TryGetProperty("total", out var totalElem) &&
-                    totalElem.ValueKind == JsonValueKind.Number)
-                {
-                    totalElem.TryGetDecimal(out total);
-                }
-
-                string? notes = null;
-                if (root.TryGetProperty("notes", out var notesElem) &&
-                    notesElem.ValueKind == JsonValueKind.String)
-                {
-                    notes = notesElem.GetString();
-                }
-
-                int? customerId = null;
-                if (root.TryGetProperty("customerId", out var cidElem) &&
-                    cidElem.ValueKind == JsonValueKind.Number &&
-                    cidElem.TryGetInt32(out var cidVal))
-                {
-                    customerId = cidVal;
-                }
-
-                await using var tx = await conn.BeginTransactionAsync();
-
-                try
-                {
-                    const string insertInvoiceSql = @"
-INSERT INTO ""Invoices""
-(""CustomerId"", ""InvoiceDate"", ""PaymentMethod"", ""TaxEnabled"", ""VatPercent"", ""Total"", ""Notes"")
-VALUES (@customerId, @invoiceDate, @paymentMethod, @taxEnabled, @vatPercent, @total, @notes)
-RETURNING ""Id"";";
-
-                    await using var cmdInvoice = new NpgsqlCommand(insertInvoiceSql, conn, tx);
-                    cmdInvoice.Parameters.AddWithValue("@customerId", (object?)customerId ?? DBNull.Value);
-                    cmdInvoice.Parameters.AddWithValue("@invoiceDate", DateTime.UtcNow);
-                    cmdInvoice.Parameters.AddWithValue("@paymentMethod", paymentMethod);
-                    cmdInvoice.Parameters.AddWithValue("@taxEnabled", taxEnabled);
-                    cmdInvoice.Parameters.AddWithValue("@vatPercent", vatPercent);
-                    cmdInvoice.Parameters.AddWithValue("@total", total);
-                    cmdInvoice.Parameters.AddWithValue("@notes", (object?)notes ?? DBNull.Value);
-
-                    var invoiceIdObj = await cmdInvoice.ExecuteScalarAsync();
-                    var invoiceId = Convert.ToInt32(invoiceIdObj);
-
-                    const string insertItemSql = @"
-INSERT INTO ""InvoiceItems""
-(""InvoiceId"", ""ProductName"", ""Price"", ""Quantity"", ""Discount"", ""TaxIncluded"", ""HasOffer"", ""OfferName"", ""OfferEnd"")
-VALUES (@invoiceId, @name, @price, @qty, @discount, @taxIncluded, @hasOffer, @offerName, @offerEnd);";
-
-                    foreach (var itemElement in itemsElement.EnumerateArray())
-                    {
-                        if (itemElement.ValueKind != JsonValueKind.Object)
-                            continue;
-
-                        string name = "";
-                        if (itemElement.TryGetProperty("name", out var nameElem) &&
-                            nameElem.ValueKind == JsonValueKind.String)
-                        {
-                            name = nameElem.GetString() ?? "";
-                        }
-
-                        decimal price = 0m;
-                        if (itemElement.TryGetProperty("price", out var priceElem) &&
-                            priceElem.ValueKind == JsonValueKind.Number)
-                        {
-                            priceElem.TryGetDecimal(out price);
-                        }
-
-                        decimal qty = 0m;
-                        if (itemElement.TryGetProperty("qty", out var qtyElem) &&
-                            qtyElem.ValueKind == JsonValueKind.Number)
-                        {
-                            qtyElem.TryGetDecimal(out qty);
-                        }
-
-                        decimal discount = 0m;
-                        if (itemElement.TryGetProperty("discount", out var discElem) &&
-                            discElem.ValueKind == JsonValueKind.Number)
-                        {
-                            discElem.TryGetDecimal(out discount);
-                        }
-
-                        bool taxIncludedItem = false;
-                        if (itemElement.TryGetProperty("taxIncluded", out var tiElem))
-                        {
-                            taxIncludedItem = tiElem.ValueKind == JsonValueKind.True;
-                        }
-
-                        bool hasOffer = false;
-                        if (itemElement.TryGetProperty("hasOffer", out var hoElem))
-                        {
-                            hasOffer = hoElem.ValueKind == JsonValueKind.True;
-                        }
-
-                        string? offerName = null;
-                        if (itemElement.TryGetProperty("offerName", out var onElem) &&
-                            onElem.ValueKind == JsonValueKind.String)
-                        {
-                            offerName = onElem.GetString();
-                        }
-
-                        DateTime? offerEnd = null;
-                        if (itemElement.TryGetProperty("offerEnd", out var oeElem) &&
-                            oeElem.ValueKind == JsonValueKind.String &&
-                            DateTime.TryParse(oeElem.GetString(), out var dt))
-                        {
-                            offerEnd = dt;
-                        }
-
-                        await using var cmdItem = new NpgsqlCommand(insertItemSql, conn, tx);
-                        cmdItem.Parameters.AddWithValue("@invoiceId", invoiceId);
-                        cmdItem.Parameters.AddWithValue("@name", name);
-                        cmdItem.Parameters.AddWithValue("@price", price);
-                        cmdItem.Parameters.AddWithValue("@qty", qty);
-                        cmdItem.Parameters.AddWithValue("@discount", discount);
-                        cmdItem.Parameters.AddWithValue("@taxIncluded", taxIncludedItem);
-                        cmdItem.Parameters.AddWithValue("@hasOffer", hasOffer);
-                        cmdItem.Parameters.AddWithValue("@offerName", (object?)offerName ?? DBNull.Value);
-                        cmdItem.Parameters.AddWithValue("@offerEnd", (object?)offerEnd ?? DBNull.Value);
-
-                        await cmdItem.ExecuteNonQueryAsync();
-
-                        // === Auto inventory update for NaderPOS (by product name) ===
-                        try
-                        {
-                            if (!string.IsNullOrWhiteSpace(name))
-                            {
-                                var product = await db.Products.FirstOrDefaultAsync(p => p.Name == name);
-                                if (product != null)
-                                {
-                                    var qtyInt = (int)qty;
-                                    var newQty = product.Quantity - qtyInt;
-                                    if (newQty < 0)
-                                        newQty = 0;
-
-                                    product.Quantity = newQty;
-                                    product.SoldQuantity = product.SoldQuantity + qtyInt;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"[WARN] inventory update failed: {ex.Message}");
-                        }
-                        // === End auto inventory update ===
-
-                    }
-
-                    if (paymentMethod == "deferred" && customerId.HasValue)
-                    {
-                        const string insertDeferredSql = @"
-INSERT INTO ""CustomerPayments""
-(""CustomerId"", ""PaymentDate"", ""Amount"", ""Method"", ""Note"")
-VALUES (@custId, @paymentDate, @amount, @method, @note);";
-
-                        await using (var cmdDeferred = new NpgsqlCommand(insertDeferredSql, conn, tx))
-                        {
-                            cmdDeferred.Parameters.AddWithValue("@custId", customerId.Value);
-                            cmdDeferred.Parameters.AddWithValue("@paymentDate", DateTime.UtcNow);
-                            cmdDeferred.Parameters.AddWithValue("@amount", total);
-                            cmdDeferred.Parameters.AddWithValue("@method", "deferred");
-
-                            var deferredNote = notes;
-                            if (string.IsNullOrWhiteSpace(deferredNote))
-                            {
-                                deferredNote = "فاتورة مؤجلة من شاشة الكاشير رقم " + invoiceId;
-                            }
-                            else
-                            {
-                                deferredNote = deferredNote + " (فاتورة رقم " + invoiceId + ")";
-                            }
-
-                            cmdDeferred.Parameters.AddWithValue("@note", deferredNote);
-                            await cmdDeferred.ExecuteNonQueryAsync();
-                        }
-                    }
-
-                    await tx.CommitAsync();
-
-                    await db.SaveChangesAsync();
-
-                    var resultStatus = paymentMethod == "deferred" ? "deferred" : "paid";
-
-                    return Results.Ok(new { invoiceId, status = resultStatus });
-                }
-                catch (Exception ex)
-                {
-                    await tx.RollbackAsync();
-                    return Results.Problem("حدث خطأ أثناء حفظ الفاتورة: " + ex.Message);
-                }
-            });
-
-            // ================= عرض مواد الفاتورة المؤجلة =================
-            app.MapGet("/api/customers/deferred-invoice-items/{paymentId:int}", async (AppDbContext db, int paymentId) =>
-            {
-                if (!hasPostgresConn)
-                    return Results.Problem("عرض مواد الفاتورة متاح فقط عند الاتصال بـ PostgreSQL، ولم يتم إعداد اتصال PostgreSQL.");
-
-                var payment = await db.CustomerPayments.FindAsync(paymentId);
-                if (payment is null)
-                    return Results.NotFound("لم يتم العثور على الحركة.");
-
-                int? invoiceId = null;
-
-                if (!string.IsNullOrWhiteSpace(payment.Note))
-                {
-                    var m = Regex.Match(payment.Note, "(\\d+)$");
-                    if (m.Success && int.TryParse(m.Groups[1].Value, out var parsed))
-                    {
-                        invoiceId = parsed;
-                    }
-                }
-
-                await using var conn = new NpgsqlConnection(connStr);
-                await conn.OpenAsync();
-
-                if (!invoiceId.HasValue)
-                {
-                    const string findSql = @"
-SELECT ""Id""
-FROM ""Invoices""
-WHERE ""CustomerId"" = @custId AND ""Total"" = @total
-ORDER BY ABS(EXTRACT(EPOCH FROM (""InvoiceDate"" - @pDate)))
-LIMIT 1;";
-
-                    await using var cmdFind = new NpgsqlCommand(findSql, conn);
-                    cmdFind.Parameters.AddWithValue("@custId", payment.CustomerId);
-                    cmdFind.Parameters.AddWithValue("@total", payment.Amount);
-                    cmdFind.Parameters.AddWithValue("@pDate", payment.PaymentDate);
-
-                    var obj = await cmdFind.ExecuteScalarAsync();
-                    if (obj != null && obj != DBNull.Value)
-                    {
-                        invoiceId = Convert.ToInt32(obj);
-                    }
-                }
-
-                if (!invoiceId.HasValue)
-                    return Results.NotFound("لم يتم العثور على رقم الفاتورة.");
-
-                const string itemsSql = @"
-SELECT ""ProductName"", ""Price"", ""Quantity"", ""Discount""
-FROM ""InvoiceItems""
-WHERE ""InvoiceId"" = @invId;";
-
-                await using var cmdItems = new NpgsqlCommand(itemsSql, conn);
-                cmdItems.Parameters.AddWithValue("@invId", invoiceId.Value);
-
-                var items = new List<object>();
-
-                await using (var reader = await cmdItems.ExecuteReaderAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        var name = reader.GetString(0);
-                        var price = reader.GetDecimal(1);
-                        var qty = reader.GetDecimal(2);
-                        var discount = reader.GetDecimal(3);
-                        var totalItem = (price - discount) * qty;
-
-                        items.Add(new
-                        {
-                            productName = name,
-                            price,
-                            quantity = qty,
-                            discount,
-                            total = totalItem
-                        });
-                    }
-                }
-
-                return Results.Ok(new { invoiceId = invoiceId.Value, items });
-            });
-
-            // ---------------- CASHIER INVOICE ITEMS API ----------------
-
-            // إرجاع مواد فاتورة واحدة حسب رقم الفاتورة من شاشة الكاشير
-            app.MapGet("/api/cashier/invoices/{invoiceId:int}/items", async (int invoiceId) =>
-            {
-                if (!hasPostgresConn)
-                {
-                    return Results.Problem("عرض مواد الفاتورة متاح فقط عند استخدام PostgreSQL، ولم يتم إعداد اتصال PostgreSQL.");
-                }
-
-                await using var conn = new NpgsqlConnection(connStr);
-                await conn.OpenAsync();
-
-                const string sql = @"
-SELECT ""ProductName"", ""Price"", ""Quantity"", ""Discount"", ""TaxIncluded"", ""HasOffer"", ""OfferName""
-FROM ""InvoiceItems""
-WHERE ""InvoiceId"" = @id
-ORDER BY ""Id"";";
-
-                await using var cmd = new NpgsqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@id", invoiceId);
-
-                var reader = await cmd.ExecuteReaderAsync();
-                var list = new List<object>();
-
-                while (await reader.ReadAsync())
-                {
-                    list.Add(new
-                    {
-                        productName = reader.GetString(0),
-                        price = reader.GetDecimal(1),
-                        qty = reader.GetDecimal(2),
-                        discount = reader.GetDecimal(3),
-                        taxIncluded = reader.GetBoolean(4),
-                        hasOffer = reader.GetBoolean(5),
-                        offerName = reader.IsDBNull(6) ? null : reader.GetString(6)
-                    });
-                }
-
-                return Results.Ok(list);
-            });
-
-            // إرجاع مواد جميع فواتير الكاشير للعميل حسب فترة التاريخ (للتقرير التجميعي)
-            app.MapGet("/api/customers/{customerId:int}/all-invoice-items", async (int customerId, DateTime from, DateTime to) =>
-            {
-                if (!hasPostgresConn)
-                {
-                    return Results.Problem("عرض مواد الفواتير متاح فقط عند استخدام PostgreSQL، ولم يتم إعداد اتصال PostgreSQL.");
-                }
-
-                await using var conn = new NpgsqlConnection(connStr);
-                await conn.OpenAsync();
-
-                const string sql = @"
-SELECT i.""Id"", i.""InvoiceDate"", i.""Total"",
-       it.""ProductName"", it.""Price"", it.""Quantity"", it.""Discount""
-FROM ""Invoices"" AS i
-JOIN ""InvoiceItems"" AS it ON it.""InvoiceId"" = i.""Id""
-WHERE i.""CustomerId"" = @custId
-  AND i.""InvoiceDate"" >= @from
-  AND i.""InvoiceDate"" <= @to
-ORDER BY i.""InvoiceDate"", i.""Id"", it.""Id"";";
-
-                await using var cmd = new NpgsqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@custId", customerId);
-                cmd.Parameters.AddWithValue("@from", from.ToUniversalTime());
-                cmd.Parameters.AddWithValue("@to", to.ToUniversalTime());
-
-                var reader = await cmd.ExecuteReaderAsync();
-                var list = new List<object>();
-
-                while (await reader.ReadAsync())
-                {
-                    list.Add(new
-                    {
-                        invoiceId = reader.GetInt32(0),
-                        invoiceDate = reader.GetDateTime(1),
-                        invoiceTotal = reader.GetDecimal(2),
-                        productName = reader.GetString(3),
-                        price = reader.GetDecimal(4),
-                        qty = reader.GetDecimal(5),
-                        discount = reader.GetDecimal(6)
-                    });
-                }
-
-                return Results.Ok(list);
-            });
-
-            app.Run();
-        }
+            id            = i.Id,
+            invoiceDate   = i.InvoiceDate,
+            paymentMethod = i.PaymentMethod,
+            customerName  = i.CustomerName,
+            customerPhone = i.CustomerPhone,
+            subTotal      = i.SubTotal,
+            discountTotal = i.DiscountTotal,
+            vatTotal      = i.VatTotal,
+            grandTotal    = i.GrandTotal,
+            isSuspended   = i.IsSuspended,
+            returnAmount  = i.ReturnTotal
+        })
+        .ToListAsync();
+
+    return Results.Ok(list);
+});
+
+// ============== أصناف فاتورة الكاشير ==============
+app.MapGet("/api/cashier/invoices/{id:int}/items", async (int id, AppDbContext db) =>
+{
+    var items = await db.CashierInvoiceItems
+        .Where(i => i.InvoiceId == id)
+        .OrderBy(i => i.Id)
+        .Select(i => new {
+            id          = i.Id,
+            productName = i.ProductName,
+            barcode     = i.Barcode,
+            quantity    = i.Quantity,
+            price       = i.Price,
+            discount    = i.Discount,
+            taxIncluded = i.TaxIncluded,
+            hasOffer    = i.HasOffer,
+            offerName   = i.OfferName
+        })
+        .ToListAsync();
+
+    return Results.Ok(items);
+});
+
+// ============== حذف فاتورة الكاشير ==============
+app.MapDelete("/api/cashier/invoices/{id:int}", async (int id, AppDbContext db) =>
+{
+    var invoice = await db.CashierInvoices.FindAsync(id);
+    if (invoice == null)
+        return Results.NotFound(new { message = "الفاتورة غير موجودة" });
+
+    var items = await db.CashierInvoiceItems
+        .Where(i => i.InvoiceId == id)
+        .ToListAsync();
+
+    if (items.Count > 0)
+        db.CashierInvoiceItems.RemoveRange(items);
+
+    db.CashierInvoices.Remove(invoice);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { message = "تم حذف الفاتورة بنجاح" });
+});
+
+app.Run();// ================== EF Core Models ==================
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<CashierInvoice> CashierInvoices => Set<CashierInvoice>();
+    public DbSet<CashierInvoiceItem> CashierInvoiceItems => Set<CashierInvoiceItem>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Product>(e =>
+        {
+            e.ToTable("Products");
+            e.Property(p => p.Id).HasColumnName("Id");
+            e.Property(p => p.Barcode).HasColumnName("Barcode");
+            e.Property(p => p.Name).HasColumnName("Name");
+            e.Property(p => p.Category).HasColumnName("Category");
+            e.Property(p => p.ExpiryDate).HasColumnName("ExpiryDate");
+            e.Property(p => p.IsVatIncluded).HasColumnName("IsVatIncluded");
+            e.Property(p => p.MinQuantity).HasColumnName("MinQuantity");
+            e.Property(p => p.OfferEnabled).HasColumnName("OfferEnabled");
+            e.Property(p => p.OfferStart).HasColumnName("OfferStart");
+            e.Property(p => p.OfferEnd).HasColumnName("OfferEnd");
+            e.Property(p => p.OfferName).HasColumnName("OfferName");
+            e.Property(p => p.OfferPrice).HasColumnName("OfferPrice");
+            e.Property(p => p.OfferVatIncluded).HasColumnName("OfferVatIncluded");
+            e.Property(p => p.PurchasePrice).HasColumnName("PurchasePrice");
+            e.Property(p => p.Quantity).HasColumnName("Quantity");
+            e.Property(p => p.SalePrice).HasColumnName("SalePrice");
+            e.Property(p => p.SoldQuantity).HasColumnName("SoldQuantity");
+            e.Property(p => p.SupplierName).HasColumnName("SupplierName");
+        });
+
+        modelBuilder.Entity<CashierInvoice>(e =>
+        {
+            e.ToTable("cashierinvoices");
+            e.Property(c => c.Id).HasColumnName("id");
+            e.Property(c => c.InvoiceDate).HasColumnName("invoicedate");
+            e.Property(c => c.PaymentMethod).HasColumnName("paymentmethod");
+            e.Property(c => c.CustomerName).HasColumnName("customername");
+            e.Property(c => c.CustomerPhone).HasColumnName("customerphone");
+            e.Property(c => c.SubTotal).HasColumnName("subtotal");
+            e.Property(c => c.DiscountTotal).HasColumnName("discounttotal");
+            e.Property(c => c.VatTotal).HasColumnName("vattotal");
+            e.Property(c => c.GrandTotal).HasColumnName("grandtotal");
+                        e.Property(c => c.ReturnTotal).HasColumnName("returntotal");
+            e.Property(c => c.IsSuspended).HasColumnName("issuspended");
+            e.Property(c => c.Notes).HasColumnName("notes");
+        });
+
+        modelBuilder.Entity<CashierInvoiceItem>(e =>
+        {
+            e.ToTable("cashierinvoiceitems");
+            e.Property(i => i.Id).HasColumnName("id");
+            e.Property(i => i.InvoiceId).HasColumnName("invoiceid");
+            e.Property(i => i.ProductName).HasColumnName("productname");
+            e.Property(i => i.Barcode).HasColumnName("barcode");
+            e.Property(i => i.Quantity).HasColumnName("quantity");
+            e.Property(i => i.Price).HasColumnName("price");
+            e.Property(i => i.Discount).HasColumnName("discount");
+            e.Property(i => i.TaxIncluded).HasColumnName("taxincluded");
+            e.Property(i => i.HasOffer).HasColumnName("hasoffer");
+            e.Property(i => i.OfferName).HasColumnName("offername");
+        });
+
+        modelBuilder.Entity<CashierInvoiceItem>()
+            .HasOne<CashierInvoice>()
+            .WithMany()
+            .HasForeignKey(i => i.InvoiceId);
     }
 }
+
+public class Product
+{
+    public int Id { get; set; }
+    public string? Barcode { get; set; }
+    public string? Name { get; set; }
+    public string? Category { get; set; }
+    public DateTime? ExpiryDate { get; set; }
+    public bool IsVatIncluded { get; set; }
+    public int MinQuantity { get; set; }
+    public bool OfferEnabled { get; set; }
+    public DateTime? OfferStart { get; set; }
+    public DateTime? OfferEnd { get; set; }
+    public string? OfferName { get; set; }
+    public decimal? OfferPrice { get; set; }
+    public bool OfferVatIncluded { get; set; }
+    public decimal PurchasePrice { get; set; }
+    public int Quantity { get; set; }
+    public decimal SalePrice { get; set; }
+    public int SoldQuantity { get; set; }
+    public string? SupplierName { get; set; }
+}
+
+public class CashierInvoice
+{
+    public int Id { get; set; }
+    public DateTime InvoiceDate { get; set; }
+    public string PaymentMethod { get; set; } = "";
+    public string? CustomerName { get; set; }
+    public string? CustomerPhone { get; set; }
+    public decimal SubTotal { get; set; }
+    public decimal DiscountTotal { get; set; }
+    public decimal VatTotal { get; set; }
+    public decimal GrandTotal { get; set; }
+    public decimal ReturnTotal { get; set; }
+    public bool IsSuspended { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class CashierInvoiceItem
+{
+    public int Id { get; set; }
+    public int InvoiceId { get; set; }
+    public string? ProductName { get; set; }
+    public string? Barcode { get; set; }
+    public decimal Quantity { get; set; }
+    public decimal Price { get; set; }
+    public decimal Discount { get; set; }
+    public bool TaxIncluded { get; set; }
+    public bool HasOffer { get; set; }
+    public string? OfferName { get; set; }
+}
+
+public record CashierInvoiceItemRequest(
+    string? Barcode,
+    string? ProductName,
+    decimal Quantity,
+    decimal UnitPrice,
+    decimal Discount,
+    bool? TaxIncluded,
+    bool? HasOffer,
+    string? OfferName
+);
+
+public record CashierInvoiceRequest(
+    DateTime InvoiceDate,
+    string PaymentMethod,
+    string? CustomerName,
+    string? CustomerPhone,
+    decimal SubTotal,
+    decimal DiscountTotal,
+    decimal VatTotal,
+    decimal GrandTotal,
+    bool IsSuspended,
+    string? Notes,
+    List<CashierInvoiceItemRequest> Items
+);
+
+public record ReturnRequestItem(int ItemId, decimal ReturnQuantity);
+public record ReturnRequest(List<ReturnRequestItem> Items, string? Note);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

@@ -1,0 +1,385 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// إضافة DbContext مع دعم Postgres أو SQLite
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    var provider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "sqlite";
+    var connStr  = Environment.GetEnvironmentVariable("DB_CONNECTION");
+
+    if (provider.Equals("postgres", StringComparison.OrdinalIgnoreCase) &&
+        !string.IsNullOrWhiteSpace(connStr))
+    {
+        options.UseNpgsql(connStr);
+    }
+    else
+    {
+        options.UseSqlite("Data Source=naderpos.db;Cache=Shared");
+    }
+});
+
+var app = builder.Build();
+
+// إنشاء قاعدة البيانات والجداول إذا لم تكن موجودة
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+}
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+app.MapGet("/", () => Results.Redirect("/invoices.html"));
+
+#region المنتجات
+
+// جلب كل المنتجات
+app.MapGet("/api/products", async (AppDbContext db) =>
+{
+    var items = await db.Products
+        .OrderBy(p => p.Id)
+        .ToListAsync();
+
+    return Results.Ok(items);
+});
+
+// إضافة أو تعديل منتج
+app.MapPost("/api/products", async (AppDbContext db, Product product) =>
+{
+    if (product.Id == 0)
+    {
+        db.Products.Add(product);
+    }
+    else
+    {
+        db.Products.Update(product);
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Ok(product);
+});
+
+// حذف منتج
+app.MapDelete("/api/products/{id:int}", async (AppDbContext db, int id) =>
+{
+    var p = await db.Products.FindAsync(id);
+    if (p == null) return Results.NotFound();
+
+    db.Products.Remove(p);
+    await db.SaveChangesAsync();
+    return Results.Ok();
+});
+
+#endregion
+
+#region العملاء
+
+app.MapGet("/api/customers", async (AppDbContext db) =>
+{
+    var customers = await db.Customers
+        .OrderBy(c => c.Name)
+        .ToListAsync();
+
+    return Results.Ok(customers);
+});
+
+app.MapPost("/api/customers", async (AppDbContext db, Customer customer) =>
+{
+    if (customer.Id == 0)
+    {
+        db.Customers.Add(customer);
+    }
+    else
+    {
+        db.Customers.Update(customer);
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Ok(customer);
+});
+
+app.MapDelete("/api/customers/{id:int}", async (AppDbContext db, int id) =>
+{
+    var c = await db.Customers.FindAsync(id);
+    if (c == null) return Results.NotFound();
+
+    db.Customers.Remove(c);
+    await db.SaveChangesAsync();
+    return Results.Ok();
+});
+
+#endregion
+
+#region فواتير الكاشير
+
+// حفظ فاتورة كاشير مع الأصناف
+app.MapPost("/api/cashier/invoices", async (AppDbContext db, CashierInvoiceRequest request) =>
+{
+    CashierInvoice invoice;
+
+    if (request.Id == 0)
+    {
+        invoice = new CashierInvoice();
+        db.CashierInvoices.Add(invoice);
+    }
+    else
+    {
+        invoice = await db.CashierInvoices
+            .Include(x => x.Items)
+            .FirstOrDefaultAsync(x => x.Id == request.Id)
+            ?? new CashierInvoice();
+
+        if (invoice.Id == 0)
+            db.CashierInvoices.Add(invoice);
+    }
+
+    invoice.InvoiceDate   = request.InvoiceDate;
+    invoice.PaymentMethod = request.PaymentMethod;
+    invoice.CustomerName  = request.CustomerName;
+    invoice.CustomerPhone = request.CustomerPhone;
+    invoice.SubTotal      = request.SubTotal;
+    invoice.DiscountTotal = request.DiscountTotal;
+    invoice.VatTotal      = request.VatTotal;
+    invoice.GrandTotal    = request.GrandTotal;
+    invoice.IsSuspended   = request.IsSuspended;
+    invoice.Notes         = request.Notes;
+
+    // حدث الأصناف
+    invoice.Items.Clear();
+    foreach (var itemReq in request.Items)
+    {
+        invoice.Items.Add(new CashierInvoiceItem
+        {
+            ProductName = itemReq.ProductName,
+            Barcode     = itemReq.Barcode,
+            Quantity    = itemReq.Quantity,
+            Price       = itemReq.Price,
+            Discount    = itemReq.Discount,
+            TaxIncluded = itemReq.TaxIncluded,
+            HasOffer    = itemReq.HasOffer,
+            OfferName   = itemReq.OfferName
+        });
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { invoice.Id });
+});
+
+// جلب فواتير الكاشير (للتقرير)
+app.MapGet("/api/cashier/report-invoices", async (AppDbContext db) =>
+{
+    var data = await db.CashierInvoices
+        .OrderByDescending(c => c.Id)
+        .Select(c => new
+        {
+            id            = c.Id,
+            invoiceDate   = c.InvoiceDate,
+            paymentMethod = c.PaymentMethod,
+            customerName  = c.CustomerName,
+            customerPhone = c.CustomerPhone,
+            subTotal      = c.SubTotal,
+            discountTotal = c.DiscountTotal,
+            vatTotal      = c.VatTotal,
+            grandTotal    = c.GrandTotal,
+            isSuspended   = c.IsSuspended,
+            notes         = c.Notes
+        })
+        .ToListAsync();
+
+    return Results.Ok(data);
+});
+
+#endregion
+
+#region التقارير
+
+// تقرير المنتجات /api/reports/products
+app.MapGet("/api/reports/products", async (AppDbContext db) =>
+{
+    var data = await db.Products
+        .OrderBy(p => p.Name)
+        .Select(p => new
+        {
+            id           = p.Id,
+            name         = p.Name,
+            barcode      = p.Barcode,
+            category     = p.Category,
+            quantity     = p.Quantity,
+            soldQuantity = p.SoldQuantity,
+            minQuantity  = p.MinQuantity,
+            purchasePrice= p.PurchasePrice,
+            salePrice    = p.SalePrice,
+            isVatIncluded= p.IsVatIncluded,
+            supplierName = p.SupplierName
+        })
+        .ToListAsync();
+
+    return Results.Ok(data);
+});
+
+// تقرير خصومات الفواتير /api/reports/invoice-discounts
+app.MapGet("/api/reports/invoice-discounts", async (AppDbContext db) =>
+{
+    var invoices = await db.CashierInvoices.ToListAsync();
+
+    var summary = new
+    {
+        invoicesCount = invoices.Count,
+        totalSub      = invoices.Sum(x => Convert.ToDouble(x.SubTotal)),
+        totalDiscount = invoices.Sum(x => Convert.ToDouble(x.DiscountTotal)),
+        totalVat      = invoices.Sum(x => Convert.ToDouble(x.VatTotal)),
+        totalGrand    = invoices.Sum(x => Convert.ToDouble(x.GrandTotal))
+    };
+
+    return Results.Ok(summary);
+});
+var result = new
+    {
+        invoicesCount = invoices.Count,
+        totalSub = invoices.Sum(x => (double)x.SubTotal),
+        totalDiscount = invoices.Sum(x => (double)x.DiscountTotal),
+        totalVat = invoices.Sum(x => (double)x.VatTotal),
+        totalGrand = invoices.Sum(x => (double)x.GrandTotal)
+    };
+
+    return Results.Ok(result);
+});});
+
+#endregion
+
+app.Run();
+
+#region EF Core Models
+
+public class AppDbContext : DbContext
+{
+    public DbSet<Product>            Products            => Set<Product>();
+    public DbSet<Customer>           Customers           => Set<Customer>();
+    public DbSet<CashierInvoice>     CashierInvoices     => Set<CashierInvoice>();
+    public DbSet<CashierInvoiceItem> CashierInvoiceItems => Set<CashierInvoiceItem>();
+
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Product>().ToTable("Products");
+        modelBuilder.Entity<Customer>().ToTable("Customers");
+        modelBuilder.Entity<CashierInvoice>().ToTable("CashierInvoices");
+        modelBuilder.Entity<CashierInvoiceItem>().ToTable("CashierInvoiceItems");
+
+        modelBuilder.Entity<CashierInvoice>()
+            .HasMany(i => i.Items)
+            .WithOne(i => i.Invoice!)
+            .HasForeignKey(i => i.InvoiceId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public class Product
+{
+    public int      Id              { get; set; }
+    public string?  Name            { get; set; }
+    public string?  Barcode         { get; set; }
+    public string?  Category        { get; set; }
+    public decimal  Quantity        { get; set; }
+    public decimal  SoldQuantity    { get; set; }
+    public decimal  MinQuantity     { get; set; }
+    public decimal  PurchasePrice   { get; set; }
+    public decimal  SalePrice       { get; set; }
+    public bool     IsVatIncluded   { get; set; }
+    public DateTime? ExpiryDate     { get; set; }
+    public bool     OfferEnabled    { get; set; }
+    public string?  OfferName       { get; set; }
+    public decimal? OfferPrice      { get; set; }
+    public DateTime? OfferStart     { get; set; }
+    public DateTime? OfferEnd       { get; set; }
+    public bool     OfferVatIncluded{ get; set; }
+    public string?  SupplierName    { get; set; }
+}
+
+public class Customer
+{
+    public int      Id       { get; set; }
+    public string   Name     { get; set; } = "";
+    public string?  Phone    { get; set; }
+    public string?  Address  { get; set; }
+    public string?  Note     { get; set; }
+    public bool     IsActive { get; set; } = true;
+}
+
+public class CashierInvoice
+{
+    public int      Id            { get; set; }
+    public DateTime InvoiceDate   { get; set; }
+    public string   PaymentMethod { get; set; } = "";
+    public string?  CustomerName  { get; set; }
+    public string?  CustomerPhone { get; set; }
+    public decimal  SubTotal      { get; set; }
+    public decimal  DiscountTotal { get; set; }
+    public decimal  VatTotal      { get; set; }
+    public decimal  GrandTotal    { get; set; }
+    public bool     IsSuspended   { get; set; }
+    public string?  Notes         { get; set; }
+
+    public List<CashierInvoiceItem> Items { get; set; } = new();
+}
+
+public class CashierInvoiceItem
+{
+    public int      Id          { get; set; }
+    public int      InvoiceId   { get; set; }
+    public string   ProductName { get; set; } = "";
+    public string?  Barcode     { get; set; }
+    public decimal  Quantity    { get; set; }
+    public decimal  Price       { get; set; }
+    public decimal  Discount    { get; set; }
+    public bool     TaxIncluded { get; set; }
+    public bool     HasOffer    { get; set; }
+    public string?  OfferName   { get; set; }
+
+    public CashierInvoice? Invoice { get; set; }
+}
+
+// DTOs لطلبات الحفظ من شاشة الكاشير
+public class CashierInvoiceItemRequest
+{
+    public string   ProductName { get; set; } = "";
+    public string?  Barcode     { get; set; }
+    public decimal  Quantity    { get; set; }
+    public decimal  Price       { get; set; }
+    public decimal  Discount    { get; set; }
+    public bool     TaxIncluded { get; set; }
+    public bool     HasOffer    { get; set; }
+    public string?  OfferName   { get; set; }
+}
+
+public class CashierInvoiceRequest
+{
+    public int      Id            { get; set; }
+    public DateTime InvoiceDate   { get; set; }
+    public string   PaymentMethod { get; set; } = "";
+    public string?  CustomerName  { get; set; }
+    public string?  CustomerPhone { get; set; }
+    public decimal  SubTotal      { get; set; }
+    public decimal  DiscountTotal { get; set; }
+    public decimal  VatTotal      { get; set; }
+    public decimal  GrandTotal    { get; set; }
+    public bool     IsSuspended   { get; set; }
+    public string?  Notes         { get; set; }
+
+    public List<CashierInvoiceItemRequest> Items { get; set; } = new();
+}
+
+#endregion
+
+

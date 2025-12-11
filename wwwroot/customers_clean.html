@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>‘«‘… «·⁄„·«¡ Ê«·œ›⁄ «·„ƒÃ·</title>
+
+    <style>
+        :root {
+            --bg-body:#f5f7fb;
+            --bg-card:#ffffff;
+            --border:#e1e5f0;
+            --primary:#246bce;
+            --primary-soft:#e3efff;
+            --warning:#ff9f1c;
+            --success:#21a366;
+            --danger:#e55353;
+            --text:#1f2933;
+            --muted:#76829a;
+            --radius:18px;
+            --shadow:0 6px 18px rgba(15,23,42,0.06);
+        }
+        *{box-sizing:border-box;}
+        body{
+            margin:0;
+            padding:20px;
+            background:var(--bg-body);
+            font-family:"Tahoma","Segoe UI",sans-serif;
+            color:var(--text);
+        }
+        .page{max-width:1400px;margin:0 auto;}
+
+        .top-bar{
+            display:flex;
+            align-items:center;
+            gap:10px;
+            margin-bottom:14px;
+            flex-wrap:wrap;
+        }
+        button{
+            border:none;
+            border-radius:999px;
+            padding:8px 18px;
+            font-size:14px;
+            cursor:pointer;
+            font-family:inherit;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            gap:6px;
+            white-space:nowrap;
+        }
+        .btn-link{background:#fff;border:1px solid var(--border);color:var(--primary);text-decoration:none;}
+        .btn-orange{background:var(--warning);color:#fff;}
+        .btn-blue{background:var(--primary);color:#fff;}
+        .btn-green{background:var(--success);color:#fff;}
+        .btn-gray{background:#e5e7f0;color:var(--text);}
+        .btn-outline{background:#fff;border:1px solid var(--border);color:var(--text);}
+
+        .page-header{
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            margin-bottom:16px;
+            position:relative;
+        }
+        .page-header h1{
+            margin:0;
+            font-size:24px;
+            font-weight:700;
+        }
+        .user-icon{
+            position:absolute;
+            left:0;
+            width:44px;
+            height:44px;
+            border-radius:50%;
+            background:#4b2f93;
+            color:#fff;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:22px;
+            box-shadow:var(--shadow);
+        }
+
+        .summary-row{
+            display:grid;
+            grid-template-columns:repeat(4,minmax(0,1fr));
+            gap:12px;
+            margin-bottom:14px;
+        }
+        .summary-card{
+            background:var(--bg-card);
+            border-radius:var(--radius);
+            padding:14px 18px;
+            box-shadow:var(--shadow);
+        }
+        .summary-title{
+            font-size:14px;
+            color:var(--muted);
+            margin-bottom:6px;
+        }
+        .summary-value{
+            font-size:20px;
+            font-weight:700;
+        }
+
+        .filters-row{
+            background:var(--bg-card);
+            border-radius:var(--radius);
+            padding:10px 16px;
+            box-shadow:var(--shadow);
+            margin-bottom:12px;
+        }
+        .filters-grid{
+            display:grid;
+            grid-template-columns:1.2fr 1.2fr 1fr 1fr 1fr auto;
+            gap:8px;
+            align-items:center;
+        }
+        .input-pill, select{
+            width:100%;
+            border-radius:999px;
+            border:1px solid var(--border);
+            padding:6px 12px;
+            font-size:13px;
+            background:#fff;
+        }
+        .filters-bottom{
+            margin-top:8px;
+            display:flex;
+            gap:8px;
+            flex-wrap:wrap;
+            align-items:center;
+            justify-content:flex-start;
+        }
+
+        .customers-toolbar{
+            margin-top:10px;
+            margin-bottom:10px;
+            background:var(--bg-card);
+            border-radius:var(--radius);
+            padding:10px 16px;
+            box-shadow:var(--shadow);
+            display:flex;
+            gap:10px;
+            align-items:center;
+        }
+        .amount-label{font-size:14px;color:var(--muted);}
+        .amount-value{font-size:17px;font-weight:700;}
+        .counter-btn{
+            width:26px;
+            height:26px;
+            border-radius:50%;
+            border:1px solid var(--border);
+            background:#fff;
+            font-size:18px;
+            cursor:pointer;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
+        .client-selected{
+            margin-right:auto;
+            display:flex;
+            align-items:center;
+            gap:6px;
+            font-size:13px;
+        }
+        .client-selected .label{color:var(--muted);}
+        .client-selected .name{font-weight:600;}
+
+        .table-card{
+            background:var(--bg-card);
+            border-radius:var(--radius);
+            box-shadow:var(--shadow);
+            overflow:hidden;
+        }
+        table{
+            width:100%;
+            border-collapse:collapse;
+            font-size:14px;
+        }
+        thead{background:var(--primary-soft);}
+        th,td{
+            padding:10px 12px;
+            text-align:center;
+            border-bottom:1px solid var(--border);
+        }
+        th{font-weight:600;color:var(--text);}
+        tbody tr:hover{background:#f3f6ff;}
+        .badge{
+            padding:3px 9px;
+            border-radius:999px;
+            font-size:12px;
+        }
+        .badge-ok{background:#e7f9f0;color:#0d8a4b;}
+        .badge-late{background:#fff3cd;color:#b58900;}
+        .badge-danger{background:#fde2e1;color:#b42318;}
+        .badge-suspended{background:#f4e3ff;color:#6b21a8;}
+
+        .action-btn{
+            padding:4px 10px;
+            border-radius:999px;
+            border:1px solid var(--border);
+            background:#fff;
+            font-size:12px;
+            cursor:pointer;
+            margin:0 2px;
+        }
+
+        /* Modals */
+        .modal-backdrop{
+            position:fixed;
+            inset:0;
+            background:rgba(15,23,42,0.35);
+            display:none;
+            justify-content:center;
+            align-items:center;
+            z-index:50;
+        }
+        .modal{
+            background:#fff;
+            border-radius:18px;
+            box-shadow:var(--shadow);
+            padding:16px 18px;
+            max-width:620px;
+            width:95%;
+            max-height:80vh;
+            overflow-y:auto;
+        }
+        .modal-wide{max-width:900px;}
+        .modal-header{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:10px;
+        }
+        .modal-title{font-size:16px;font-weight:700;}
+        .close-btn{
+            width:26px;
+            height:26px;
+            border-radius:50%;
+            border:none;
+            background:#e5e7f0;
+            cursor:pointer;
+        }
+        .modal-body{
+            display:grid;
+            gap:8px;
+        }
+        .field{
+            display:flex;
+            flex-direction:column;
+            gap:3px;
+        }
+        .field label{
+            font-size:13px;
+            color:var(--muted);
+        }
+        .field input, .field textarea, .field select{
+            border-radius:10px;
+            border:1px solid var(--border);
+            padding:6px 10px;
+            font-size:13px;
+            font-family:inherit;
+        }
+        .field textarea{min-height:60px;resize:vertical;}
+        .modal-footer{
+            margin-top:10px;
+            display:flex;
+            gap:8px;
+            justify-content:flex-start;
+            flex-wrap:wrap;
+        }
+
+        /* Payments modal (√ﬂ»—) */
+        .payments-modal-backdrop{
+            position:fixed;
+            inset:0;
+            pointer-events:none;
+            z-index:60;
+        }
+        .payments-modal{
+            position:fixed;
+            bottom:20px;
+            left:50%;
+            transform:translateX(-50%);
+            width:520px;
+            max-width:95vw;
+            background:#fff;
+            border-radius:18px;
+            box-shadow:0 10px 30px rgba(15,23,42,0.35);
+            padding:14px 16px;
+            display:none;
+        }
+        .payments-list{
+            max-height:55vh;
+            overflow-y:auto;
+            margin-top:6px;
+            border-top:1px solid var(--border);
+            padding-top:6px;
+        }
+        .payment-row{
+            display:grid;
+            grid-template-columns:1fr 1.2fr auto;
+            gap:6px;
+            align-items:center;
+            padding:4px 0;
+            border-bottom:1px dashed #e5e7f0;
+        }
+        .payment-row:last-child{border-bottom:none;}
+
+        @media(max-width:900px){
+            .summary-row{grid-template-columns:repeat(2,minmax(0,1fr));}
+            .filters-grid{grid-template-columns:1fr 1fr;}
+            .customers-toolbar{flex-direction:column;align-items:flex-start;}
+        }
+        @media(max-width:600px){
+            .summary-row{grid-template-columns:1fr;}
+            .filters-grid{grid-template-columns:1fr;}
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- «·‘—Ìÿ «·⁄·ÊÌ -->
+    <div class="top-bar">
+        <a href="https://naderproductsapp.onrender.com/index.html" class="btn-link">? «·⁄Êœ… ··—∆Ì”Ì…</a>
+        <button class="btn-blue" id="btnPrintReport">?? ÿ»«⁄… «· ﬁ—Ì— Õ”» «·»ÕÀ</button>
+        <button class="btn-green" id="btnAddCustomer">+ ≈÷«›… ⁄„Ì· ÃœÌœ</button>
+        <button class="btn-orange" id="btnShowAllCustomers">?? ⁄—÷ Ã„Ì⁄ «·⁄„·«¡</button>
+    </div>
+
+    <!-- «·⁄‰Ê«‰ -->
+    <div class="page-header">
+        <h1>‘«‘… «·⁄„·«¡ Ê«·œ›⁄ «·„ƒÃ·</h1>
+        <div class="user-icon">??</div>
+    </div>
+
+    <!-- „·Œ’ -->
+    <div class="summary-row">
+        <div class="summary-card">
+            <div class="summary-title">⁄œœ «·⁄„·«¡ (Õ”» «·»ÕÀ)</div>
+            <div class="summary-value" id="summaryCount">0</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-title">≈Ã„«·Ì «·„»«·€ «·„ƒÃ·…</div>
+            <div class="summary-value"><span id="summaryDeferred">0.00</span> —.”</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-title">≈Ã„«·Ì «·„»«·€ «·„œ›Ê⁄…</div>
+            <div class="summary-value"><span id="summaryPaid">0.00</span> —.”</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-title">≈Ã„«·Ì «·„ »ﬁÌ</div>
+            <div class="summary-value"><span id="summaryRemaining">0.00</span> —.”</div>
+        </div>
+    </div>
+
+    <!-- ›·« — «·»ÕÀ -->
+    <div class="filters-row">
+        <div class="filters-grid">
+            <input class="input-pill" id="filterName" placeholder="»ÕÀ »«”„ «·⁄„Ì·">
+            <input class="input-pill" id="filterPhone" placeholder="»ÕÀ »—ﬁ„ «·Â« ›">
+            <input type="date" class="input-pill" id="filterFromDate">
+            <input type="date" class="input-pill" id="filterToDate">
+            <select id="filterStatus" class="input-pill">
+                <option value="all">«·Õ«·… («·ﬂ·)</option>
+                <option value="has_debt">⁄·ÌÂ „»«·€</option>
+                <option value="late">„ ⁄À—</option>
+                <option value="paid">„”œœ »«·ﬂ«„·</option>
+            </select>
+            <button class="btn-gray" id="btnResetFilters"> ’›Ì… / ≈·€«¡ «·»ÕÀ</button>
+        </div>
+        <div class="filters-bottom">
+            <button class="btn-outline" id="btnShowPaidCustomers">?? ⁄—÷ «·⁄„·«¡  „ «·”œ«œ</button>
+            <span style="font-size:12px;color:var(--muted);">
+                „·«ÕŸ…: «·ÃœÊ· √œ‰«Â Ì⁄—÷ ›ﬁÿ «·⁄„·«¡ «·–Ì‰ ⁄·ÌÂ„ „»«·€ Õ”» «·›·« —.
+            </span>
+        </div>
+    </div>
+
+    <!-- ‘—Ìÿ «·⁄„Ì· «·„Œ «— -->
+    <div class="customers-toolbar">
+        <span class="amount-label">«·„ »ﬁÌ ⁄·Ï «·⁄„Ì· «·„Œ «—:</span>
+        <span class="amount-value"><span id="selectedRemaining">0.00</span> —.”</span>
+
+        <button class="counter-btn" id="btnQuickPay">+</button>
+
+        <div class="client-selected">
+            <span>??</span>
+            <span class="label">«·⁄„Ì· «·„Œ «— ··ﬂ«‘Ì—:</span>
+            <span class="name" id="selectedCustomerName">ó</span>
+        </div>
+
+        <button class="btn-outline" id="btnFromCashier">«Œ Ì«— „‰ ‘«‘… «·ﬂ«‘Ì— (·«Õﬁ«)</button>
+    </div>
+
+    <!-- ÃœÊ· «·⁄„·«¡ «·–Ì‰ ⁄·ÌÂ„ „»«·€ -->
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>«·⁄„Ì·</th>
+                    <th>«·Â« ›</th>
+                    <th>«·Õ«·…</th>
+                    <th>≈Ã„«·Ì «·›Ê« Ì—</th>
+                    <th>«·„œ›Ê⁄</th>
+                    <th>«·„ »ﬁÌ</th>
+                    <th>¬Œ— Õ—ﬂ…</th>
+                    <th>≈Ã—«¡« </th>
+                </tr>
+            </thead>
+            <tbody id="customersTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ‰«›–… ≈÷«›…/ ⁄œÌ· ⁄„Ì· -->
+<div class="modal-backdrop" id="customerModalBackdrop">
+    <div class="modal" id="customerModal">
+        <div class="modal-header">
+            <div class="modal-title" id="customerModalTitle">≈÷«›… ⁄„Ì· ÃœÌœ</div>
+            <button class="close-btn" data-close="customerModalBackdrop">?</button>
+        </div>
+        <div class="modal-body">
+            <div class="field">
+                <label>«”„ «·⁄„Ì·</label>
+                <input id="custName">
+            </div>
+            <div class="field">
+                <label>—ﬁ„ «·Â« ›</label>
+                <input id="custPhone">
+            </div>
+            <div class="field">
+                <label>⁄‰Ê«‰ «·⁄„Ì·</label>
+                <input id="custAddress">
+            </div>
+            <div class="field">
+                <label>«·—’Ìœ «·«›  «ÕÌ („»·€ „ƒÃ· Ì»œ√ »Â «·⁄„Ì·)</label>
+                <input id="custOpeningBalance" type="number" step="0.01" value="0">
+            </div>
+            <div class="field">
+                <label>Õ«·… «·Õ”«»</label>
+                <select id="custStatus">
+                    <option value="active">‰‘ÿ</option>
+                    <option value="suspended_temp">≈Ìﬁ«› „ƒﬁ </option>
+                    <option value="suspended_perm">≈Ìﬁ«› œ«∆„</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>„·«ÕŸ« </label>
+                <textarea id="custNotes"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-green" id="btnSaveCustomer">Õ›Ÿ</button>
+            <button class="btn-gray" data-close="customerModalBackdrop">≈·€«¡</button>
+        </div>
+    </div>
+</div>
+
+<!-- ‰«›–… ⁄—÷ Ã„Ì⁄ «·⁄„·«¡ -->
+<div class="modal-backdrop" id="allCustomersModalBackdrop">
+    <div class="modal modal-wide">
+        <div class="modal-header">
+            <div class="modal-title">Ã„Ì⁄ «·⁄„·«¡ ( ⁄œÌ· / „»«·€ / ≈Ìﬁ«› /  ›⁄Ì· / Õ–›)</div>
+            <button class="close-btn" data-close="allCustomersModalBackdrop">?</button>
+        </div>
+        <div class="modal-body" style="padding-top:4px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <input id="allCustFilterName" placeholder="»ÕÀ »«”„ «·⁄„Ì·" style="flex:1 1 180px;border-radius:999px;border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;">
+                <input id="allCustFilterPhone" placeholder="»ÕÀ »—ﬁ„ «·Â« ›" style="flex:1 1 180px;border-radius:999px;border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;">
+                <button class="btn-gray" id="btnResetAllCustomersFilter">„”Õ «·»ÕÀ</button>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                    <tr style="background:#f3f4f6;">
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«·⁄„Ì·</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«·Â« ›</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«·Õ«·…</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">≈Ã„«·Ì «·›Ê« Ì—</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«·„œ›Ê⁄</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«·„ »ﬁÌ</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">≈Ã—«¡« </th>
+                    </tr>
+                </thead>
+                <tbody id="allCustomersTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ‰«›–… «·⁄„·«¡  „ «·”œ«œ -->
+<div class="modal-backdrop" id="paidCustomersModalBackdrop">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">«·⁄„·«¡  „ ”œ«œ Ã„Ì⁄ «·„»«·€</div>
+            <button class="close-btn" data-close="paidCustomersModalBackdrop">?</button>
+        </div>
+        <div class="modal-body">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <input id="paidCustFilterName" placeholder="»ÕÀ »«”„ «·⁄„Ì·" style="flex:1 1 160px;border-radius:999px;border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;">
+                <input id="paidCustFilterPhone" placeholder="»ÕÀ »—ﬁ„ «·Â« ›" style="flex:1 1 160px;border-radius:999px;border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;">
+                <button class="btn-gray" id="btnResetPaidCustomersFilter">„”Õ «·»ÕÀ</button>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                    <tr style="background:#f3f4f6;">
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«·⁄„Ì·</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«·Â« ›</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">¬Œ— Õ—ﬂ…</th>
+                    </tr>
+                </thead>
+                <tbody id="paidCustomersTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ‰«›–… ›Ê« Ì— ⁄„Ì· -->
+<div class="modal-backdrop" id="invoicesModalBackdrop">
+    <div class="modal modal-wide">
+        <div class="modal-header">
+            <div class="modal-title" id="invoicesModalTitle">›Ê« Ì— «·⁄„Ì·</div>
+            <button class="close-btn" data-close="invoicesModalBackdrop">?</button>
+        </div>
+        <div class="modal-body">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
+                <input type="date" id="invFilterFrom" class="input-pill" style="max-width:180px;">
+                <input type="date" id="invFilterTo" class="input-pill" style="max-width:180px;">
+                <button class="btn-gray" id="btnFilterInvoices"> ÿ»Ìﬁ «·› —…</button>
+                <button class="btn-blue" id="btnPrintInvoices">?? ÿ»«⁄… ›Ê« Ì— «·⁄„Ì· (Ê—ﬁ… ﬂ«‘Ì—)</button>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                    <tr style="background:#f3f4f6;">
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«· «—ÌŒ</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«·Êﬁ </th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">—ﬁ„ «·›« Ê—…</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">⁄—÷ „Ê«œ «·›« Ê—…</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«·„»·€</th>
+                    </tr>
+                </thead>
+                <tbody id="invoicesTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ‰«›–… «·œ›⁄«  (À«» … √”›· «·‘«‘…) -->
+<div class="payments-modal-backdrop" id="paymentsBackdrop">
+    <div class="payments-modal" id="paymentsModal">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div style="font-weight:700;font-size:14px;">
+                «·œ›⁄«  ··⁄„Ì·: <span id="paymentsCustomerName"></span>
+            </div>
+            <button class="close-btn" id="btnClosePayments">?</button>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">
+            «·„ »ﬁÌ «·Õ«·Ì: <span id="paymentsRemaining">0.00</span> —.”
+        </div>
+
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;align-items:center;">
+            <input type="date" id="paymentFilterFrom" style="flex:1 1 120px;border-radius:10px;border:1px solid var(--border);padding:5px 8px;font-size:13px;">
+            <input type="date" id="paymentFilterTo" style="flex:1 1 120px;border-radius:10px;border:1px solid var(--border);padding:5px 8px;font-size:13px;">
+            <button class="btn-gray" id="btnApplyPaymentFilter"> ÿ»Ìﬁ «·› —…</button>
+            <button class="btn-blue" id="btnPrintPaymentsReport">?? ÿ»«⁄…  ﬁ—Ì— «·œ›⁄« </button>
+        </div>
+
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+            <input type="number" step="0.01" id="paymentAmount" placeholder="„»·€ «·œ›⁄" style="flex:1 1 80px;border-radius:10px;border:1px solid var(--border);padding:5px 8px;font-size:13px;">
+            <select id="paymentMethod" style="flex:0 0 110px;border-radius:10px;border:1px solid var(--border);padding:5px 8px;font-size:13px;">
+                <option value="ﬂ«‘">ﬂ«‘</option>
+                <option value="‘»ﬂ…">‘»ﬂ…</option>
+            </select>
+            <input type="text" id="paymentNote" placeholder="„·«ÕŸ… («Œ Ì«—Ì)" style="flex:1 1 120px;border-radius:10px;border:1px solid var(--border);padding:5px 8px;font-size:13px;">
+            <button class="btn-green" id="btnAddPaymentQuick">≈÷«›…</button>
+        </div>
+        <div class="payments-list" id="paymentsList"></div>
+    </div>
+</div>
+
+<!-- ‰«›–… „Ê«œ «·›« Ê—… -->
+    <div class="modal modal-wide">
+        <div class="modal-header">
+        </div>
+        <div class="modal-body">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;text-align:center;">
+                <thead>
+                    <tr style="background:#f3f4f6;">
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«”„ «·„‰ Ã</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«·ﬂ„Ì…</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«·”⁄— ‘«„· «·÷—Ì»…</th>
+                        <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">«·Œ’„</th>
+                    </tr>
+                </thead>
+                <tbody id="invoiceItemsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// =================== »Ì«‰«  „‰ «·‹ API ===================
+let customersData = [];
+let selectedCustomerId = null;
+let currentInvoicesCustomerId = null;
+let currentPaymentsCustomerId = null;
+let editingCustomerId = null;
+
+async function apiJson(url, options = {}) {
+    const opts = {
+        headers: { "Content-Type": "application/json" },
+        ...options
+    };
+    const res = await fetch(url, opts);
+    if (!res.ok) {
+        let msg = "";
+        try { msg = await res.text(); } catch {}
+        throw new Error(msg || ("Œÿ√ ›Ì «·« ’«·: " + res.status));
+    }
+    try {
+        return await res.json();
+    } catch {
+        return null;
+    }
+}
+
+async function loadCustomersFromApi() {
+    try {
+        const res = await fetch("/api/customers/full");
+        if (!res.ok) throw new Error();
+        customersData = await res.json();
+        renderMainTable();
+        renderAllCustomersModal();
+        if (currentPaymentsCustomerId) renderPaymentsList();
+    } catch (e) {
+        console.error(e);
+        alert(" ⁄–— «·« ’«· »ﬁ«⁄œ… «·»Ì«‰« .\n √ﬂœ √‰ «·”Ì—›— Ì⁄„· À„ √⁄œ «·„Õ«Ê·….");
+    }
+}
+
+// =================== œÊ«· „”«⁄œ… ===================
+function formatAmount(v){ return (v || 0).toFixed(2); }
+function parseDate(value){ return value ? new Date(value) : null; }
+function getCustomerById(id){ return customersData.find(c=>c.id===id) || null; }
+
+function getCustomerInvoices(id){
+    const c = getCustomerById(id);
+    return c && Array.isArray(c.invoices) ? c.invoices : [];
+}
+function getCustomerPayments(id){
+    const c = getCustomerById(id);
+    return c && Array.isArray(c.payments) ? c.payments : [];
+}
+
+function getCustomerTotals(cOrId){
+    let c = typeof cOrId === "number" ? getCustomerById(cOrId) : cOrId;
+    if (!c) return { invoicesTotal:0, paymentsTotal:0, remaining:0 };
+    if (typeof c.invoicesTotal === "number" && typeof c.paymentsTotal === "number" && typeof c.remaining === "number") {
+        return {
+            invoicesTotal: c.invoicesTotal,
+            paymentsTotal: c.paymentsTotal,
+            remaining: c.remaining
+        };
+    }
+    const invList = getCustomerInvoices(c.id);
+    const payList = getCustomerPayments(c.id);
+    const invoicesTotal = invList.reduce((s,x)=>s+(x.amount||0),0);
+    const paymentsTotal = payList.reduce((s,x)=>s+(x.amount||0),0);
+    return {
+        invoicesTotal,
+        paymentsTotal,
+        remaining: invoicesTotal - paymentsTotal
+    };
+}
+
+function getCustomerStatusType(c){
+    const totals = getCustomerTotals(c);
+    if (totals.remaining <= 0.001) return "paid";
+    const inv = getCustomerInvoices(c.id);
+    if (!inv.length) return "has_debt";
+    const lastDate = inv.reduce((max,x)=>{
+        const d = new Date(x.date);
+        return d>max?d:max;
+    }, new Date(0));
+    const diffDays = (Date.now() - lastDate.getTime()) / (1000*60*60*24);
+    if (diffDays > 30) return "late";
+    return "has_debt";
+}
+
+// «” Œ—«Ã —ﬁ„ «·›« Ê—… „‰ »Ì«‰«  «·›« Ê—…
+function extractInvoiceNumber(inv){
+    if (!inv) return null;
+    if (typeof inv.cashierInvoiceId === "number" && inv.cashierInvoiceId > 0) return inv.cashierInvoiceId;
+    if (typeof inv.invoiceNumber === "number" && inv.invoiceNumber > 0) return inv.invoiceNumber;
+    if (inv.description){
+        const m = inv.description.match(/—ﬁ„\s+(\d+)/);
+        if (m) return parseInt(m[1],10);
+    }
+    return null;
+}
+
+// =================== „·Œ’ Õ”» «·»ÕÀ ===================
+function updateSummary(filteredCustomers){
+    let totalInv=0,totalPay=0,remaining=0,count=0;
+    filteredCustomers.forEach(c=>{
+        const t = getCustomerTotals(c);
+        totalInv += t.invoicesTotal;
+        totalPay += t.paymentsTotal;
+        remaining += t.remaining;
+        count++;
+    });
+    document.getElementById("summaryCount").textContent = count;
+    document.getElementById("summaryDeferred").textContent = formatAmount(totalInv);
+    document.getElementById("summaryPaid").textContent = formatAmount(totalPay);
+    document.getElementById("summaryRemaining").textContent = formatAmount(remaining);
+}
+
+// ===================  ÿ»Ìﬁ «·›·« — ===================
+function applyFilters(includePaid=false){
+    const name = document.getElementById("filterName").value.trim();
+    const phone = document.getElementById("filterPhone").value.trim();
+    const fromDate = parseDate(document.getElementById("filterFromDate").value);
+    const toDate   = parseDate(document.getElementById("filterToDate").value);
+    const status   = document.getElementById("filterStatus").value;
+
+    let result = customersData.slice();
+
+    if (name){
+        result = result.filter(c=>c.name && c.name.includes(name));
+    }
+    if (phone){
+        result = result.filter(c=>c.phone && c.phone.includes(phone));
+    }
+
+    result = result.filter(c=>{
+        const invList = getCustomerInvoices(c.id);
+        if (!invList.length) return false;
+        let hasInRange = false;
+        invList.forEach(i=>{
+            const d = new Date(i.date);
+            if (fromDate && d < fromDate) return;
+            if (toDate && d > toDate) return;
+            hasInRange = true;
+        });
+        return hasInRange;
+    });
+
+    if (status !== "all"){
+        result = result.filter(c=>getCustomerStatusType(c)===status);
+    }
+
+    if (!includePaid){
+        result = result.filter(c=>getCustomerTotals(c).remaining > 0.001);
+    }
+
+    return result;
+}
+
+// =================== ÃœÊ· «·⁄„·«¡ ===================
+function renderMainTable(){
+    const tbody = document.getElementById("customersTableBody");
+    tbody.innerHTML = "";
+    const filtered = applyFilters(false);
+
+    if (!filtered.length){
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 8;
+        td.textContent = "·« ÌÊÃœ ⁄„·«¡ ⁄·ÌÂ„ „»«·€ Õ”» ‘—Êÿ «·»ÕÀ.";
+        td.style.padding = "40px";
+        td.style.color = "#6b7280";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        updateSummary(filtered);
+        updateSelectedSummary();
+        return;
+    }
+
+    filtered.forEach(c=>{
+        const totals = getCustomerTotals(c);
+        const statusType = getCustomerStatusType(c);
+
+        const tr = document.createElement("tr");
+        if (c.id === selectedCustomerId){
+            tr.style.backgroundColor = "#eef2ff";
+        }
+
+        function addTd(text){
+            const td = document.createElement("td");
+            td.textContent = text;
+            tr.appendChild(td);
+        }
+
+        addTd(c.name || "");
+        addTd(c.phone || "-");
+
+        const statusTd = document.createElement("td");
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        if (c.status === "suspended_perm"){
+            badge.classList.add("badge-suspended");
+            badge.textContent = "„ÊﬁÊ› œ«∆„«";
+        }else if (c.status === "suspended_temp"){
+            badge.classList.add("badge-suspended");
+            badge.textContent = "„ÊﬁÊ› „ƒﬁ «";
+        }else if (statusType === "late"){
+            badge.classList.add("badge-danger");
+            badge.textContent = "„ ⁄À—";
+        }else{
+            badge.classList.add("badge-late");
+            badge.textContent = "⁄·ÌÂ „»«·€";
+        }
+        statusTd.appendChild(badge);
+        tr.appendChild(statusTd);
+
+        addTd(formatAmount(totals.invoicesTotal));
+        addTd(formatAmount(totals.paymentsTotal));
+        addTd(formatAmount(totals.remaining));
+
+        const invList = getCustomerInvoices(c.id);
+        let lastMove = "-";
+        if (invList.length){
+            const last = invList.reduce((max,x)=>{
+                const d = new Date(x.date);
+                return d>max?d:max;
+            }, new Date(0));
+            lastMove = last.toLocaleDateString("ar-SA") + " " + last.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+        }
+        addTd(lastMove);
+
+        const actionsTd = document.createElement("td");
+        const btnSelect = document.createElement("button");
+        btnSelect.className = "action-btn";
+        btnSelect.textContent = "«Œ Ì«—";
+        btnSelect.onclick = ()=>{ selectedCustomerId = c.id; updateSelectedSummary(); renderMainTable(); };
+
+        const btnInvoices = document.createElement("button");
+        btnInvoices.className = "action-btn";
+        btnInvoices.textContent = "⁄—÷ «·›Ê« Ì—";
+        btnInvoices.onclick = ()=>openInvoicesModal(c.id);
+
+        const btnPayments = document.createElement("button");
+        btnPayments.className = "action-btn";
+        btnPayments.textContent = "«·”œ«œ";
+        btnPayments.onclick = ()=>openPaymentsModal(c.id);
+
+        actionsTd.appendChild(btnSelect);
+        actionsTd.appendChild(btnInvoices);
+        actionsTd.appendChild(btnPayments);
+
+        tr.appendChild(actionsTd);
+        tbody.appendChild(tr);
+    });
+
+    updateSummary(filtered);
+    updateSelectedSummary();
+}
+
+function updateSelectedSummary(){
+    const nameEl = document.getElementById("selectedCustomerName");
+    const remEl  = document.getElementById("selectedRemaining");
+    if (!selectedCustomerId){
+        nameEl.textContent = "ó";
+        remEl.textContent = "0.00";
+        return;
+    }
+    const c = getCustomerById(selectedCustomerId);
+    if (!c){
+        nameEl.textContent = "ó";
+        remEl.textContent = "0.00";
+        return;
+    }
+    const totals = getCustomerTotals(c);
+    nameEl.textContent = c.name || "";
+    remEl.textContent = formatAmount(totals.remaining);
+}
+
+// =================== Ã„Ì⁄ «·⁄„·«¡ /  „ «·”œ«œ ===================
+// (‰›” «·ﬂÊœ «··Ì ⁄‰œﬂ° »œÊ‰  €ÌÌ— ÃÊÂ—Ì) ñ ≈»ﬁÌÂ ﬂ„« ÂÊ ›Ì «·„·› «·”«»ﬁ
+// ·√Œ ’—:  —ﬂ Â ﬂ„« ﬂ«‰ ⁄‰œﬂ »«·÷»ÿ „‰ œÊ«· renderAllCustomersModal, addAmountToCustomer,
+// addPaymentToCustomerQuick, toggleCustomerStatus, deleteCustomer, renderPaidCustomersModal, openPaidCustomersModal
+// ----------------------
+// ( „ «·≈»ﬁ«¡ ⁄·Ï Â–Â «·œÊ«· ﬂ„« ›Ì ‰”Œ ﬂ »œÊ‰  ⁄œÌ· · Ê›Ì— «·„”«Õ… Â‰«)
+
+//
+// ⁄‘«‰ „« √ÿÊ¯· «·—”«·… »‘ﬂ· „»«·€ ›ÌÂ° √Ì Ã“¡ „« –ﬂ— Â ‰’« Â‰« √»ﬁÌ Â ﬂ„« ›Ì „·›ﬂ «·√ŒÌ—
+// »«” À‰«¡ «·√Ã“«¡ «· «·Ì… «· Ì ﬂ«‰  ÂÌ ”»» «·„‘ﬂ·…:
+//
+// 1) œÊ«· «·ÿ»«⁄… «·√—»⁄  „  »”ÌÿÂ« · ÿ»⁄ ›ﬁÿ »œÊ‰ Õ‘— HTML ≈÷«›Ì.
+// 2) ≈÷«›… “— "⁄—÷ „Ê«œ «·›« Ê—…" ›Ì renderInvoicesTable.
+//
+
+
+// =================== ›Ê« Ì— «·⁄„Ì· ===================
+function openInvoicesModal(customerId){
+    currentInvoicesCustomerId = customerId;
+    const c = getCustomerById(customerId);
+    document.getElementById("invoicesModalTitle").textContent = "›Ê« Ì— «·⁄„Ì·: " + (c?c.name:"");
+    document.getElementById("invFilterFrom").value = "";
+    document.getElementById("invFilterTo").value = "";
+    renderInvoicesTable();
+    openModal("invoicesModalBackdrop");
+}
+
+function renderInvoicesTable(){
+    const tbody = document.getElementById("invoicesTableBody");
+    tbody.innerHTML = "";
+    if (!currentInvoicesCustomerId) return;
+    const from = parseDate(document.getElementById("invFilterFrom").value);
+    const to   = parseDate(document.getElementById("invFilterTo").value);
+
+    let list = getCustomerInvoices(currentInvoicesCustomerId);
+    list = list.filter(i=>{
+        const d=new Date(i.date);
+        if (from && d<from) return false;
+        if (to && d>to) return false;
+        return true;
+    });
+
+    if (!list.length){
+        const tr=document.createElement("tr");
+        const td=document.createElement("td");
+        td.colSpan=5;
+        td.textContent="·«  ÊÃœ ›Ê« Ì— ›Ì «·› —… «·„Õœœ….";
+        td.style.padding="20px";
+        td.style.color="#6b7280";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
+
+    list.forEach(i=>{
+        const tr=document.createElement("tr");
+        const d=new Date(i.date);
+        const dateStr=d.toLocaleDateString("ar-SA");
+        const timeStr=d.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+        const invoiceNo = extractInvoiceNumber(i);
+
+        function cell(text){
+            const td=document.createElement("td");
+            td.style.padding="6px 8px";
+            td.style.borderBottom="1px solid #e5e7eb";
+            td.textContent=text;
+            return td;
+        }
+        tr.appendChild(cell(dateStr));
+        tr.appendChild(cell(timeStr));
+        tr.appendChild(cell(invoiceNo ? invoiceNo.toString() : "-"));
+
+        const descTd = cell(i.description || "");
+        const btn = document.createElement("button");
+        btn.className = "action-btn";
+        btn.textContent = "⁄—÷ „Ê«œ «·›« Ê—…";
+        btn.style.marginTop = "4px";
+        if (invoiceNo){
+            btn.onclick = ()=> showInvoiceItems(invoiceNo);
+        }else{
+            btn.disabled = true;
+            btn.title = "·« ÌÊÃœ —ﬁ„ ›« Ê—… „‰ ‘«‘… «·ﬂ«‘Ì— ›Ì Â–« «·”ÿ—";
+        }
+        descTd.appendChild(document.createElement("br"));
+        descTd.appendChild(btn);
+        tr.appendChild(descTd);
+
+        tr.appendChild(cell(formatAmount(i.amount)));
+        tbody.appendChild(tr);
+    });
+}
+
+// › Õ ‰«›–… „Ê«œ «·›« Ê—…
+async function showInvoiceItems(invoiceId){
+    const c = currentInvoicesCustomerId ? getCustomerById(currentInvoicesCustomerId) : null;
+        "„Ê«œ «·›« Ê—… " + invoiceId + (c ? " - " + c.name : "");
+
+    const tbody = document.getElementById("invoiceItemsTableBody");
+    tbody.innerHTML = "";
+
+    try{
+        const res = await fetch(`/api/cashier/invoices/${invoiceId}/items`);
+        if (!res.ok){
+            alert(" ⁄–—  Õ„Ì· „Ê«œ «·›« Ê—… „‰ «·Œ«œ„");
+            return;
+        }
+        const items = await res.json();
+        if (!items || !items.length){
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+            td.colSpan = 4;
+            td.textContent = "·«  ÊÃœ „Ê«œ „Õ›ÊŸ… ·Â–Â «·›« Ê—….";
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        }else{
+            items.forEach(it=>{
+                const tr = document.createElement("tr");
+
+                function td(txt){
+                    const cell = document.createElement("td");
+                    cell.style.padding = "6px 8px";
+                    cell.style.borderBottom = "1px solid #e5e7eb";
+                    cell.textContent = txt;
+                    return cell;
+                }
+
+                tr.appendChild(td(it.productName || ""));
+                tr.appendChild(td((it.qty ?? 0).toFixed(2)));
+                tr.appendChild(td((it.price ?? 0).toFixed(2)));
+                tr.appendChild(td((it.discount ?? 0).toFixed(2)));
+
+                tbody.appendChild(tr);
+            });
+        }
+    }catch(err){
+        console.error(err);
+        alert("Œÿ√ ›Ì «·« ’«· »«·Œ«œ„ √À‰«¡  Õ„Ì· „Ê«œ «·›« Ê—…");
+    }
+}
+
+// =================== «·œ›⁄«  + «·ÿ»«⁄… ===================
+// (√»ﬁÌ  ﬂ· œÊ«· «·œ›⁄«  ﬂ„« ÂÌ ⁄‰œﬂ° ›ﬁÿ ⁄œ·  œÊ«· «·ÿ»«⁄… ·≈“«·… HTML «·“«∆œ)
+
+function printInvoicesForCustomer(){
+    if (!currentInvoicesCustomerId) return;
+    const c = getCustomerById(currentInvoicesCustomerId);
+    const from = parseDate(document.getElementById("invFilterFrom").value);
+    const to   = parseDate(document.getElementById("invFilterTo").value);
+    let list = getCustomerInvoices(currentInvoicesCustomerId);
+    list = list.filter(i=>{
+        const d=new Date(i.date);
+        if (from && d<from) return false;
+        if (to && d>to) return false;
+        return true;
+    });
+
+    let html = `
+    <html lang="ar" dir="rtl">
+    <head><meta charset="utf-8"><title> ﬁ—Ì— ›Ê« Ì— «·⁄„Ì·</title>
+    <style>
+        body{font-family:"Tahoma";width:80mm;margin:0 auto;font-size:12px;}
+        h2,h3{text-align:center;margin:4px 0;}
+        .line{border-top:1px dashed #555;margin:4px 0;}
+        .row{display:flex;justify-content:space-between;font-size:12px;margin:2px 0;}
+        .label{color:#555;}
+    </style>
+    </head>
+    <body>
+        <h2> ﬁ—Ì— ›Ê« Ì— «·⁄„Ì·</h2>
+        <h3>${c?c.name:""}</h3>
+        <div class="line"></div>
+    `;
+
+    if (!list.length){
+        html += `<div style="text-align:center;margin-top:10px;">·«  ÊÃœ ›Ê« Ì— ›Ì «·› —… «·„Õœœ….</div>`;
+    }else{
+        list.forEach(i=>{
+            const d=new Date(i.date);
+            const dateStr=d.toLocaleDateString("ar-SA");
+            const timeStr=d.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+            html += `
+                <div class="row"><span class="label">«· «—ÌŒ:</span><span>${dateStr} ${timeStr}</span></div>
+                <div class="row"><span class="label">«·Ê’›:</span><span>${i.description || ""}</span></div>
+                <div class="row"><span class="label">«·„»·€:</span><span>${formatAmount(i.amount)} —.”</span></div>
+                <div class="line"></div>
+            `;
+        });
+    }
+
+
+    const w = window.open("","_blank","width=400,height=600");
+    w.document.write(html);
+    w.document.close();
+}
+
+// (‰›” «·‘Ì¡  ÿ»ﬁ ⁄·Ï printPaymentReceipt Ê printPaymentsReport Ê printCurrentReport ›Ì „·›ﬂ «·√’·Ì:
+// ›ﬁÿ  √ﬂœ √‰Â«  ‰ ÂÌ »‹ window.print() + ≈€·«ﬁ body/html »œÊ‰ √ﬂÊ«œ ≈÷«›Ì…)
+
+// =================== «·‰Ê«›– ===================
+function openModal(id){ document.getElementById(id).style.display="flex"; }
+function closeModal(id){ document.getElementById(id).style.display="none"; }
+
+// =================== √Õœ«À √Ê·Ì… ===================
+document.addEventListener("DOMContentLoaded",function(){
+    ["filterName","filterPhone","filterFromDate","filterToDate","filterStatus"].forEach(id=>{
+        document.getElementById(id).addEventListener("input",renderMainTable);
+        document.getElementById(id).addEventListener("change",renderMainTable);
+    });
+    document.getElementById("btnResetFilters").addEventListener("click",()=>{
+        document.getElementById("filterName").value="";
+        document.getElementById("filterPhone").value="";
+        document.getElementById("filterFromDate").value="";
+        document.getElementById("filterToDate").value="";
+        document.getElementById("filterStatus").value="all";
+        renderMainTable();
+    });
+
+    document.getElementById("btnAddCustomer").addEventListener("click",()=>openCustomerModal(null));
+    document.getElementById("btnSaveCustomer").addEventListener("click",saveCustomerFromModal);
+    document.getElementById("btnShowAllCustomers").addEventListener("click",()=>{renderAllCustomersModal();openModal("allCustomersModalBackdrop");});
+    document.getElementById("btnShowPaidCustomers").addEventListener("click",openPaidCustomersModal);
+    document.getElementById("btnPrintReport").addEventListener("click",printCurrentReport);
+    document.getElementById("btnFilterInvoices").addEventListener("click",renderInvoicesTable);
+    document.getElementById("btnPrintInvoices").addEventListener("click",printInvoicesForCustomer);
+
+    document.getElementById("allCustFilterName").addEventListener("input",renderAllCustomersModal);
+    document.getElementById("allCustFilterPhone").addEventListener("input",renderAllCustomersModal);
+    document.getElementById("btnResetAllCustomersFilter").addEventListener("click",()=>{
+        document.getElementById("allCustFilterName").value="";
+        document.getElementById("allCustFilterPhone").value="";
+        renderAllCustomersModal();
+    });
+
+    document.getElementById("paidCustFilterName").addEventListener("input",renderPaidCustomersModal);
+    document.getElementById("paidCustFilterPhone").addEventListener("input",renderPaidCustomersModal);
+    document.getElementById("btnResetPaidCustomersFilter").addEventListener("click",()=>{
+        document.getElementById("paidCustFilterName").value="";
+        document.getElementById("paidCustFilterPhone").value="";
+        renderPaidCustomersModal();
+    });
+
+    document.querySelectorAll("[data-close]").forEach(btn=>{
+        const id=btn.getAttribute("data-close");
+        btn.addEventListener("click",()=>closeModal(id));
+    });
+
+    document.getElementById("btnAddPaymentQuick").addEventListener("click",addQuickPayment);
+    document.getElementById("btnClosePayments").addEventListener("click",closePaymentsModal);
+    document.getElementById("btnQuickPay").addEventListener("click",()=>{
+        if (!selectedCustomerId){alert("«Œ — ⁄„Ì· √Ê·« „‰ «·ÃœÊ·.");return;}
+        openPaymentsModal(selectedCustomerId);
+    });
+    document.getElementById("btnApplyPaymentFilter").addEventListener("click",renderPaymentsList);
+    document.getElementById("btnPrintPaymentsReport").addEventListener("click",printPaymentsReport);
+    document.getElementById("paymentFilterFrom").addEventListener("change",renderPaymentsList);
+    document.getElementById("paymentFilterTo").addEventListener("change",renderPaymentsList);
+
+    loadCustomersFromApi();
+});
+</script>
+</body>
+</html>

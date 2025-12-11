@@ -338,6 +338,23 @@
             }
         }
     </style>
+<style>
+    .btn-back-home {
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        padding: 0.45rem 1.1rem;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #111827;
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        box-shadow: 0 2px 6px rgba(15,23,42,0.18);
+        border: 1px solid #e5e7eb;
+        z-index: 50;
+    }
+</style>
 </head>
 <body>
 <div class="page">
@@ -878,8 +895,36 @@
         loadInvoices();
     });
 </script>
+<button onclick="window.location.href='index.html'" style="position:fixed; top:10px; left:10px; padding:8px 14px; background:#007bff; color:#fff; border:none; border-radius:6px; cursor:pointer; z-index:9999;">⬅ الرجوع للرئيسية</button>
+<style>
+.nav-return-btn {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    padding: 10px 18px;
+    background: linear-gradient(135deg, #4A90E2, #357ABD);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 9999;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+    transition: 0.2s ease-in-out;
+}
+.nav-return-btn:hover {
+    background: linear-gradient(135deg, #357ABD, #2F66A8);
+    transform: scale(1.04);
+}
+</style>
+
+<button class="nav-return-btn" onclick="window.location.href='index.html'">⬅ الرجوع للرئيسية</button>
 </body>
 </html>
+
+
+
 
 
 

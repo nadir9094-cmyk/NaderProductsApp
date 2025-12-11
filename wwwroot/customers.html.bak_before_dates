@@ -1,0 +1,1825 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>شاشة العملاء والدفع المؤجل</title>
+
+    <style>
+        :root {
+            --bg-body:#f5f7fb;
+            --bg-card:#ffffff;
+            --border:#e1e5f0;
+            --primary:#246bce;
+            --primary-soft:#e3efff;
+            --warning:#ff9f1c;
+            --success:#21a366;
+            --danger:#e55353;
+            --text:#1f2933;
+            --muted:#76829a;
+            --radius:18px;
+            --shadow:0 6px 18px rgba(15,23,42,0.06);
+        }
+        *{box-sizing:border-box;}
+        body{
+            margin:0;
+            padding:20px;
+            background:var(--bg-body);
+            font-family:"Tahoma","Segoe UI",sans-serif;
+            color:var(--text);
+        }
+        .page{max-width:1400px;margin:0 auto;}
+
+        .top-bar{
+            display:flex;
+            align-items:center;
+            gap:10px;
+            margin-bottom:14px;
+            flex-wrap:wrap;
+        }
+        button,a.button-link{
+            border:none;
+            border-radius:999px;
+            padding:8px 18px;
+            font-size:14px;
+            cursor:pointer;
+            font-family:inherit;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            gap:6px;
+            white-space:nowrap;
+            text-decoration:none;
+        }
+        .btn-link{background:#fff;border:1px solid var(--border);color:var(--primary);text-decoration:none;}
+        .btn-orange{background:var(--warning);color:#fff;}
+        .btn-blue{background:var(--primary);color:#fff;}
+        .btn-green{background:var(--success);color:#fff;}
+        .btn-gray{background:#e5e7f0;color:var(--text);}
+        .btn-outline{background:#fff;border:1px solid var(--border);color:var(--text);}
+
+        .page-header{
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            margin-bottom:16px;
+            position:relative;
+        }
+        .page-header h1{
+            margin:0;
+            font-size:24px;
+            font-weight:700;
+        }
+        .user-icon{
+            position:absolute;
+            left:0;
+            width:44px;
+            height:44px;
+            border-radius:50%;
+            background:#4b2f93;
+            color:#fff;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:22px;
+            box-shadow:var(--shadow);
+        }
+
+        .summary-row{
+            display:grid;
+            grid-template-columns:repeat(4,minmax(0,1fr));
+            gap:12px;
+            margin-bottom:14px;
+        }
+        .summary-card{
+            background:var(--bg-card);
+            border-radius:var(--radius);
+            padding:14px 18px;
+            box-shadow:var(--shadow);
+        }
+        .summary-title{
+            font-size:14px;
+            color:var(--muted);
+            margin-bottom:6px;
+        }
+        .summary-value{
+            font-size:20px;
+            font-weight:700;
+        }
+
+        .filters-row{
+            background:var(--bg-card);
+            border-radius:var(--radius);
+            padding:10px 16px;
+            box-shadow:var(--shadow);
+            margin-bottom:12px;
+        }
+        .filters-grid{
+            display:grid;
+            grid-template-columns:1.2fr 1.2fr 1fr 1fr 1fr auto;
+            gap:8px;
+            align-items:center;
+        }
+        .input-pill, select{
+            width:100%;
+            border-radius:999px;
+            border:1px solid var(--border);
+            padding:6px 12px;
+            font-size:13px;
+            background:#fff;
+        }
+        .filters-bottom{
+            margin-top:8px;
+            display:flex;
+            gap:8px;
+            flex-wrap:wrap;
+            align-items:center;
+            justify-content:flex-start;
+        }
+
+        .customers-toolbar{
+            margin-top:10px;
+            margin-bottom:10px;
+            background:var(--bg-card);
+            border-radius:var(--radius);
+            padding:10px 16px;
+            box-shadow:var(--shadow);
+            display:flex;
+            gap:10px;
+            align-items:center;
+        }
+        .amount-label{font-size:14px;color:var(--muted);}
+        .amount-value{font-size:17px;font-weight:700;}
+        .counter-btn{
+            width:26px;
+            height:26px;
+            border-radius:50%;
+            border:1px solid var(--border);
+            background:#fff;
+            font-size:18px;
+            cursor:pointer;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
+        .client-selected{
+            margin-right:auto;
+            display:flex;
+            align-items:center;
+            gap:6px;
+            font-size:13px;
+        }
+        .client-selected .label{color:var(--muted);}
+        .client-selected .name{font-weight:600;}
+
+        .table-card{
+            background:var(--bg-card);
+            border-radius:var(--radius);
+            box-shadow:var(--shadow);
+            overflow:hidden;
+        }
+        table{
+            width:100%;
+            border-collapse:collapse;
+            font-size:14px;
+        }
+        thead{background:var(--primary-soft);}
+        th,td{
+            padding:10px 12px;
+            text-align:center;
+            border-bottom:1px solid var(--border);
+        }
+        th{font-weight:600;color:var(--text);}
+        tbody tr:hover{background:#f3f6ff;}
+        .badge{
+            padding:3px 9px;
+            border-radius:999px;
+            font-size:12px;
+        }
+        .badge-ok{background:#e7f9f0;color:#0d8a4b;}
+        .badge-late{background:#fff3cd;color:#b58900;}
+        .badge-danger{background:#fde2e1;color:#b42318;}
+        .badge-suspended{background:#f4e3ff;color:#6b21a8;}
+
+        .action-btn{
+            padding:4px 10px;
+            border-radius:999px;
+            border:1px solid var(--border);
+            background:#fff;
+            font-size:12px;
+            cursor:pointer;
+            margin:0 2px;
+        }
+
+        /* Modals */
+        .modal-backdrop{
+            position:fixed;
+            inset:0;
+            background:rgba(15,23,42,0.35);
+            display:none;
+            justify-content:center;
+            align-items:center;
+            z-index:50;
+        }
+        .modal{
+            background:#fff;
+            border-radius:18px;
+            box-shadow:var(--shadow);
+            padding:16px 18px;
+            max-width:620px;
+            width:95%;
+            max-height:80vh;
+            overflow-y:auto;
+        }
+        .modal-wide{max-width:900px;}
+        .modal-header{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:10px;
+        }
+        .modal-title{font-size:16px;font-weight:700;}
+        .close-btn{
+            width:26px;
+            height:26px;
+            border-radius:50%;
+            border:none;
+            background:#e5e7f0;
+            cursor:pointer;
+        }
+        .modal-body{
+            display:grid;
+            gap:8px;
+        }
+        .field{
+            display:flex;
+            flex-direction:column;
+            gap:3px;
+        }
+        .field label{
+            font-size:13px;
+            color:var(--muted);
+        }
+        .field input, .field textarea, .field select{
+            border-radius:10px;
+            border:1px solid var(--border);
+            padding:6px 10px;
+            font-size:13px;
+            font-family:inherit;
+        }
+        .field textarea{min-height:60px;resize:vertical;}
+        .modal-footer{
+            margin-top:10px;
+            display:flex;
+            gap:8px;
+            justify-content:flex-start;
+            flex-wrap:wrap;
+        }
+
+        /* Payments modal (bottom sheet) */
+        .payments-modal-backdrop{
+            position:fixed;
+            inset:0;
+            pointer-events:none;
+            z-index:60;
+        }
+        .payments-modal{
+            position:fixed;
+            bottom:20px;
+            left:50%;
+            transform:translateX(-50%);
+            width:520px;
+            max-width:95vw;
+            background:#fff;
+            border-radius:18px;
+            box-shadow:0 10px 30px rgba(15,23,42,0.35);
+            padding:14px 16px;
+            display:none;
+        }
+        .payments-list{
+            max-height:55vh;
+            overflow-y:auto;
+            margin-top:6px;
+            border-top:1px solid var(--border);
+            padding-top:6px;
+        }
+        .payment-row{
+            display:grid;
+            grid-template-columns:1fr 1.2fr auto;
+            gap:6px;
+            align-items:center;
+            padding:4px 0;
+            border-bottom:1px dashed #e5e7f0;
+        }
+        .payment-row:last-child{border-bottom:none;}
+
+        /* Invoice items modal */
+        .invoice-items-modal .modal{
+            max-width:900px;
+        }
+
+        @media(max-width:900px){
+            .summary-row{grid-template-columns:repeat(2,minmax(0,1fr));}
+            .filters-grid{grid-template-columns:1fr 1fr;}
+            .customers-toolbar{flex-direction:column;align-items:flex-start;}
+        }
+        @media(max-width:600px){
+            .summary-row{grid-template-columns:1fr;}
+            .filters-grid{grid-template-columns:1fr;}
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- الشريط العلوي -->
+    <div class="top-bar">
+        <a href="index.html" class="btn-link">⬅ العودة للرئيسية</a>
+        <button class="btn-blue" id="btnPrintReport">🖨 طباعة تقرير العملاء (حسب البحث)</button>
+        <button class="btn-green" id="btnAddCustomer">+ إضافة عميل جديد</button>
+        <button class="btn-orange" id="btnShowAllCustomers">👥 عرض جميع العملاء</button>
+        <button class="btn-gray" id="btnShowPaidCustomers">✔ العملاء تم السداد</button>
+    </div>
+
+    <!-- العنوان -->
+    <div class="page-header">
+        <h1>شاشة العملاء والدفع المؤجل</h1>
+        <div class="user-icon">👤</div>
+    </div>
+
+    <!-- ملخص -->
+    <div class="summary-row">
+        <div class="summary-card">
+            <div class="summary-title">عدد العملاء (حسب البحث)</div>
+            <div class="summary-value" id="summaryCount">0</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-title">إجمالي المبالغ المؤجلة</div>
+            <div class="summary-value"><span id="summaryDeferred">0.00</span> ر.س</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-title">إجمالي المبالغ المدفوعة</div>
+            <div class="summary-value"><span id="summaryPaid">0.00</span> ر.س</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-title">إجمالي المتبقي</div>
+            <div class="summary-value"><span id="summaryRemaining">0.00</span> ر.س</div>
+        </div>
+    </div>
+
+    <!-- فلاتر البحث -->
+    <div class="filters-row">
+        <div class="filters-grid">
+            <input class="input-pill" id="filterName" placeholder="بحث باسم العميل">
+            <input class="input-pill" id="filterPhone" placeholder="بحث برقم الهاتف">
+            <input type="date" class="input-pill" id="filterFromDate">
+            <input type="date" class="input-pill" id="filterToDate">
+            <select id="filterStatus" class="input-pill">
+                <option value="all">الحالة (الكل)</option>
+                <option value="has_debt">عليه مبالغ</option>
+                <option value="late">متعثر</option>
+                <option value="paid">مسدد بالكامل</option>
+            </select>
+            <button class="btn-gray" id="btnResetFilters">تصفية / إلغاء البحث</button>
+        </div>
+        <div class="filters-bottom">
+            <span style="font-size:12px;color:var(--muted);">
+                ملاحظة: الجدول أدناه يعرض فقط العملاء الذين عليهم مبالغ حسب الفلاتر.
+            </span>
+        </div>
+    </div>
+
+    <!-- شريط العميل المختار -->
+    <div class="customers-toolbar">
+        <span class="amount-label">المتبقي على العميل المختار:</span>
+        <span class="amount-value"><span id="selectedRemaining">0.00</span> ر.س</span>
+
+        <button class="counter-btn" id="btnQuickPay">+</button>
+
+        <div class="client-selected">
+            <span>📋</span>
+            <span class="label">العميل المختار للكاشير:</span>
+            <span class="name" id="selectedCustomerName">—</span>
+        </div>
+
+        <button class="btn-outline" id="btnFromCashier">اختيار من شاشة الكاشير (لاحقاً)</button>
+    </div>
+
+    <!-- جدول العملاء الذين عليهم مبالغ -->
+    <div class="table-card">
+        <table>
+            <thead>
+            <tr>
+                <th>العميل</th>
+                <th>الهاتف</th>
+                <th>الحالة</th>
+                <th>إجمالي الفواتير</th>
+                <th>المدفوع</th>
+                <th>المتبقي</th>
+                <th>آخر حركة</th>
+                <th>إجراءات</th>
+            </tr>
+            </thead>
+            <tbody id="customersTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- نافذة إضافة/تعديل عميل -->
+<div class="modal-backdrop" id="customerModalBackdrop">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title" id="customerModalTitle">إضافة عميل جديد</div>
+            <button class="close-btn" data-close="customerModalBackdrop">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="field">
+                <label>اسم العميل</label>
+                <input id="custName">
+            </div>
+            <div class="field">
+                <label>رقم الهاتف</label>
+                <input id="custPhone">
+            </div>
+            <div class="field">
+                <label>عنوان العميل</label>
+                <input id="custAddress">
+            </div>
+            <div class="field">
+                <label>الرصيد الافتتاحي (مبلغ مؤجل يبدأ به العميل)</label>
+                <input id="custOpeningBalance" type="number" step="0.01" value="0">
+            </div>
+            <div class="field">
+                <label>حالة الحساب</label>
+                <select id="custStatus">
+                    <option value="active">نشط</option>
+                    <option value="suspended_temp">إيقاف مؤقت</option>
+                    <option value="suspended_perm">إيقاف دائم</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>ملاحظات</label>
+                <textarea id="custNotes"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-green" id="btnSaveCustomer">حفظ</button>
+            <button class="btn-gray" data-close="customerModalBackdrop">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة عرض جميع العملاء -->
+<div class="modal-backdrop" id="allCustomersModalBackdrop">
+    <div class="modal modal-wide">
+        <div class="modal-header">
+            <div class="modal-title">جميع العملاء (تعديل / مبالغ / إيقاف / تفعيل / حذف)</div>
+            <button class="close-btn" data-close="allCustomersModalBackdrop">✕</button>
+        </div>
+        <div class="modal-body" style="padding-top:4px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <input id="allCustFilterName" placeholder="بحث باسم العميل" style="flex:1 1 180px;border-radius:999px;border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;">
+                <input id="allCustFilterPhone" placeholder="بحث برقم الهاتف" style="flex:1 1 180px;border-radius:999px;border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;">
+                <button class="btn-gray" id="btnResetAllCustomersFilter">مسح البحث</button>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                <tr style="background:#f3f4f6;">
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">العميل</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الهاتف</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الحالة</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">إجمالي الفواتير</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">المدفوع</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">المتبقي</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">إجراءات</th>
+                </tr>
+                </thead>
+                <tbody id="allCustomersTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة العملاء تم السداد -->
+<div class="modal-backdrop" id="paidCustomersModalBackdrop">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">العملاء تم سداد جميع المبالغ</div>
+            <button class="close-btn" data-close="paidCustomersModalBackdrop">✕</button>
+        </div>
+        <div class="modal-body">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                <input id="paidCustFilterName" placeholder="بحث باسم العميل" style="flex:1 1 160px;border-radius:999px;border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;">
+                <input id="paidCustFilterPhone" placeholder="بحث برقم الهاتف" style="flex:1 1 160px;border-radius:999px;border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;">
+                <button class="btn-gray" id="btnResetPaidCustomersFilter">مسح البحث</button>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                <tr style="background:#f3f4f6;">
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">العميل</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الهاتف</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">آخر حركة</th>
+                </tr>
+                </thead>
+                <tbody id="paidCustomersTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة فواتير عميل -->
+<div class="modal-backdrop" id="invoicesModalBackdrop">
+    <div class="modal modal-wide">
+        <div class="modal-header">
+            <div class="modal-title" id="invoicesModalTitle">فواتير العميل</div>
+            <button class="close-btn" data-close="invoicesModalBackdrop">✕</button>
+        </div>
+        <div class="modal-body">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;align-items:center;">
+                <input type="date" id="invFilterFrom" class="input-pill" style="max-width:180px;">
+                <input type="date" id="invFilterTo" class="input-pill" style="max-width:180px;">
+                <button class="btn-gray" id="btnFilterInvoices">تطبيق الفترة</button>
+                <button class="btn-blue" id="btnPrintInvoices">🖨 طباعة فواتير العميل (ورقة كاشير)</button>
+                <button class="btn-orange" id="btnPrintInvoiceItemsReport">🧾 طباعة مواد فواتير العميل</button>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                <tr style="background:#f3f4f6;">
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">التاريخ</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الوقت</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">رقم الفاتورة</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">اسم المنتج / الوصف</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">عرض مواد الفاتورة</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">المبلغ</th>
+                </tr>
+                </thead>
+                <tbody id="invoicesTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة الدفعات (أسفل الشاشة) -->
+<div class="payments-modal-backdrop" id="paymentsBackdrop">
+    <div class="payments-modal" id="paymentsModal">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div style="font-weight:700;font-size:14px;">
+                الدفعات للعميل: <span id="paymentsCustomerName"></span>
+            </div>
+            <button class="close-btn" id="btnClosePayments">✕</button>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:4px;">
+            المتبقي الحالي: <span id="paymentsRemaining">0.00</span> ر.س
+        </div>
+
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;align-items:center;">
+            <input type="date" id="paymentFilterFrom" style="flex:1 1 120px;border-radius:10px;border:1px solid var(--border);padding:5px 8px;font-size:13px;">
+            <input type="date" id="paymentFilterTo" style="flex:1 1 120px;border-radius:10px;border:1px solid var(--border);padding:5px 8px;font-size:13px;">
+            <button class="btn-gray" id="btnApplyPaymentFilter">تطبيق الفترة</button>
+            <button class="btn-blue" id="btnPrintPaymentsReport">🖨 طباعة تقرير الدفعات</button>
+        </div>
+
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+            <input type="number" step="0.01" id="paymentAmount" placeholder="مبلغ الدفع" style="flex:1 1 80px;border-radius:10px;border:1px solid var(--border);padding:5px 8px;font-size:13px;">
+            <select id="paymentMethod" style="flex:0 0 110px;border-radius:10px;border:1px solid var(--border);padding:5px 8px;font-size:13px;">
+                <option value="كاش">كاش</option>
+                <option value="شبكة">شبكة</option>
+            </select>
+            <input type="text" id="paymentNote" placeholder="ملاحظة (اختياري)" style="flex:1 1 120px;border-radius:10px;border:1px solid var(--border);padding:5px 8px;font-size:13px;">
+            <button class="btn-green" id="btnAddPaymentQuick">إضافة</button>
+        </div>
+        <div class="payments-list" id="paymentsList"></div>
+    </div>
+</div>
+
+<!-- نافذة عرض مواد الفاتورة -->
+<div class="modal-backdrop invoice-items-modal" id="invoiceItemsModalBackdrop">
+    <div class="modal modal-wide">
+        <div class="modal-header">
+            <div class="modal-title" id="invoiceItemsModalTitle">مواد الفاتورة</div>
+            <button class="close-btn" data-close="invoiceItemsModalBackdrop">✕</button>
+        </div>
+        <div class="modal-body">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;text-align:center;">
+                <thead>
+                <tr style="background:#f3f4f6;">
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">اسم المنتج</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الكمية</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">السعر شامل الضريبة</th>
+                    <th style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">الخصم</th>
+                </tr>
+                </thead>
+                <tbody id="invoiceItemsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// =================== بيانات عامة من الـ API ===================
+let customersData = [];
+let selectedCustomerId = null;
+let currentInvoicesCustomerId = null;
+let currentPaymentsCustomerId = null;
+let editingCustomerId = null;
+
+// --------- API Helpers ----------
+async function apiJson(url, options = {}) {
+    const opts = {
+        headers: { "Content-Type": "application/json" },
+        ...options
+    };
+    const res = await fetch(url, opts);
+    if (!res.ok) {
+        let msg = "";
+        try { msg = await res.text(); } catch {}
+        throw new Error(msg || ("خطأ في الاتصال: " + res.status));
+    }
+    try {
+        return await res.json();
+    } catch {
+        return null;
+    }
+}
+
+async function loadCustomersFromApi() {
+    try {
+        const res = await fetch("/api/customers/full");
+        if (!res.ok) throw new Error();
+        customersData = await res.json();
+        renderMainTable();
+        renderAllCustomersModal();
+        if (currentPaymentsCustomerId) renderPaymentsList();
+    } catch (e) {
+        console.error(e);
+        alert("تعذر الاتصال بقاعدة البيانات.\\nتأكد أن السيرفر يعمل ثم أعد المحاولة.");
+    }
+}
+
+// =================== دوال مساعدة ===================
+function formatAmount(v){ return (v || 0).toFixed(2); }
+
+function parseDate(value){
+    return value ? new Date(value) : null;
+}
+
+function getCustomerById(id){
+    return customersData.find(c=>c.id===id) || null;
+}
+
+function getCustomerInvoices(id){
+    const c = getCustomerById(id);
+    return c && Array.isArray(c.invoices) ? c.invoices : [];
+}
+
+function getCustomerPayments(id){
+    const c = getCustomerById(id);
+    return c && Array.isArray(c.payments) ? c.payments : [];
+}
+
+function getCustomerTotals(cOrId){
+    let c = typeof cOrId === "number" ? getCustomerById(cOrId) : cOrId;
+    if (!c) return { invoicesTotal:0, paymentsTotal:0, remaining:0 };
+    if (typeof c.invoicesTotal === "number" && typeof c.paymentsTotal === "number" && typeof c.remaining === "number") {
+        return {
+            invoicesTotal: c.invoicesTotal,
+            paymentsTotal: c.paymentsTotal,
+            remaining: c.remaining
+        };
+    }
+    const invList = getCustomerInvoices(c.id);
+    const payList = getCustomerPayments(c.id);
+    const invoicesTotal = invList.reduce((s,x)=>s+(x.amount||0),0);
+    const paymentsTotal = payList.reduce((s,x)=>s+(x.amount||0),0);
+    return {
+        invoicesTotal,
+        paymentsTotal,
+        remaining: invoicesTotal - paymentsTotal
+    };
+}
+
+function getCustomerStatusType(c){
+    const totals = getCustomerTotals(c);
+    if (totals.remaining <= 0.001) return "paid";
+    const inv = getCustomerInvoices(c.id);
+    if (!inv.length) return "has_debt";
+    const lastDate = inv.reduce((max,x)=>{
+        const d = new Date(x.date);
+        return d>max?d:max;
+    }, new Date(0));
+    const diffDays = (Date.now() - lastDate.getTime()) / (1000*60*60*24);
+    if (diffDays > 30) return "late";
+    return "has_debt";
+}
+
+// =================== ملخص حسب البحث ===================
+function updateSummary(filteredCustomers){
+    let totalInv=0,totalPay=0,remaining=0,count=0;
+    filteredCustomers.forEach(c=>{
+        const t = getCustomerTotals(c);
+        totalInv += t.invoicesTotal;
+        totalPay += t.paymentsTotal;
+        remaining += t.remaining;
+        count++;
+    });
+    document.getElementById("summaryCount").textContent = count;
+    document.getElementById("summaryDeferred").textContent = formatAmount(totalInv);
+    document.getElementById("summaryPaid").textContent = formatAmount(totalPay);
+    document.getElementById("summaryRemaining").textContent = formatAmount(remaining);
+}
+
+// =================== تطبيق الفلاتر ===================
+function applyFilters(includePaid=false){
+    const name = document.getElementById("filterName").value.trim();
+    const phone = document.getElementById("filterPhone").value.trim();
+    const fromDate = parseDate(document.getElementById("filterFromDate").value);
+    const toDate   = parseDate(document.getElementById("filterToDate").value);
+    const status   = document.getElementById("filterStatus").value;
+
+    let result = customersData.slice();
+
+    if (name){
+        result = result.filter(c=>c.name && c.name.includes(name));
+    }
+    if (phone){
+        result = result.filter(c=>c.phone && c.phone.includes(phone));
+    }
+
+    // فلترة حسب الفترة الزمنية من الفواتير
+    result = result.filter(c=>{
+        const invList = getCustomerInvoices(c.id);
+        if (!invList.length) return false;
+        let hasInRange = false;
+        invList.forEach(i=>{
+            const d = new Date(i.date);
+            if (fromDate && d < fromDate) return;
+            if (toDate && d > toDate) return;
+            hasInRange = true;
+        });
+        return hasInRange;
+    });
+
+    if (status !== "all"){
+        result = result.filter(c=>getCustomerStatusType(c)===status);
+    }
+
+    if (!includePaid){
+        result = result.filter(c=>getCustomerTotals(c).remaining > 0.001);
+    }
+
+    return result;
+}
+
+// =================== جدول العملاء الرئيسي ===================
+function renderMainTable(){
+    const tbody = document.getElementById("customersTableBody");
+    tbody.innerHTML = "";
+    const filtered = applyFilters(false);
+
+    if (!filtered.length){
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 8;
+        td.textContent = "لا يوجد عملاء عليهم مبالغ حسب شروط البحث.";
+        td.style.padding = "40px";
+        td.style.color = "#6b7280";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        updateSummary(filtered);
+        updateSelectedSummary();
+        return;
+    }
+
+    filtered.forEach(c=>{
+        const totals = getCustomerTotals(c);
+        const statusType = getCustomerStatusType(c);
+
+        const tr = document.createElement("tr");
+        if (c.id === selectedCustomerId){
+            tr.style.backgroundColor = "#eef2ff";
+        }
+
+        function addTd(text){
+            const td = document.createElement("td");
+            td.textContent = text;
+            tr.appendChild(td);
+        }
+
+        addTd(c.name || "");
+        addTd(c.phone || "-");
+
+        const statusTd = document.createElement("td");
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        if (c.status === "suspended_perm"){
+            badge.classList.add("badge-suspended");
+            badge.textContent = "موقوف دائمًا";
+        }else if (c.status === "suspended_temp"){
+            badge.classList.add("badge-suspended");
+            badge.textContent = "موقوف مؤقتًا";
+        }else if (statusType === "late"){
+            badge.classList.add("badge-danger");
+            badge.textContent = "متعثر";
+        }else{
+            badge.classList.add("badge-late");
+            badge.textContent = "عليه مبالغ";
+        }
+        statusTd.appendChild(badge);
+        tr.appendChild(statusTd);
+
+        addTd(formatAmount(totals.invoicesTotal));
+        addTd(formatAmount(totals.paymentsTotal));
+        addTd(formatAmount(totals.remaining));
+
+        const invList = getCustomerInvoices(c.id);
+        let lastMove = "-";
+        if (invList.length){
+            const last = invList.reduce((max,x)=>{
+                const d = new Date(x.date);
+                return d>max?d:max;
+            }, new Date(0));
+            lastMove = last.toLocaleDateString("ar-SA") + " " +
+                       last.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+        }
+        addTd(lastMove);
+
+        const actionsTd = document.createElement("td");
+        const btnSelect = document.createElement("button");
+        btnSelect.className = "action-btn";
+        btnSelect.textContent = "اختيار";
+        btnSelect.onclick = ()=>{ selectedCustomerId = c.id; updateSelectedSummary(); renderMainTable(); };
+
+        const btnInvoices = document.createElement("button");
+        btnInvoices.className = "action-btn";
+        btnInvoices.textContent = "الفواتير";
+        btnInvoices.onclick = ()=>openInvoicesModal(c.id);
+
+        const btnPayments = document.createElement("button");
+        btnPayments.className = "action-btn";
+        btnPayments.textContent = "السداد";
+        btnPayments.onclick = ()=>openPaymentsModal(c.id);
+
+        actionsTd.appendChild(btnSelect);
+        actionsTd.appendChild(btnInvoices);
+        actionsTd.appendChild(btnPayments);
+
+        tr.appendChild(actionsTd);
+        tbody.appendChild(tr);
+    });
+
+    updateSummary(filtered);
+    updateSelectedSummary();
+}
+
+function updateSelectedSummary(){
+    const nameEl = document.getElementById("selectedCustomerName");
+    const remEl  = document.getElementById("selectedRemaining");
+    if (!selectedCustomerId){
+        nameEl.textContent = "—";
+        remEl.textContent = "0.00";
+        return;
+    }
+    const c = getCustomerById(selectedCustomerId);
+    if (!c){
+        nameEl.textContent = "—";
+        remEl.textContent = "0.00";
+        return;
+    }
+    const totals = getCustomerTotals(c);
+    nameEl.textContent = c.name || "";
+    remEl.textContent = formatAmount(totals.remaining);
+}
+
+// =================== نافذة جميع العملاء ===================
+function renderAllCustomersModal(){
+    const tbody = document.getElementById("allCustomersTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    const nameFilter = (document.getElementById("allCustFilterName")?.value || "").trim();
+    const phoneFilter = (document.getElementById("allCustFilterPhone")?.value || "").trim();
+
+    let list = customersData.slice();
+    if (nameFilter){
+        list = list.filter(c=>c.name && c.name.includes(nameFilter));
+    }
+    if (phoneFilter){
+        list = list.filter(c=>c.phone && c.phone.includes(phoneFilter));
+    }
+
+    list.forEach(c=>{
+        const totals = getCustomerTotals(c);
+        const tr = document.createElement("tr");
+        function td(text){
+            const cell = document.createElement("td");
+            cell.style.padding = "6px 8px";
+            cell.style.borderBottom = "1px solid #e5e7eb";
+            cell.textContent = text;
+            return cell;
+        }
+        tr.appendChild(td(c.name || ""));
+        tr.appendChild(td(c.phone || "-"));
+
+        const statusCell = td("");
+        const statusType = getCustomerStatusType(c);
+        let statusText = "نشط";
+        if (c.status === "suspended_perm") statusText = "موقوف دائمًا";
+        else if (c.status === "suspended_temp") statusText = "موقوف مؤقتًا";
+        else if (statusType === "late") statusText = "متعثر";
+        else if (statusType === "paid") statusText = "مسدد";
+        else statusText = "عليه مبالغ";
+        statusCell.textContent = statusText;
+        tr.appendChild(statusCell);
+
+        tr.appendChild(td(formatAmount(totals.invoicesTotal)));
+        tr.appendChild(td(formatAmount(totals.paymentsTotal)));
+        tr.appendChild(td(formatAmount(totals.remaining)));
+
+        const actionsCell = td("");
+        const mkBtn = (txt,handler,color)=>{
+            const b = document.createElement("button");
+            b.textContent = txt;
+            b.className = "action-btn";
+            if (color) b.style.color = color;
+            b.onclick = handler;
+            return b;
+        };
+        actionsCell.appendChild(mkBtn("تعديل", ()=>openCustomerModal(c.id)));
+        actionsCell.appendChild(mkBtn("إضافة مبلغ", ()=>addAmountToCustomer(c.id)));
+        actionsCell.appendChild(mkBtn("خصم مبلغ", ()=>addPaymentToCustomerQuick(c.id)));
+        actionsCell.appendChild(mkBtn(c.status==="active"?"إيقاف":"تفعيل", ()=>toggleCustomerStatus(c.id)));
+        actionsCell.appendChild(mkBtn("حذف", ()=>deleteCustomer(c.id),"#b91c1c"));
+        tr.appendChild(actionsCell);
+
+        tbody.appendChild(tr);
+    });
+}
+
+// إضافة مبلغ (فاتورة يدوية) على العميل
+async function addAmountToCustomer(id){
+    const c = getCustomerById(id);
+    if (!c) return;
+    const val = prompt("مبلغ سيتم إضافته على العميل (يزيد المبالغ المؤجلة):","0");
+    const amount = parseFloat(val || "0");
+    if (isNaN(amount) || amount<=0) return;
+    const desc = prompt("اسم المنتج / وصف الفاتورة:","تعديل رصيد يدوي") || "تعديل رصيد يدوي";
+
+    try{
+        await apiJson(`/api/customers/${id}/invoices`, {
+            method:"POST",
+            body: JSON.stringify({
+                amount,
+                description: desc,
+                invoiceDate: null
+            })
+        });
+        await loadCustomersFromApi();
+    }catch(e){
+        alert(e.message);
+    }
+}
+
+// خصم مبلغ (تسجيل دفعة سريعة من إطار جميع العملاء)
+async function addPaymentToCustomerQuick(id){
+    const c = getCustomerById(id);
+    if (!c) return;
+    const totals = getCustomerTotals(c);
+    const val = prompt("مبلغ سيتم خصمه (كتسجيل دفعة على العميل)، المتبقي الحالي "+formatAmount(totals.remaining)+" ر.س:","0");
+    const amount = parseFloat(val || "0");
+    if (isNaN(amount) || amount<=0) return;
+    const method = prompt("طريقة الدفع (كاش / شبكة):","كاش") || "كاش";
+    const note = prompt("ملاحظة الدفع:","دفعة من نافذة العملاء") || "";
+
+    try{
+        await apiJson(`/api/customers/${id}/payments`, {
+            method:"POST",
+            body: JSON.stringify({
+                amount,
+                method,
+                note,
+                paymentDate: null
+            })
+        });
+        await loadCustomersFromApi();
+    }catch(e){
+        alert(e.message);
+    }
+}
+
+// تغيير حالة الحساب
+async function toggleCustomerStatus(id){
+    const c = getCustomerById(id);
+    if (!c) return;
+    let newStatus = "active";
+    if (c.status === "active"){
+        const type = prompt("نوع الإيقاف: 1=مؤقت, 2=دائم","1");
+        newStatus = (type === "2") ? "suspended_perm" : "suspended_temp";
+    }else{
+        newStatus = "active";
+    }
+    try{
+        await fetch(`/api/customers/${id}/status?status=${encodeURIComponent(newStatus)}`, { method:"POST" });
+        await loadCustomersFromApi();
+    }catch(e){
+        alert("فشل تغيير حالة العميل.");
+    }
+}
+
+// حذف عميل
+async function deleteCustomer(id){
+    const c = getCustomerById(id);
+    if (!c) return;
+    if (!confirm("سيتم حذف العميل وجميع سجلاته (إن كانت متاحة للحذف)، هل أنت متأكد؟")) return;
+
+    try{
+        const res = await fetch(`/api/customers/${id}`, { method:"DELETE" });
+        if (!res.ok){
+            let msg = "";
+            try { msg = await res.text(); } catch {}
+            alert(msg || "لا يمكن حذف العميل.");
+            return;
+        }
+        if (selectedCustomerId === id) selectedCustomerId = null;
+        await loadCustomersFromApi();
+    }catch(e){
+        alert("حدث خطأ أثناء حذف العميل.");
+    }
+}
+
+// =================== النوافذ العامة ===================
+function openModal(id){ document.getElementById(id).style.display="flex"; }
+function closeModal(id){ document.getElementById(id).style.display="none"; }
+
+// نافذة العميل (إضافة / تعديل)
+function openCustomerModal(id){
+    editingCustomerId = id || null;
+    const title = document.getElementById("customerModalTitle");
+    const name = document.getElementById("custName");
+    const phone = document.getElementById("custPhone");
+    const address = document.getElementById("custAddress");
+    const opening = document.getElementById("custOpeningBalance");
+    const notes = document.getElementById("custNotes");
+    const status = document.getElementById("custStatus");
+
+    if (editingCustomerId){
+        const c = getCustomerById(editingCustomerId);
+        if (!c) return;
+        title.textContent = "تعديل بيانات العميل";
+        name.value = c.name || "";
+        phone.value = c.phone || "";
+        address.value = c.address || "";
+        notes.value = c.notes || "";
+        status.value = c.status || "active";
+        opening.value = "0";
+    }else{
+        title.textContent = "إضافة عميل جديد";
+        name.value = "";
+        phone.value = "";
+        address.value = "";
+        notes.value = "";
+        status.value = "active";
+        opening.value = "0";
+    }
+
+    openModal("customerModalBackdrop");
+}
+
+async function saveCustomerFromModal(){
+    const name = document.getElementById("custName").value.trim();
+    const phone = document.getElementById("custPhone").value.trim();
+    const address = document.getElementById("custAddress").value.trim();
+    const opening = parseFloat(document.getElementById("custOpeningBalance").value || "0");
+    const notes = document.getElementById("custNotes").value.trim();
+    const status = document.getElementById("custStatus").value;
+
+    if (!name){
+        alert("الرجاء إدخال اسم العميل");
+        return;
+    }
+
+    const payload = {
+        name,
+        phone: phone || null,
+        address: address || null,
+        notes: notes || null,
+        status,
+        openingBalance: isNaN(opening) ? 0 : opening
+    };
+
+    try{
+        if (editingCustomerId){
+            await apiJson(`/api/customers/${editingCustomerId}`, {
+                method:"PUT",
+                body: JSON.stringify(payload)
+            });
+        }else{
+            await apiJson("/api/customers", {
+                method:"POST",
+                body: JSON.stringify(payload)
+            });
+        }
+        closeModal("customerModalBackdrop");
+        await loadCustomersFromApi();
+    }catch(e){
+        alert(e.message);
+    }
+}
+
+// =================== العملاء تم السداد ===================
+function renderPaidCustomersModal(){
+    const tbody = document.getElementById("paidCustomersTableBody");
+    tbody.innerHTML = "";
+
+    const nameFilter = (document.getElementById("paidCustFilterName")?.value || "").trim();
+    const phoneFilter = (document.getElementById("paidCustFilterPhone")?.value || "").trim();
+
+    const list = customersData.filter(c=>getCustomerTotals(c).remaining<=0.001);
+    let filtered = list;
+    if (nameFilter){
+        filtered = filtered.filter(c=>c.name && c.name.includes(nameFilter));
+    }
+    if (phoneFilter){
+        filtered = filtered.filter(c=>c.phone && c.phone.includes(phoneFilter));
+    }
+
+    if (!filtered.length){
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 3;
+        td.textContent = "لا يوجد عملاء مسددين بالكامل حسب البحث.";
+        td.style.padding = "20px";
+        td.style.color = "#6b7280";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
+
+    filtered.forEach(c=>{
+        const tr = document.createElement("tr");
+        function td(text){
+            const cell=document.createElement("td");
+            cell.style.padding="6px 8px";
+            cell.style.borderBottom="1px solid #e5e7eb";
+            cell.textContent=text;
+            return cell;
+        }
+        tr.appendChild(td(c.name || ""));
+        tr.appendChild(td(c.phone || "-"));
+        const invList = getCustomerInvoices(c.id);
+        let lastMove="-";
+        if (invList.length){
+            const last = invList.reduce((max,x)=>{
+                const d=new Date(x.date);
+                return d>max?d:max;
+            }, new Date(0));
+            lastMove = last.toLocaleDateString("ar-SA")+" "+last.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+        }
+        tr.appendChild(td(lastMove));
+        tbody.appendChild(tr);
+    });
+}
+
+function openPaidCustomersModal(){
+    renderPaidCustomersModal();
+    openModal("paidCustomersModalBackdrop");
+}
+
+// =================== فواتير العميل ===================
+function openInvoicesModal(customerId){
+    currentInvoicesCustomerId = customerId;
+    const c = getCustomerById(customerId);
+    document.getElementById("invoicesModalTitle").textContent = "فواتير العميل: " + (c?c.name:"");
+    document.getElementById("invFilterFrom").value = "";
+    document.getElementById("invFilterTo").value = "";
+    renderInvoicesTable();
+    openModal("invoicesModalBackdrop");
+}
+
+function getFilteredInvoicesForCurrent(){
+    if (!currentInvoicesCustomerId) return [];
+    const from = parseDate(document.getElementById("invFilterFrom").value);
+    const to   = parseDate(document.getElementById("invFilterTo").value);
+    let list = getCustomerInvoices(currentInvoicesCustomerId);
+    list = list.filter(i=>{
+        const d=new Date(i.date);
+        if (from && d<from) return false;
+        if (to && d>to) return false;
+        return true;
+    });
+    return list;
+}
+
+// محاولة استخراج رقم الفاتورة من النص، مثل: "فاتورة مؤجلة من شاشة الكاشير رقم 27"
+function parseInvoiceNumberFromText(text){
+    if (!text) return null;
+    const m = text.match(/رقم\\s+(\\d+)/);
+    return m ? parseInt(m[1],10) : null;
+}
+
+function renderInvoicesTable(){
+    const tbody = document.getElementById("invoicesTableBody");
+    tbody.innerHTML = "";
+    if (!currentInvoicesCustomerId) return;
+
+    const list = getFilteredInvoicesForCurrent();
+
+    if (!list.length){
+        const tr=document.createElement("tr");
+        const td=document.createElement("td");
+        td.colSpan=6;
+        td.textContent="لا توجد فواتير في الفترة المحددة.";
+        td.style.padding="20px";
+        td.style.color="#6b7280";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
+
+    list.forEach(i=>{
+        const tr=document.createElement("tr");
+        const d=new Date(i.date);
+        const dateStr=d.toLocaleDateString("ar-SA");
+        const timeStr=d.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+
+        const invoiceNumber = i.invoiceNumber || i.cashierInvoiceId || parseInvoiceNumberFromText(i.description) || "-";
+        const numericInvoiceId = typeof invoiceNumber === "number" ? invoiceNumber : parseInvoiceNumberFromText(String(invoiceNumber)) || null;
+
+        function cell(text){
+            const td=document.createElement("td");
+            td.style.padding="6px 8px";
+            td.style.borderBottom="1px solid #e5e7eb";
+            td.textContent=text;
+            return td;
+        }
+
+        tr.appendChild(cell(dateStr));
+        tr.appendChild(cell(timeStr));
+        tr.appendChild(cell(invoiceNumber === "-" ? "-" : String(invoiceNumber)));
+        tr.appendChild(cell(i.description || ""));
+
+        // زر مواد الفاتورة
+        const itemsTd = document.createElement("td");
+        if (numericInvoiceId){
+            const btn = document.createElement("button");
+            btn.className = "action-btn";
+            btn.textContent = "عرض المواد";
+            btn.onclick = ()=>openInvoiceItemsModal(numericInvoiceId, dateStr, String(invoiceNumber));
+            itemsTd.appendChild(btn);
+        }else{
+            itemsTd.textContent = "-";
+        }
+        tr.appendChild(itemsTd);
+
+        tr.appendChild(cell(formatAmount(i.amount)));
+        tbody.appendChild(tr);
+    });
+}
+
+// طباعة فواتير العميل بحجم ورقة الكاشير
+function printInvoicesForCustomer(){
+    if (!currentInvoicesCustomerId) return;
+    const c = getCustomerById(currentInvoicesCustomerId);
+    const list = getFilteredInvoicesForCurrent();
+
+    let html = `
+    <html lang="ar" dir="rtl">
+    <head><meta charset="utf-8"><title>تقرير فواتير العميل</title>
+    <style>
+        body{font-family:"Tahoma";width:80mm;margin:0 auto;font-size:12px;}
+        h2,h3{text-align:center;margin:4px 0;}
+        .line{border-top:1px dashed #555;margin:4px 0;}
+        .row{display:flex;justify-content:space-between;font-size:12px;margin:2px 0;}
+        .label{color:#555;}
+    </style>
+    </head>
+    <body>
+        <h2>تقرير فواتير العميل</h2>
+        <h3>${c?c.name:""}</h3>
+        <div class="line"></div>
+    `;
+
+    if (!list.length){
+        html += `<div style="text-align:center;margin-top:10px;">لا توجد فواتير في الفترة المحددة.</div>`;
+    }else{
+        list.forEach(i=>{
+            const d=new Date(i.date);
+            const dateStr=d.toLocaleDateString("ar-SA");
+            const timeStr=d.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+            html += `
+                <div class="row"><span class="label">التاريخ:</span><span>${dateStr} ${timeStr}</span></div>
+                <div class="row"><span class="label">الوصف:</span><span>${i.description || ""}</span></div>
+                <div class="row"><span class="label">المبلغ:</span><span>${formatAmount(i.amount)} ر.س</span></div>
+                <div class="line"></div>
+            `;
+        });
+    }
+
+    html += `<script>window.print();<\/script></body></html>`;
+
+    const w = window.open("","_blank","width=400,height=600");
+    w.document.write(html);
+    w.document.close();
+}
+
+// تقرير مواد فواتير العميل (لكل الفواتير في الفترة)
+async function printInvoiceItemsReportForCustomer(){
+    if (!currentInvoicesCustomerId) return;
+    const c = getCustomerById(currentInvoicesCustomerId);
+    const invoices = getFilteredInvoicesForCurrent();
+
+    const rows = [];
+
+    for (const inv of invoices){
+        const baseNumber = inv.invoiceNumber || inv.cashierInvoiceId || parseInvoiceNumberFromText(inv.description);
+        const invoiceId = baseNumber ? parseInt(baseNumber,10) : null;
+        if (!invoiceId) continue;
+
+        try{
+            const res = await fetch(`/api/cashier/invoices/${invoiceId}/items`);
+            if (!res.ok) continue;
+            const items = await res.json();
+            const d = new Date(inv.date);
+            const dateStr = d.toLocaleDateString("ar-SA");
+            const timeStr = d.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+
+            (items || []).forEach(it=>{
+                rows.push({
+                    invoiceId,
+                    date: dateStr+" "+timeStr,
+                    productName: it.productName || "",
+                    qty: (it.qty ?? 0),
+                    price: (it.price ?? 0),
+                    discount: (it.discount ?? 0)
+                });
+            });
+        }catch(e){
+            console.error(e);
+        }
+    }
+
+    let html = `
+    <html lang="ar" dir="rtl">
+    <head><meta charset="utf-8"><title>تقرير مواد فواتير العميل</title>
+    <style>
+        body{font-family:"Tahoma";margin:10px;font-size:12px;}
+        h2,h3{text-align:center;margin:4px 0;}
+        table{width:100%;border-collapse:collapse;font-size:12px;}
+        th,td{border:1px solid #ccc;padding:4px 6px;text-align:center;}
+        th{background:#f3f4f6;}
+    </style>
+    </head>
+    <body>
+        <h2>تقرير مواد فواتير العميل</h2>
+        <h3>${c?c.name:""}</h3>
+        <p style="text-align:center;font-size:11px;">تاريخ الطباعة: ${new Date().toLocaleString("ar-SA")}</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>تاريخ الفاتورة</th>
+                    <th>اسم المنتج</th>
+                    <th>الكمية</th>
+                    <th>السعر شامل الضريبة</th>
+                    <th>الخصم</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    if (!rows.length){
+        html += `<tr><td colspan="6">لا توجد مواد لفواتير العميل في الفترة المحددة.</td></tr>`;
+    }else{
+        rows.forEach(r=>{
+            html += `
+                <tr>
+                    <td>${r.invoiceId}</td>
+                    <td>${r.date}</td>
+                    <td>${r.productName}</td>
+                    <td>${r.qty.toFixed(2)}</td>
+                    <td>${r.price.toFixed(2)}</td>
+                    <td>${r.discount.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+    }
+
+    html += `</tbody></table><script>window.print();<\/script></body></html>`;
+
+    const w = window.open("","_blank","width=900,height=700");
+    w.document.write(html);
+    w.document.close();
+}
+
+// ======== نافذة مواد الفاتورة (من زر "عرض المواد") =========
+async function openInvoiceItemsModal(invoiceId, invoiceDateText, invoiceNumberText){
+    if (!invoiceId){
+        alert("لا يوجد رقم فاتورة صالح لعرض المواد.");
+        return;
+    }
+    try{
+        const res = await fetch(`/api/cashier/invoices/${invoiceId}/items`);
+        if (!res.ok){
+            alert("تعذر تحميل مواد الفاتورة من الخادم");
+            return;
+        }
+        const items = await res.json();
+        const tbody = document.getElementById("invoiceItemsTableBody");
+        tbody.innerHTML = "";
+        document.getElementById("invoiceItemsModalTitle").textContent =
+            "مواد الفاتورة رقم " + invoiceId + (invoiceDateText ? " - "+invoiceDateText : "");
+
+        if (!items || !items.length){
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+            td.colSpan = 4;
+            td.textContent = "لا توجد مواد محفوظة لهذه الفاتورة.";
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        }else{
+            items.forEach(it=>{
+                const tr = document.createElement("tr");
+
+                const tdName = document.createElement("td");
+                tdName.textContent = it.productName || "";
+                tr.appendChild(tdName);
+
+                const tdQty = document.createElement("td");
+                tdQty.textContent = (it.qty ?? 0).toFixed(2);
+                tr.appendChild(tdQty);
+
+                const tdPrice = document.createElement("td");
+                tdPrice.textContent = (it.price ?? 0).toFixed(2);
+                tr.appendChild(tdPrice);
+
+                const tdDisc = document.createElement("td");
+                tdDisc.textContent = (it.discount ?? 0).toFixed(2);
+                tr.appendChild(tdDisc);
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        openModal("invoiceItemsModalBackdrop");
+    }catch(err){
+        console.error(err);
+        alert("خطأ في الاتصال بالخادم أثناء تحميل مواد الفاتورة");
+    }
+}
+
+function closeInvoiceItemsModal(){
+    closeModal("invoiceItemsModalBackdrop");
+}
+
+// =================== الدفعات ===================
+function getFilteredPaymentsForCurrent(){
+    if (!currentPaymentsCustomerId) return [];
+    const from = parseDate(document.getElementById("paymentFilterFrom").value);
+    const to   = parseDate(document.getElementById("paymentFilterTo").value);
+    let list = getCustomerPayments(currentPaymentsCustomerId);
+    list = list.filter(p=>{
+        const d = new Date(p.date);
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
+    });
+    return list;
+}
+
+function openPaymentsModal(customerId){
+    currentPaymentsCustomerId = customerId;
+    const c = getCustomerById(customerId);
+    if (!c) return;
+    document.getElementById("paymentsCustomerName").textContent = c.name || "";
+    document.getElementById("paymentAmount").value = "";
+    document.getElementById("paymentNote").value = "";
+    document.getElementById("paymentMethod").value = "كاش";
+    document.getElementById("paymentFilterFrom").value = "";
+    document.getElementById("paymentFilterTo").value = "";
+    renderPaymentsList();
+    document.getElementById("paymentsModal").style.display="block";
+    document.getElementById("paymentsBackdrop").style.pointerEvents="auto";
+}
+
+function closePaymentsModal(){
+    currentPaymentsCustomerId = null;
+    document.getElementById("paymentsModal").style.display="none";
+    document.getElementById("paymentsBackdrop").style.pointerEvents="none";
+}
+
+function renderPaymentsList(){
+    const listContainer = document.getElementById("paymentsList");
+    listContainer.innerHTML = "";
+    if (!currentPaymentsCustomerId) return;
+    const list = getFilteredPaymentsForCurrent();
+    const totals = getCustomerTotals(currentPaymentsCustomerId);
+    document.getElementById("paymentsRemaining").textContent = formatAmount(totals.remaining);
+
+    if (!list.length){
+        const div=document.createElement("div");
+        div.textContent="لا توجد دفعات في الفترة المحددة.";
+        div.style.fontSize="13px";
+        div.style.color="#6b7280";
+        div.style.padding="6px 0";
+        listContainer.appendChild(div);
+        return;
+    }
+
+    list.forEach(p=>{
+        const row=document.createElement("div");
+        row.className="payment-row";
+        const date=new Date(p.date);
+        const info=date.toLocaleDateString("ar-SA")+" "+date.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+        const col1=document.createElement("div");
+        col1.textContent=formatAmount(p.amount)+" ر.س ("+(p.method||"كاش")+")";
+        const col2=document.createElement("div");
+        col2.textContent=p.note || "";
+        const dateDiv=document.createElement("div");
+        dateDiv.style.fontSize="11px";
+        dateDiv.style.color="#6b7280";
+        dateDiv.textContent=info;
+        col2.appendChild(document.createElement("br"));
+        col2.appendChild(dateDiv);
+
+        const col3=document.createElement("div");
+        const editBtn=document.createElement("button");
+        editBtn.className="action-btn";
+        editBtn.style.fontSize="11px";
+        editBtn.textContent="تعديل";
+        editBtn.onclick=()=>editPayment(p.id);
+        const delBtn=document.createElement("button");
+        delBtn.className="action-btn";
+        delBtn.style.fontSize="11px";
+        delBtn.textContent="حذف";
+        delBtn.onclick=()=>deletePayment(p.id);
+        const printBtn=document.createElement("button");
+        printBtn.className="action-btn";
+        printBtn.style.fontSize="11px";
+        printBtn.textContent="طباعة إيصال";
+        printBtn.onclick=()=>printPaymentReceipt(p.id);
+        col3.appendChild(editBtn);
+        col3.appendChild(delBtn);
+        col3.appendChild(printBtn);
+
+        row.appendChild(col1);
+        row.appendChild(col2);
+        row.appendChild(col3);
+        listContainer.appendChild(row);
+    });
+}
+
+async function addQuickPayment(){
+    if (!currentPaymentsCustomerId) return;
+    const amountVal=document.getElementById("paymentAmount").value;
+    const note=document.getElementById("paymentNote").value;
+    const method=document.getElementById("paymentMethod").value;
+    const amount=parseFloat(amountVal || "0");
+    if (isNaN(amount) || amount<=0){
+        alert("الرجاء إدخال مبلغ صحيح.");
+        return;
+    }
+    try{
+        await apiJson(`/api/customers/${currentPaymentsCustomerId}/payments`, {
+            method:"POST",
+            body: JSON.stringify({
+                amount,
+                method,
+                note,
+                paymentDate: null
+            })
+        });
+        document.getElementById("paymentAmount").value = "";
+        document.getElementById("paymentNote").value = "";
+        await loadCustomersFromApi();
+        if (currentPaymentsCustomerId) renderPaymentsList();
+    }catch(e){
+        alert(e.message);
+    }
+}
+
+async function editPayment(id){
+    const cId = currentPaymentsCustomerId;
+    const list = getCustomerPayments(cId);
+    const p = list.find(x=>x.id===id);
+    if (!p) return;
+    const val = prompt("تعديل مبلغ الدفعة:", formatAmount(p.amount));
+    if (val===null) return;
+    const amount=parseFloat(val || "0");
+    if (isNaN(amount) || amount<=0) return;
+    const method=prompt("تعديل طريقة الدفع (كاش / شبكة):", p.method || "كاش") || "كاش";
+    const note=prompt("تعديل الملاحظة:", p.note || "") || "";
+    try{
+        await apiJson(`/api/customer-payments/${id}`, {
+            method:"PUT",
+            body: JSON.stringify({
+                amount,
+                method,
+                note,
+                paymentDate: null
+            })
+        });
+        await loadCustomersFromApi();
+        if (currentPaymentsCustomerId) renderPaymentsList();
+    }catch(e){
+        alert(e.message);
+    }
+}
+
+async function deletePayment(id){
+    if (!confirm("هل تريد حذف هذه الدفعة؟")) return;
+    try{
+        await fetch(`/api/customer-payments/${id}`, { method:"DELETE" });
+        await loadCustomersFromApi();
+        if (currentPaymentsCustomerId) renderPaymentsList();
+    }catch(e){
+        alert("فشل حذف الدفعة.");
+    }
+}
+
+// إيصال دفع بحجم ورقة الكاشير
+function printPaymentReceipt(id){
+    if (!currentPaymentsCustomerId) return;
+    const c = getCustomerById(currentPaymentsCustomerId);
+    const list = getCustomerPayments(currentPaymentsCustomerId);
+    const p = list.find(x=>x.id===id);
+    if (!p) return;
+    const w = window.open("", "_blank", "width=380,height=600");
+    const d = new Date(p.date);
+    const dateStr=d.toLocaleDateString("ar-SA");
+    const timeStr=d.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+    w.document.write(`
+        <html lang="ar" dir="rtl">
+        <head><meta charset="utf-8"><title>إيصال دفع</title>
+        <style>
+            body{font-family:"Tahoma";width:80mm;margin:0 auto;padding:10px;font-size:12px;}
+            h2{text-align:center;margin:4px 0;}
+            .row{margin-bottom:4px;font-size:12px;}
+            .label{color:#6b7280;}
+            .line{border-top:1px dashed #555;margin:6px 0;}
+        </style>
+        </head>
+        <body>
+            <h2>إيصال دفع</h2>
+            <div class="line"></div>
+            <div class="row"><span class="label">العميل:</span> ${c?c.name:""}</div>
+            <div class="row"><span class="label">المبلغ:</span> ${formatAmount(p.amount)} ر.س</div>
+            <div class="row"><span class="label">طريقة الدفع:</span> ${p.method || "كاش"}</div>
+            <div class="row"><span class="label">التاريخ:</span> ${dateStr} ${timeStr}</div>
+            <div class="row"><span class="label">ملاحظة:</span> ${p.note || ""}</div>
+            <div class="line"></div>
+            <div class="row" style="text-align:center;">شكراً لتعاملكم معنا</div>
+            <script>window.print();<\/script>
+        </body>
+        </html>
+    `);
+    w.document.close();
+}
+
+// تقرير الدفعات حسب الفترة (ورق كاشير)
+function printPaymentsReport(){
+    if (!currentPaymentsCustomerId) return;
+    const c = getCustomerById(currentPaymentsCustomerId);
+    const list = getFilteredPaymentsForCurrent();
+
+    let html = `
+        <html lang="ar" dir="rtl">
+        <head><meta charset="utf-8"><title>تقرير الدفعات</title>
+        <style>
+            body{font-family:"Tahoma";width:80mm;margin:0 auto;padding:10px;font-size:12px;}
+            h2,h3{text-align:center;margin:4px 0;}
+            .line{border-top:1px dashed #555;margin:4px 0;}
+            .row{display:flex;justify-content:space-between;font-size:12px;margin:2px 0;}
+            .label{color:#555;}
+        </style>
+        </head>
+        <body>
+            <h2>تقرير دفعات عميل</h2>
+            <h3>${c?c.name:""}</h3>
+            <div class="line"></div>
+    `;
+
+    if (!list.length){
+        html += `<div style="text-align:center;margin-top:10px;">لا توجد دفعات في الفترة المحددة.</div>`;
+    }else{
+        list.forEach(p=>{
+            const d=new Date(p.date);
+            const dateStr=d.toLocaleDateString("ar-SA");
+            const timeStr=d.toLocaleTimeString("ar-SA",{hour:"2-digit",minute:"2-digit"});
+            html += `
+                <div class="row"><span class="label">المبلغ:</span><span>${formatAmount(p.amount)} ر.س</span></div>
+                <div class="row"><span class="label">التاريخ:</span><span>${dateStr} ${timeStr}</span></div>
+                <div class="line"></div>
+            `;
+        });
+    }
+
+    html += `<script>window.print();<\/script></body></html>`;
+
+    const w = window.open("","_blank","width=400,height=600");
+    w.document.write(html);
+    w.document.close();
+}
+
+// =================== طباعة تقرير العملاء حسب البحث ===================
+function printCurrentReport(){
+    const filtered = applyFilters(false);
+    let html = `
+        <html lang="ar" dir="rtl">
+        <head><meta charset="utf-8"><title>تقرير العملاء والدفع المؤجل</title>
+        <style>
+            body{font-family:"Tahoma";width:80mm;margin:0 auto;font-size:12px;}
+            h2{text-align:center;margin:4px 0;}
+            .line{border-top:1px dashed #555;margin:4px 0;}
+            .row{display:flex;justify-content:space-between;font-size:12px;margin:2px 0;}
+            .label{color:#555;}
+        </style>
+        </head>
+        <body>
+        <h2>تقرير العملاء (حسب البحث)</h2>
+        <div class="line"></div>
+    `;
+    filtered.forEach(c=>{
+        const t=getCustomerTotals(c);
+        html += `
+            <div class="row"><span class="label">العميل:</span><span>${c.name || ""}</span></div>
+            <div class="row"><span class="label">الهاتف:</span><span>${c.phone || "-"}</span></div>
+            <div class="row"><span class="label">إجمالي الفواتير:</span><span>${formatAmount(t.invoicesTotal)}</span></div>
+            <div class="row"><span class="label">المدفوع:</span><span>${formatAmount(t.paymentsTotal)}</span></div>
+            <div class="row"><span class="label">المتبقي:</span><span>${formatAmount(t.remaining)}</span></div>
+            <div class="line"></div>
+        `;
+    });
+    html += `<script>window.print();<\/script></body></html>`;
+    const w=window.open("","_blank","width=400,height=600");
+    w.document.write(html);
+    w.document.close();
+}
+
+// =================== أحداث أولية ===================
+document.addEventListener("DOMContentLoaded",function(){
+    // فلاتر الشاشة الرئيسية
+    ["filterName","filterPhone","filterFromDate","filterToDate","filterStatus"].forEach(id=>{
+        const el = document.getElementById(id);
+        el.addEventListener("input",renderMainTable);
+        el.addEventListener("change",renderMainTable);
+    });
+    document.getElementById("btnResetFilters").addEventListener("click",()=>{
+        document.getElementById("filterName").value="";
+        document.getElementById("filterPhone").value="";
+        document.getElementById("filterFromDate").value="";
+        document.getElementById("filterToDate").value="";
+        document.getElementById("filterStatus").value="all";
+        renderMainTable();
+    });
+
+    // أزرار عليا
+    document.getElementById("btnAddCustomer").addEventListener("click",()=>openCustomerModal(null));
+    document.getElementById("btnSaveCustomer").addEventListener("click",saveCustomerFromModal);
+    document.getElementById("btnShowAllCustomers").addEventListener("click",()=>{renderAllCustomersModal();openModal("allCustomersModalBackdrop");});
+    document.getElementById("btnShowPaidCustomers").addEventListener("click",openPaidCustomersModal);
+    document.getElementById("btnPrintReport").addEventListener("click",printCurrentReport);
+    document.getElementById("btnFilterInvoices").addEventListener("click",renderInvoicesTable);
+    document.getElementById("btnPrintInvoices").addEventListener("click",printInvoicesForCustomer);
+    document.getElementById("btnPrintInvoiceItemsReport").addEventListener("click",printInvoiceItemsReportForCustomer);
+
+    // بحث داخل إطار جميع العملاء
+    document.getElementById("allCustFilterName").addEventListener("input",renderAllCustomersModal);
+    document.getElementById("allCustFilterPhone").addEventListener("input",renderAllCustomersModal);
+    document.getElementById("btnResetAllCustomersFilter").addEventListener("click",()=>{
+        document.getElementById("allCustFilterName").value="";
+        document.getElementById("allCustFilterPhone").value="";
+        renderAllCustomersModal();
+    });
+
+    // بحث داخل إطار العملاء تم السداد
+    document.getElementById("paidCustFilterName").addEventListener("input",renderPaidCustomersModal);
+    document.getElementById("paidCustFilterPhone").addEventListener("input",renderPaidCustomersModal);
+    document.getElementById("btnResetPaidCustomersFilter").addEventListener("click",()=>{
+        document.getElementById("paidCustFilterName").value="";
+        document.getElementById("paidCustFilterPhone").value="";
+        renderPaidCustomersModal();
+    });
+
+    // إغلاق المودالات
+    document.querySelectorAll("[data-close]").forEach(btn=>{
+        const id=btn.getAttribute("data-close");
+        btn.addEventListener("click",()=>closeModal(id));
+    });
+
+    // الدفعات
+    document.getElementById("btnAddPaymentQuick").addEventListener("click",addQuickPayment);
+    document.getElementById("btnClosePayments").addEventListener("click",closePaymentsModal);
+    document.getElementById("btnQuickPay").addEventListener("click",()=>{
+        if (!selectedCustomerId){alert("اختر عميل أولاً من الجدول.");return;}
+        openPaymentsModal(selectedCustomerId);
+    });
+    document.getElementById("btnApplyPaymentFilter").addEventListener("click",renderPaymentsList);
+    document.getElementById("btnPrintPaymentsReport").addEventListener("click",printPaymentsReport);
+    document.getElementById("paymentFilterFrom").addEventListener("change",renderPaymentsList);
+    document.getElementById("paymentFilterTo").addEventListener("change",renderPaymentsList);
+
+    // تحميل البيانات من الـ API عند البداية
+    loadCustomersFromApi();
+});
+</script>
+</body>
+</html>

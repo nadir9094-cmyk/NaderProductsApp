@@ -1,0 +1,675 @@
+﻿using System.Globalization;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<AppDbContext>(opt =>
+{
+    var provider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "sqlite";
+    if (provider == "postgres")
+    {
+        var conn = Environment.GetEnvironmentVariable("DB_CONNECTION")
+            ?? "Host=localhost;Port=5432;Database=naderposdb;Username=postgres;Password=postgres";
+        opt.UseNpgsql(conn);
+    }
+    else
+    {
+        opt.UseSqlite("Data Source=naderpos.db");
+    }
+});
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+var dbProvider = Environment.GetEnvironmentVariable("DB_PROVIDER") ?? "sqlite";
+var connStr = Environment.GetEnvironmentVariable("DB_CONNECTION")
+    ?? "Host=localhost;Port=5432;Database=naderposdb;Username=postgres;Password=postgres";
+
+var hasPostgresConn = dbProvider.Equals("postgres", StringComparison.OrdinalIgnoreCase);
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+}
+
+// ========== Static files ==========
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+// ========== Swagger ==========
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+// ========== Helper to parse decimal safely ==========
+decimal ParseDecimalOrZero(string? s)
+{
+    if (string.IsNullOrWhiteSpace(s)) return 0m;
+    if (decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var d))
+        return d;
+    if (decimal.TryParse(s, NumberStyles.Any, CultureInfo.GetCultureInfo("ar-SA"), out d))
+        return d;
+    return 0m;
+}
+
+// ========== Products APIs ==========
+
+app.MapGet("/api/products", async (AppDbContext db) =>
+{
+    var list = await db.Products
+        .OrderBy(p => p.Id)
+        .ToListAsync();
+    return Results.Ok(list);
+});
+
+app.MapGet("/api/products/{id:int}", async (int id, AppDbContext db) =>
+{
+    var p = await db.Products.FindAsync(id);
+    return p is null ? Results.NotFound() : Results.Ok(p);
+});
+
+app.MapPost("/api/products", async (Product input, AppDbContext db) =>
+{
+    if (input.Name == null || input.Name.Trim() == "")
+        return Results.BadRequest(new { message = "اسم المنتج مطلوب" });
+
+    db.Products.Add(input);
+    await db.SaveChangesAsync();
+    return Results.Ok(input);
+});
+
+app.MapPut("/api/products/{id:int}", async (int id, Product input, AppDbContext db) =>
+{
+    var p = await db.Products.FindAsync(id);
+    if (p is null) return Results.NotFound();
+
+    p.Name = input.Name;
+    p.Barcode = input.Barcode;
+    p.Category = input.Category;
+    p.ExpiryDate = input.ExpiryDate;
+    p.IsVatIncluded = input.IsVatIncluded;
+    p.MinQuantity = input.MinQuantity;
+    p.OfferEnabled = input.OfferEnabled;
+    p.OfferEnd = input.OfferEnd;
+    p.OfferName = input.OfferName;
+    p.OfferPrice = input.OfferPrice;
+    p.OfferStart = input.OfferStart;
+    p.OfferVatIncluded = input.OfferVatIncluded;
+    p.PurchasePrice = input.PurchasePrice;
+    p.Quantity = input.Quantity;
+    p.SalePrice = input.SalePrice;
+    p.SoldQuantity = input.SoldQuantity;
+    p.SupplierName = input.SupplierName;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(p);
+});
+
+app.MapDelete("/api/products/{id:int}", async (int id, AppDbContext db) =>
+{
+    var p = await db.Products.FindAsync(id);
+    if (p is null) return Results.NotFound();
+    db.Products.Remove(p);
+    await db.SaveChangesAsync();
+    return Results.Ok();
+});
+
+// ========== Customers (deferred payment) APIs ==========
+
+app.MapGet("/api/customers", async (AppDbContext db) =>
+{
+    var list = await db.Customers
+        .OrderBy(c => c.Id)
+        .ToListAsync();
+    return Results.Ok(list);
+});
+
+app.MapPost("/api/customers", async (Customer input, AppDbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(input.Name))
+        return Results.BadRequest(new { message = "اسم العميل مطلوب" });
+
+    input.Status = string.IsNullOrWhiteSpace(input.Status) ? "Active" : input.Status;
+    input.CreatedAt = DateTime.UtcNow;
+
+    db.Customers.Add(input);
+    await db.SaveChangesAsync();
+    return Results.Ok(input);
+});
+
+app.MapPut("/api/customers/{id:int}", async (int id, Customer input, AppDbContext db) =>
+{
+    var c = await db.Customers.FindAsync(id);
+    if (c is null) return Results.NotFound();
+
+    c.Name = input.Name;
+    c.Phone = input.Phone;
+    c.Address = input.Address;
+    c.Notes = input.Notes;
+    c.Status = input.Status;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(c);
+});
+
+app.MapDelete("/api/customers/{id:int}", async (int id, AppDbContext db) =>
+{
+    var c = await db.Customers.FindAsync(id);
+    if (c is null) return Results.NotFound();
+
+    db.Customers.Remove(c);
+    await db.SaveChangesAsync();
+    return Results.Ok();
+});
+
+// ========== Cashier Invoice (SQLite / PostgreSQL) ==========
+
+app.MapPost("/api/cashier/invoices", async (HttpRequest http, AppDbContext db) =>
+{
+    using var reader = new StreamReader(http.Body, Encoding.UTF8);
+    var body = await reader.ReadToEndAsync();
+    if (string.IsNullOrWhiteSpace(body))
+        return Results.BadRequest(new { message = "Body is empty" });
+
+    using var doc = System.Text.Json.JsonDocument.Parse(body);
+    var root = doc.RootElement;
+
+    var invoiceDate = root.TryGetProperty("invoiceDate", out var invDateEl) &&
+                      invDateEl.ValueKind == System.Text.Json.JsonValueKind.String
+        ? DateTime.Parse(invDateEl.GetString() ?? DateTime.Now.ToString(CultureInfo.InvariantCulture))
+        : DateTime.Now;
+
+    var customerName = root.TryGetProperty("customerName", out var custNameEl)
+        ? custNameEl.GetString()
+        : null;
+
+    var totalBeforeVat = ParseDecimalOrZero(root.TryGetProperty("totalBeforeVat", out var tbEl)
+        ? tbEl.GetRawText().Trim('"')
+        : null);
+
+    var vatAmount = ParseDecimalOrZero(root.TryGetProperty("vatAmount", out var vatEl)
+        ? vatEl.GetRawText().Trim('"')
+        : null);
+
+    var totalAfterVat = ParseDecimalOrZero(root.TryGetProperty("totalAfterVat", out var taEl)
+        ? taEl.GetRawText().Trim('"')
+        : null);
+
+    var paidAmount = ParseDecimalOrZero(root.TryGetProperty("paidAmount", out var paidEl)
+        ? paidEl.GetRawText().Trim('"')
+        : null);
+
+    var remainingAmount = ParseDecimalOrZero(root.TryGetProperty("remainingAmount", out var remEl)
+        ? remEl.GetRawText().Trim('"')
+        : null);
+
+    var paymentMethod = root.TryGetProperty("paymentMethod", out var pmEl)
+        ? pmEl.GetString() ?? "شبكة"
+        : "شبكة";
+
+    var isDraft = root.TryGetProperty("isDraft", out var draftEl) &&
+                  draftEl.ValueKind == System.Text.Json.JsonValueKind.True;
+
+    var invoice = new CashierInvoice
+    {
+        InvoiceDate = invoiceDate,
+        CustomerName = customerName,
+        TotalBeforeVat = totalBeforeVat,
+        VatAmount = vatAmount,
+        TotalAfterVat = totalAfterVat,
+        PaidAmount = paidAmount,
+        RemainingAmount = remainingAmount,
+        PaymentMethod = paymentMethod,
+        InvoiceStatus = isDraft ? "مسودة" : "جديدة",
+        CreatedAt = DateTime.UtcNow
+    };
+
+    db.CashierInvoices.Add(invoice);
+    await db.SaveChangesAsync();
+
+    if (root.TryGetProperty("items", out var itemsEl) &&
+        itemsEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+    {
+        foreach (var item in itemsEl.EnumerateArray())
+        {
+            var prodName = item.TryGetProperty("productName", out var pnEl)
+                ? pnEl.GetString() ?? ""
+                : "";
+
+            var unitPrice = ParseDecimalOrZero(item.TryGetProperty("price", out var prEl)
+                ? prEl.GetRawText().Trim('"')
+                : null);
+
+            var qty = ParseDecimalOrZero(item.TryGetProperty("qty", out var qEl)
+                ? qEl.GetRawText().Trim('"')
+                : null);
+
+            var discount = ParseDecimalOrZero(item.TryGetProperty("discount", out var discEl)
+                ? discEl.GetRawText().Trim('"')
+                : null);
+
+            var taxIncluded = item.TryGetProperty("taxIncluded", out var tiEl) &&
+                              tiEl.ValueKind == System.Text.Json.JsonValueKind.True;
+
+            var hasOffer = item.TryGetProperty("hasOffer", out var hoEl) &&
+                           hoEl.ValueKind == System.Text.Json.JsonValueKind.True;
+
+            var offerName = item.TryGetProperty("offerName", out var onEl)
+                ? onEl.GetString()
+                : null;
+
+            var invItem = new InvoiceItem
+            {
+                InvoiceId = invoice.Id,
+                ProductName = prodName,
+                Price = unitPrice,
+                Quantity = qty,
+                Discount = discount,
+                TaxIncluded = taxIncluded,
+                HasOffer = hasOffer,
+                OfferName = offerName
+            };
+
+            db.InvoiceItems.Add(invItem);
+
+            var dbProduct = await db.Products
+                .FirstOrDefaultAsync(p => p.Name == prodName);
+
+            if (dbProduct != null)
+            {
+                dbProduct.SoldQuantity += qty;
+                dbProduct.Quantity -= qty;
+            }
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    return Results.Ok(new
+    {
+        invoiceId = invoice.Id,
+        status = invoice.InvoiceStatus
+    });
+});
+
+app.MapGet("/api/cashier/invoices", async (HttpRequest http, AppDbContext db) =>
+{
+    var query = db.CashierInvoices.AsQueryable();
+
+    if (http.Query.ContainsKey("from"))
+    {
+        if (DateTime.TryParse(http.Query["from"], out var fromDate))
+        {
+            query = query.Where(i => i.InvoiceDate >= fromDate);
+        }
+    }
+
+    if (http.Query.ContainsKey("to"))
+    {
+        if (DateTime.TryParse(http.Query["to"], out var toDate))
+        {
+            query = query.Where(i => i.InvoiceDate <= toDate);
+        }
+    }
+
+    if (http.Query.ContainsKey("paymentMethod"))
+    {
+        var pm = http.Query["paymentMethod"].ToString();
+        if (!string.IsNullOrWhiteSpace(pm))
+        {
+            query = query.Where(i => i.PaymentMethod == pm);
+        }
+    }
+
+    if (http.Query.ContainsKey("status"))
+    {
+        var st = http.Query["status"].ToString();
+        if (!string.IsNullOrWhiteSpace(st))
+        {
+            query = query.Where(i => i.InvoiceStatus == st);
+        }
+    }
+
+    var list = await query
+        .OrderByDescending(i => i.InvoiceDate)
+        .ThenByDescending(i => i.Id)
+        .ToListAsync();
+
+    return Results.Ok(list);
+});
+
+app.MapGet("/api/cashier/invoices/{id:int}", async (int id, AppDbContext db) =>
+{
+    var invoice = await db.CashierInvoices.FindAsync(id);
+    if (invoice is null) return Results.NotFound();
+
+    var items = await db.InvoiceItems
+        .Where(x => x.InvoiceId == invoice.Id)
+        .ToListAsync();
+
+    return Results.Ok(new
+    {
+        invoice,
+        items
+    });
+});
+
+app.MapDelete("/api/cashier/invoices/{id:int}", async (int id, AppDbContext db) =>
+{
+    var invoice = await db.CashierInvoices.FindAsync(id);
+    if (invoice is null) return Results.NotFound();
+
+    var items = await db.InvoiceItems
+        .Where(x => x.InvoiceId == invoice.Id)
+        .ToListAsync();
+
+    foreach (var it in items)
+    {
+        var dbProd = await db.Products
+            .FirstOrDefaultAsync(p => p.Name == it.ProductName);
+        if (dbProd != null)
+        {
+            dbProd.SoldQuantity -= it.Quantity;
+            dbProd.Quantity += it.Quantity;
+        }
+    }
+
+    db.InvoiceItems.RemoveRange(items);
+    db.CashierInvoices.Remove(invoice);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { message = "تم حذف الفاتورة وكل موادها بنجاح" });
+});
+
+// ========== Cashier report: most sold products (PostgreSQL) ==========
+
+app.MapGet("/api/cashier/report-most-sold", async () =>
+{
+    if (!hasPostgresConn)
+    {
+        return Results.Problem("تقرير المنتجات الأكثر مبيعاً متاح فقط عند استخدام PostgreSQL، ولم يتم إعداد اتصال PostgreSQL.");
+    }
+
+    await using var conn = new NpgsqlConnection(connStr);
+    await conn.OpenAsync();
+
+    const string sql = @"
+SELECT
+    ""ProductName"",
+    SUM(""Quantity"") AS ""TotalQuantity"",
+    SUM((""Price"" - ""Discount"") * ""Quantity"") AS ""TotalAmount""
+FROM ""InvoiceItems""
+GROUP BY ""ProductName""
+ORDER BY ""TotalQuantity"" DESC;";
+
+    await using var cmd = new NpgsqlCommand(sql, conn);
+    await using var reader = await cmd.ExecuteReaderAsync();
+
+    var list = new List<object>();
+    while (await reader.ReadAsync())
+    {
+        list.Add(new
+        {
+            ProductName = reader.GetString(0),
+            TotalQuantity = reader.GetDecimal(1),
+            TotalAmount = reader.GetDecimal(2)
+        });
+    }
+
+    return Results.Ok(list);
+});
+
+// ========== Cashier report: all invoices items for a customer between dates (PostgreSQL) ==========
+
+app.MapGet("/api/customers/{customerId:int}/all-invoices-items", async (int customerId, DateTime from, DateTime to) =>
+{
+    if (!hasPostgresConn)
+    {
+        return Results.Problem("عرض مواد الفواتير في التقرير متاح فقط عند استخدام PostgreSQL، ولم يتم إعداد اتصال PostgreSQL.");
+    }
+
+    await using var conn = new NpgsqlConnection(connStr);
+    await conn.OpenAsync();
+
+    const string sql = @"
+SELECT
+    ci.""Id"" AS ""InvoiceId"",
+    ci.""InvoiceDate"",
+    ci.""TotalAfterVat"",
+    ii.""ProductName"",
+    ii.""Price"",
+    ii.""Quantity"",
+    ii.""Discount""
+FROM ""CashierInvoices"" ci
+JOIN ""InvoiceItems"" ii ON ci.""Id"" = ii.""InvoiceId""
+WHERE ci.""CustomerName"" = (
+    SELECT ""Name"" FROM ""Customers"" WHERE ""Id"" = @custId
+)
+AND ci.""InvoiceDate"" BETWEEN @from AND @to
+ORDER BY ci.""InvoiceDate"", ci.""Id"";";
+
+    await using var cmd = new NpgsqlCommand(sql, conn);
+    cmd.Parameters.AddWithValue("@custId", customerId);
+    cmd.Parameters.AddWithValue("@from", from);
+    cmd.Parameters.AddWithValue("@to", to);
+
+    var list = new List<object>();
+
+    await using var reader = await cmd.ExecuteReaderAsync();
+    while (await reader.ReadAsync())
+    {
+        list.Add(new
+        {
+            invoiceId = reader.GetInt32(0),
+            invoiceDate = reader.GetDateTime(1),
+            invoiceTotal = reader.GetDecimal(2),
+            productName = reader.GetString(3),
+            price = reader.GetDecimal(4),
+            qty = reader.GetDecimal(5),
+            discount = reader.GetDecimal(6)
+        });
+    }
+
+    return Results.Ok(list);
+});
+
+// ========== Invoices report API for invoices.html (PostgreSQL) ==========
+
+app.MapGet("/api/cashier/report-invoices", async (HttpRequest http) =>
+{
+    if (!hasPostgresConn)
+    {
+        return Results.Problem("تقرير الفواتير متاح فقط عند استخدام PostgreSQL، ولم يتم إعداد اتصال PostgreSQL.");
+    }
+
+    await using var conn = new NpgsqlConnection(connStr);
+    await conn.OpenAsync();
+
+    var where = new List<string>();
+    var pars = new List<NpgsqlParameter>();
+
+    if (http.Query.ContainsKey("from") &&
+        DateTime.TryParse(http.Query["from"], out var fromDate))
+    {
+        where.Add(@"""InvoiceDate"" >= @from");
+        pars.Add(new NpgsqlParameter("@from", fromDate));
+    }
+
+    if (http.Query.ContainsKey("to") &&
+        DateTime.TryParse(http.Query["to"], out var toDate))
+    {
+        where.Add(@"""InvoiceDate"" <= @to");
+        pars.Add(new NpgsqlParameter("@to", toDate));
+    }
+
+    if (http.Query.ContainsKey("paymentMethod"))
+    {
+        var pm = http.Query["paymentMethod"].ToString();
+        if (!string.IsNullOrWhiteSpace(pm))
+        {
+            where.Add(@"""PaymentMethod"" = @pm");
+            pars.Add(new NpgsqlParameter("@pm", pm));
+        }
+    }
+
+    if (http.Query.ContainsKey("status"))
+    {
+        var st = http.Query["status"].ToString();
+        if (!string.IsNullOrWhiteSpace(st))
+        {
+            where.Add(@"""InvoiceStatus"" = @st");
+            pars.Add(new NpgsqlParameter("@st", st));
+        }
+    }
+
+    var whereSql = where.Count > 0
+        ? "WHERE " + string.Join(" AND ", where)
+        : "";
+
+    var sql = $@"
+SELECT
+    ci.""Id"" AS ""InvoiceId"",
+    ci.""InvoiceDate"",
+    ci.""CustomerName"",
+    ci.""TotalBeforeVat"",
+    ci.""VatAmount"",
+    ci.""TotalAfterVat"",
+    ci.""PaidAmount"",
+    ci.""RemainingAmount"",
+    ci.""PaymentMethod"",
+    ci.""InvoiceStatus""
+FROM ""CashierInvoices"" ci
+{whereSql}
+ORDER BY ci.""InvoiceDate"" DESC, ci.""Id"" DESC;";
+
+    await using var cmd = new NpgsqlCommand(sql, conn);
+    foreach (var p in pars)
+        cmd.Parameters.Add(p);
+
+    var list = new List<object>();
+    await using var reader = await cmd.ExecuteReaderAsync();
+    while (await reader.ReadAsync())
+    {
+        list.Add(new
+        {
+            invoiceId = reader.GetInt32(0),
+            invoiceDate = reader.GetDateTime(1),
+            customerName = reader.IsDBNull(2) ? null : reader.GetString(2),
+            totalBeforeVat = reader.GetDecimal(3),
+            vatAmount = reader.GetDecimal(4),
+            totalAfterVat = reader.GetDecimal(5),
+            paidAmount = reader.GetDecimal(6),
+            remainingAmount = reader.GetDecimal(7),
+            paymentMethod = reader.GetString(8),
+            invoiceStatus = reader.GetString(9)
+        });
+    }
+
+    return Results.Ok(list);
+});
+
+// ========== Simple debug endpoint ==========
+app.MapGet("/debug/ping", () => Results.Ok("NaderPOS debug - invoices delete route fixed"));
+
+app.Run();
+
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+    {
+    }
+
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<CashierInvoice> CashierInvoices => Set<CashierInvoice>();
+    public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<CustomerInvoice> CustomerInvoices => Set<CustomerInvoice>();
+    public DbSet<CustomerPayment> CustomerPayments => Set<CustomerPayment>();
+}
+
+public class Product
+{
+    public int Id { get; set; }
+    public string? Barcode { get; set; }
+    public string Name { get; set; } = "";
+    public string? Category { get; set; }
+    public DateTime? ExpiryDate { get; set; }
+    public bool IsVatIncluded { get; set; }
+    public decimal MinQuantity { get; set; }
+    public bool OfferEnabled { get; set; }
+    public DateTime? OfferEnd { get; set; }
+    public string? OfferName { get; set; }
+    public decimal? OfferPrice { get; set; }
+    public DateTime? OfferStart { get; set; }
+    public bool OfferVatIncluded { get; set; }
+    public decimal PurchasePrice { get; set; }
+    public decimal Quantity { get; set; }
+    public decimal SalePrice { get; set; }
+    public decimal SoldQuantity { get; set; }
+    public string? SupplierName { get; set; }
+}
+
+public class CashierInvoice
+{
+    public int Id { get; set; }
+    public DateTime InvoiceDate { get; set; }
+    public string? CustomerName { get; set; }
+    public decimal TotalBeforeVat { get; set; }
+    public decimal VatAmount { get; set; }
+    public decimal TotalAfterVat { get; set; }
+    public decimal PaidAmount { get; set; }
+    public decimal RemainingAmount { get; set; }
+    public string PaymentMethod { get; set; } = "شبكة";
+    public string InvoiceStatus { get; set; } = "جديدة";
+    public DateTime CreatedAt { get; set; }
+}
+
+public class InvoiceItem
+{
+    public int Id { get; set; }
+    public int InvoiceId { get; set; }
+    public string ProductName { get; set; } = "";
+    public decimal Price { get; set; }
+    public decimal Quantity { get; set; }
+    public decimal Discount { get; set; }
+    public bool TaxIncluded { get; set; }
+    public bool HasOffer { get; set; }
+    public string? OfferName { get; set; }
+}
+
+public class Customer
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string? Phone { get; set; }
+    public string? Address { get; set; }
+    public string? Notes { get; set; }
+    public string Status { get; set; } = "Active";
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CustomerInvoice
+{
+    public int Id { get; set; }
+    public int CustomerId { get; set; }
+    public DateTime InvoiceDate { get; set; }
+    public string Description { get; set; } = "";
+    public decimal Amount { get; set; }
+}
+
+public class CustomerPayment
+{
+    public int Id { get; set; }
+    public int CustomerId { get; set; }
+    public DateTime PaymentDate { get; set; }
+    public decimal Amount { get; set; }
+    public string Method { get; set; } = "";
+    public string? Note { get; set; }
+}
