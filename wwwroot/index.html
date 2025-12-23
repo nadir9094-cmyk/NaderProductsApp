@@ -59,7 +59,20 @@
         }
     </style>
 </head>
-<body>
+
+<div id="naderTopbar" style="position:sticky;top:0;z-index:9999;background:rgba(246,248,251,.92);backdrop-filter:blur(10px);border-bottom:1px solid #e2e8f0">
+  <div style="max-width:1200px;margin:0 auto;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-family:system-ui">
+    <div style="display:flex;gap:10px;align-items:center">
+      <div style="width:10px;height:10px;border-radius:50%;background:#2563eb;box-shadow:0 0 0 6px rgba(37,99,235,.12)"></div>
+      <b>Nader POS</b>
+      <span id="naderMe" style="font-size:12px;color:#64748b;border:1px solid #e2e8f0;background:#fff;padding:5px 10px;border-radius:999px">...</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <a href="/employees.html" style="font-size:12px;color:#2563eb;text-decoration:none;border:1px solid #e2e8f0;background:#fff;padding:8px 10px;border-radius:12px">الموظفين</a>
+      <button id="naderLogout" style="font-size:12px;border:1px solid #e2e8f0;background:#fff;padding:8px 10px;border-radius:12px;cursor:pointer">خروج</button>
+    </div>
+  </div>
+</div>
 
 <header>
     نظام إدارة المتجر
@@ -145,5 +158,30 @@ setInterval(updateClock, 1000);
 updateClock();
 </script>
 
+<script src="/js/auth.js"></script>
+<script>
+(async ()=>{
+  // الرئيسية تتطلب تسجيل دخول فقط (بدون صلاحية محددة)
+  const me = await window.NaderAuth?.requireAuth({ redirect:"/login.html" });
+  if(me){
+    const el = document.getElementById("naderMe");
+    if(el) el.textContent = "مرحباً: " + me.fullName + " (" + me.username + ")";
+  }
+  const lo = document.getElementById("naderLogout");
+  if(lo){
+    lo.onclick = async ()=>{
+      await window.NaderAuth.logout();
+      location.href="/login.html";
+    };
+  }
+})();
+</script>
+<!-- NADER_AUTH_GUARD -->
+<script>
+(async ()=>{
+  await window.NaderAuth?.requireAuth({ redirect:"/login.html" });
+})();
+</script>
 </body>
 </html>
+

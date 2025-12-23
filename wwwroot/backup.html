@@ -1,0 +1,246 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>النسخ الاحتياطي</title>
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --line:#e7e8f3; --txt:#0f172a; --muted:#64748b;
+      --brand:#2563eb; --danger:#dc2626; --ok:#16a34a; --shadow:0 10px 25px rgba(15,23,42,.06);
+      --r:14px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; background:var(--bg); color:var(--txt); font-family:system-ui,Segoe UI,Tahoma,Arial}
+    a{color:var(--brand); text-decoration:none}
+    .wrap{max-width:1100px; margin:0 auto; padding:18px}
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:14px 16px; background:var(--card); border:1px solid var(--line);
+      border-radius:var(--r); box-shadow:var(--shadow);
+    }
+    .title{display:flex; flex-direction:column; gap:4px}
+    .title h1{margin:0; font-size:18px}
+    .title .sub{color:var(--muted); font-size:12px}
+    .actions{display:flex; gap:10px; flex-wrap:wrap}
+    button{
+      border:0; border-radius:12px; padding:10px 14px; font-weight:800; cursor:pointer;
+      background:#111827; color:#fff;
+    }
+    button.secondary{background:#0b1220}
+    button.brand{background:var(--brand)}
+    button.danger{background:var(--danger)}
+    button:disabled{opacity:.6; cursor:not-allowed}
+    .grid{display:grid; grid-template-columns: 1fr; gap:12px; margin-top:12px}
+    .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); padding:14px 16px}
+    .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:space-between}
+    .pill{display:inline-flex; gap:8px; align-items:center; padding:8px 10px; border:1px dashed var(--line); border-radius:12px; color:var(--muted); font-size:12px}
+    .status{margin-top:8px; color:var(--muted); font-size:13px}
+    .status.ok{color:var(--ok)}
+    .status.bad{color:var(--danger)}
+    table{width:100%; border-collapse:collapse; margin-top:10px}
+    th,td{padding:10px 8px; border-bottom:1px solid #eef0f7; text-align:right; font-size:13px}
+    th{color:var(--muted); font-weight:900; font-size:12px}
+    tr:hover td{background:#fafbff}
+    code{background:#f1f5f9; padding:2px 6px; border-radius:8px}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace}
+    .small{font-size:12px; color:var(--muted)}
+    .btnlink{display:inline-flex; gap:6px; align-items:center; font-weight:800}
+    .right{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .hint{margin-top:8px; color:var(--muted); font-size:12px; line-height:1.7}
+    .kbd{border:1px solid var(--line); background:#fff; padding:1px 6px; border-radius:6px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title">
+        <h1>النسخ الاحتياطي</h1>
+        <div class="sub">
+          API: <code class="mono">/api/backup/list</code> • <code class="mono">/api/backup/run</code> • <code class="mono">/api/backup/download/{name}</code> • <code class="mono">/api/backup/restore/{name}</code>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="secondary" onclick="goHome()">العودة للرئيسية</button>
+        <button onclick="refreshList()">تحديث</button>
+        <button class="brand" onclick="runNow()">إنشاء نسخة الآن</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="row">
+          <div class="right">
+            <div class="pill">📁 مجلد النسخ: <span id="dir" class="mono">—</span></div>
+            <div class="pill">🕒 وقت السيرفر: <span id="srvTime" class="mono">—</span></div>
+            <div class="pill">🧹 الاحتفاظ: <span id="retain" class="mono">—</span> يوم</div>
+          </div>
+          <div class="small">ملاحظة: الاستعادة تكتب على قاعدة البيانات بالكامل (كل الجداول والبيانات).</div>
+        </div>
+
+        <div id="status" class="status">جاهز.</div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>الملف</th>
+              <th>الحجم</th>
+              <th>آخر تعديل</th>
+              <th>تحميل</th>
+              <th>استعادة</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+
+        <div class="hint">
+          • إذا ظهرت لك <span class="kbd">404</span> على <span class="mono">/api/backup/restore</span> فهذا يعني أن Endpoint الاستعادة غير مضاف في السيرفر بعد.<br>
+          • لو ظهر <span class="kbd">500</span> وكتب لك <span class="mono">AmbiguousMatchException</span> غالبًا عندك تكرار تعريف نفس المسارات في <span class="mono">Program.cs</span>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API = {
+  list: "/api/backup/list",
+  run:  "/api/backup/run",
+  download: (name) => "/api/backup/download/" + encodeURIComponent(name),
+  restore:  (name) => "/api/backup/restore/" + encodeURIComponent(name)
+};
+
+function goHome(){ window.location.href = "/"; }
+
+async function apiFetch(url, opts){
+  const res = await fetch(url, Object.assign({
+    headers: { "Content-Type":"application/json" }
+  }, opts || {}));
+  if(!res.ok){
+    let t = "";
+    try{ t = await res.text(); }catch{}
+    throw new Error("HTTP " + res.status + (t ? (" • " + t) : ""));
+  }
+  return res;
+}
+
+function fmtBytes(n){
+  n = Number(n||0);
+  if(n < 1024) return n + " B";
+  const u = ["KB","MB","GB","TB"];
+  let i=-1, v=n;
+  while(v >= 1024 && i < u.length-1){ v/=1024; i++; }
+  return v.toFixed(i<=0?1:2) + " " + u[i];
+}
+
+function setStatus(msg, kind){
+  const el = document.getElementById("status");
+  el.className = "status" + (kind ? (" " + kind) : "");
+  el.textContent = msg;
+}
+
+function td(txt){
+  const c = document.createElement("td");
+  c.textContent = (txt ?? "");
+  return c;
+}
+
+function linkTd(text, href){
+  const c = document.createElement("td");
+  const a = document.createElement("a");
+  a.className = "btnlink";
+  a.href = href;
+  a.target = "_blank";
+  a.textContent = text;
+  c.appendChild(a);
+  return c;
+}
+
+function buttonTd(text, cls, onClick){
+  const c = document.createElement("td");
+  const b = document.createElement("button");
+  b.textContent = text;
+  b.className = cls || "";
+  b.style.padding = "8px 10px";
+  b.style.borderRadius = "10px";
+  b.onclick = onClick;
+  c.appendChild(b);
+  return c;
+}
+
+async function refreshList(){
+  setStatus("⏳ جاري جلب النسخ...", "");
+  try{
+    const j = await (await apiFetch(API.list)).json();
+
+    // Try show settings if API returns it
+    const dir = (j.settings && j.settings.outputDir) ? j.settings.outputDir : (j.dir || j.outputDir || "wwwroot/backups");
+    document.getElementById("dir").textContent = dir;
+    document.getElementById("srvTime").textContent = (j.settings && j.settings.timeLocal) ? j.settings.timeLocal : (j.timeLocal || "—");
+    document.getElementById("retain").textContent = (j.settings && j.settings.retainDays != null) ? j.settings.retainDays : (j.retainDays ?? "—");
+
+    const tbody = document.getElementById("rows");
+    tbody.innerHTML = "";
+
+    const files = (j.files || []);
+    files.forEach(f => {
+      const tr = document.createElement("tr");
+      const name = f.name || "";
+      tr.appendChild(td(name));
+      tr.appendChild(td(fmtBytes(f.size || 0)));
+      tr.appendChild(td(f.modifiedLocal || f.modified || ""));
+      tr.appendChild(linkTd("تحميل", API.download(name)));
+      tr.appendChild(buttonTd("استعادة", "danger", () => quickRestore(name)));
+      tbody.appendChild(tr);
+    });
+
+    setStatus("✅ تم. عدد النسخ: " + files.length, "ok");
+  }catch(e){
+    setStatus("❌ " + e.message, "bad");
+  }
+}
+
+async function runNow(){
+  setStatus("⏳ جاري إنشاء النسخة...", "");
+  try{
+    const j = await (await apiFetch(API.run, { method:"POST" })).json().catch(()=>({}));
+    setStatus("✅ تم إنشاء نسخة: " + (j.file || j.name || "OK"), "ok");
+    await refreshList();
+  }catch(e){
+    setStatus("❌ " + e.message, "bad");
+  }
+}
+
+async function quickRestore(name){
+  if(!name) return;
+  const ok = confirm("⚠️ تأكيد الاستعادة؟\nسيتم استبدال قاعدة البيانات بالكامل من الملف:\n" + name);
+  if(!ok) return;
+
+  setStatus("⏳ جاري الاستعادة... لا تغلق الصفحة.", "");
+  try{
+    // We use POST with empty body (server takes name from route)
+    await apiFetch(API.restore(name), { method:"POST" });
+    setStatus("✅ تمت الاستعادة بنجاح. (يفضل تحديث الصفحة)", "ok");
+    await refreshList();
+  }catch(e){
+    setStatus("❌ " + e.message, "bad");
+  }
+}
+
+refreshList();
+</script>
+<script src="/js/auth.js"></script>
+<script>
+(async ()=>{
+  await window.NaderAuth?.requireAuth({ permissionBit: 8, redirect:"/login.html" });
+})();
+</script>
+<!-- NADER_AUTH_GUARD -->
+<script>
+(async ()=>{
+  await window.NaderAuth?.requireAuth({ permissionBit: 8, redirect:"/login.html" });
+})();
+</script>
+</body>
+</html>
+
+

@@ -1,0 +1,578 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>مصروفات المتجر</title>
+
+  <style>
+    :root{
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --line:#e5e7eb;
+      --primary:#2563eb;
+      --success:#16a34a;
+      --warn:#f59e0b;
+      --danger:#ef4444;
+      --shadow: 0 10px 30px rgba(15,23,42,.08);
+      --radius:18px;
+      --font: system-ui, -apple-system, "Segoe UI", Tahoma, Arial;
+    }
+    *{ box-sizing:border-box }
+    body{
+      margin:0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap{ max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; margin-bottom:12px;
+    }
+    h1{ margin:0; font-size: 34px; letter-spacing:.2px; }
+    .badge{
+      background:#eef2ff; color:#3730a3; border:1px solid #e0e7ff;
+      padding:8px 12px; border-radius:999px; font-size:14px;
+      white-space:nowrap;
+    }
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .filters{
+      display:grid;
+      grid-template-columns: 1.3fr 1fr 1fr 1fr 1fr;
+      gap:12px;
+      align-items:end;
+    }
+    .field label{
+      display:block; font-size:13px; color:var(--muted);
+      margin:0 0 6px;
+    }
+    .input, .btn{
+      height:44px; border-radius:14px;
+      border:1px solid var(--line);
+      background:#fff;
+      padding:0 12px;
+      width:100%;
+      font-size:15px;
+      outline:none;
+    }
+    .input:focus{ border-color:#c7d2fe; box-shadow: 0 0 0 4px rgba(99,102,241,.12); }
+    .actions{
+      display:flex; gap:10px; justify-content:flex-start; align-items:center;
+      flex-wrap:wrap;
+    }
+    .btn{
+      cursor:pointer; font-weight:700;
+      display:inline-flex; align-items:center; justify-content:center;
+      gap:8px;
+      width:auto;
+      padding:0 14px;
+    }
+    .btn.primary{ background:var(--primary); color:#fff; border-color:transparent; }
+    .btn.ghost{ background:#fff; color:var(--text); }
+    .btn.success{ background:var(--success); color:#fff; border-color:transparent; }
+    .btn.warn{ background:var(--warn); color:#111827; border-color:transparent; }
+    .btn.danger{ background:var(--danger); color:#fff; border-color:transparent; }
+    .btn.soft{ background:#f8fafc; }
+    .row2{
+      margin-top:14px;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .total{
+      font-size:30px; font-weight:900;
+    }
+    .period{ color:var(--muted); font-size:14px; }
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      overflow:hidden;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:#fff;
+      margin-top:14px;
+    }
+    thead th{
+      background:#f3f4f6;
+      color:#111827;
+      font-size:14px;
+      padding:14px 12px;
+      border-bottom:1px solid var(--line);
+      text-align:right;
+    }
+    tbody td{
+      padding:14px 12px;
+      border-bottom:1px solid var(--line);
+      vertical-align:middle;
+      font-size:15px;
+    }
+    tbody tr:last-child td{ border-bottom:none; }
+    .td-actions{ white-space:nowrap; }
+    .pillbar{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    }
+    .hint{
+      margin-top:14px;
+      background:#eef2ff;
+      border:1px dashed #c7d2fe;
+      padding:12px 14px;
+      border-radius:14px;
+      color:#1e3a8a;
+      font-size:14px;
+      text-align:center;
+    }
+    .modal-backdrop{
+      position:fixed; inset:0; background:rgba(15,23,42,.35);
+      display:none; align-items:center; justify-content:center;
+      padding:16px;
+    }
+    .modal{
+      width:min(520px, 100%);
+      background:#fff;
+      border-radius:18px;
+      border:1px solid var(--line);
+      box-shadow: var(--shadow);
+      padding:16px;
+    }
+    .modal h2{ margin:0 0 12px; font-size:20px; }
+    .modal .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+    }
+    .modal .grid .field:last-child{ grid-column: 1 / -1; }
+    .modal .footer{
+      margin-top:14px;
+      display:flex; gap:10px; justify-content:flex-start; flex-wrap:wrap;
+    }
+    .link{
+      text-decoration:none;
+    }
+    @media (max-width: 980px){
+      .filters{ grid-template-columns: 1fr 1fr; }
+    }
+
+    /* Print */
+    @media print{
+      body{ background:#fff; }
+      .no-print{ display:none !important; }
+      .card{ box-shadow:none; }
+      table{ box-shadow:none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <h1>مصروفات المتجر</h1>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <span class="badge">يتضمن: إضافة جديد + طباعة A4/إيصال</span>
+        <a class="btn ghost link" href="index.html">⬅ العودة للرئيسية</a>
+      </div>
+    </div>
+
+    <div class="card no-print">
+      <div class="filters">
+        <div class="field">
+          <label>البحث في البيان</label>
+          <input id="q" class="input" placeholder="مثال: كهرباء، إيجار، صيانة" />
+        </div>
+
+        <div class="field">
+          <label>المبلغ من</label>
+          <input id="minAmount" class="input" type="number" step="0.01" value="0.00" />
+        </div>
+
+        <div class="field">
+          <label>إلى</label>
+          <input id="maxAmount" class="input" type="number" step="0.01" value="0.00" />
+        </div>
+
+        <div class="field">
+          <label>التاريخ من</label>
+          <input id="fromDate" class="input" type="date" />
+        </div>
+
+        <div class="field">
+          <label>التاريخ إلى</label>
+          <input id="toDate" class="input" type="date" />
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="pillbar">
+          <button class="btn primary" id="btnSearch">🔍 بحث</button>
+          <button class="btn soft" id="btnReset">↩ مسح</button>
+
+          <button class="btn success" id="btnAdd">＋ إضافة جديد</button>
+
+          <button class="btn warn" id="btnPrint80">🧾 طباعة إيصال 80mm</button>
+          <button class="btn ghost" id="btnPrintA4">📄 طباعة A4</button>
+        </div>
+
+        <div class="period" id="periodText">الفترة: كل الوقت → كل الوقت</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="total" id="totalText">إجمالي المنصرف: 0.00 ريال</div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:140px;">التاريخ</th>
+            <th style="width:140px;">اليوم</th>
+            <th>البيان</th>
+            <th style="width:160px;">المبلغ (ريال)</th>
+            <th style="width:170px;">إجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="5" style="text-align:center; color:#64748b; padding:18px;">لا توجد بيانات</td></tr>
+        </tbody>
+      </table>
+</div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-backdrop no-print" id="modalBackdrop">
+    <div class="modal">
+      <h2 id="modalTitle">إضافة مصروف</h2>
+
+      <div class="grid">
+        <div class="field">
+          <label>التاريخ</label>
+          <input id="mDate" class="input" type="date" />
+        </div>
+
+        <div class="field">
+          <label>المبلغ (ريال)</label>
+          <input id="mAmount" class="input" type="number" step="0.01" />
+        </div>
+
+        <div class="field">
+          <label>البيان</label>
+          <input id="mStatement" class="input" placeholder="مثال: فاتورة كهرباء" />
+        </div>
+      </div>
+
+      <div class="footer">
+        <button class="btn success" id="btnSave">💾 حفظ</button>
+        <button class="btn soft" id="btnCancel">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = {
+      list: (p) => "/api/expenses" + (p ? ("?" + new URLSearchParams(p)) : ""),
+      add: "/api/expenses",
+      upd: (id) => `/api/expenses/${id}`,
+      del: (id) => `/api/expenses/${id}`,
+    };
+
+    const els = {
+      q: document.getElementById("q"),
+      fromDate: document.getElementById("fromDate"),
+      toDate: document.getElementById("toDate"),
+      minAmount: document.getElementById("minAmount"),
+      maxAmount: document.getElementById("maxAmount"),
+      periodText: document.getElementById("periodText"),
+      totalText: document.getElementById("totalText"),
+      tbody: document.getElementById("tbody"),
+      btnSearch: document.getElementById("btnSearch"),
+      btnReset: document.getElementById("btnReset"),
+      btnAdd: document.getElementById("btnAdd"),
+      btnPrint80: document.getElementById("btnPrint80"),
+      btnPrintA4: document.getElementById("btnPrintA4"),
+
+      modalBackdrop: document.getElementById("modalBackdrop"),
+      modalTitle: document.getElementById("modalTitle"),
+      mDate: document.getElementById("mDate"),
+      mAmount: document.getElementById("mAmount"),
+      mStatement: document.getElementById("mStatement"),
+      btnSave: document.getElementById("btnSave"),
+      btnCancel: document.getElementById("btnCancel"),
+    };
+
+    let rows = [];
+    let editId = null;
+
+    function fmtMoney(x){
+      const n = Number(x || 0);
+      return n.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function dayName(dateStr){
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("ar-SA", { weekday:"long" });
+    }
+    function todayISO(){
+      const d = new Date();
+      const pad = (v)=> String(v).padStart(2,"0");
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    }
+
+    function openModal(mode, row){
+      editId = mode === "edit" ? row.id : null;
+      els.modalTitle.textContent = mode === "edit" ? "تعديل مصروف" : "إضافة مصروف";
+
+      els.mDate.value = row?.date ? row.date.slice(0,10) : todayISO();
+      els.mAmount.value = row?.amount ?? "";
+      els.mStatement.value = row?.statement ?? "";
+
+      els.modalBackdrop.style.display = "flex";
+      setTimeout(()=> els.mStatement.focus(), 0);
+    }
+    function closeModal(){
+      els.modalBackdrop.style.display = "none";
+      editId = null;
+    }
+
+    async function apiFetch(url, opts){
+      const res = await fetch(url, opts);
+      const text = await res.text();
+      if(!res.ok){
+        throw new Error(text || ("HTTP " + res.status));
+      }
+      try{ return JSON.parse(text); } catch { return text; }
+    }
+
+    function buildParams(){
+      const p = {};
+      const q = (els.q.value || "").trim();
+      if(q) p.q = q;
+
+      const fd = els.fromDate.value;
+      const td = els.toDate.value;
+      if(fd) p.fromDate = fd;
+      if(td) p.toDate = td;
+
+      const minA = Number(els.minAmount.value || 0);
+      const maxA = Number(els.maxAmount.value || 0);
+
+      if(minA > 0) p.minAmount = String(minA);
+      if(maxA > 0) p.maxAmount = String(maxA);
+
+      return p;
+    }
+
+    function setPeriodLabel(){
+      const fd = els.fromDate.value || "كل الوقت";
+      const td = els.toDate.value || "كل الوقت";
+      els.periodText.textContent = `الفترة: ${fd} → ${td}`;
+    }
+
+    function render(){
+      setPeriodLabel();
+
+      if(!rows.length){
+        els.tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#64748b; padding:18px;">لا توجد بيانات</td></tr>`;
+        els.totalText.textContent = `إجمالي المنصرف: 0.00 ريال`;
+        return;
+      }
+
+      const total = rows.reduce((s,x)=> s + Number(x.amount||0), 0);
+      els.totalText.textContent = `إجمالي المنصرف: ${fmtMoney(total)} ريال`;
+
+      els.tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${(r.date||"").slice(0,10)}</td>
+          <td>${dayName(r.date||"")}</td>
+          <td>${escapeHtml(r.statement||"")}</td>
+          <td>${fmtMoney(r.amount)} </td>
+          <td class="td-actions">
+            <button class="btn soft" onclick="onEdit(${r.id})">تعديل</button>
+            <button class="btn danger" onclick="onDelete(${r.id})">حذف</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    async function load(){
+      try{
+        const data = await apiFetch(API.list(buildParams()));
+        rows = data.rows || [];
+        render();
+      }catch(err){
+        rows = [];
+        els.tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#ef4444; padding:18px;">خطأ: ${escapeHtml(err.message||err)}</td></tr>`;
+        els.totalText.textContent = `إجمالي المنصرف: 0.00 ريال`;
+      }
+    }
+
+    async function save(){
+      const payload = {
+        date: (els.mDate.value || todayISO()),
+        amount: Number(els.mAmount.value || 0),
+        statement: (els.mStatement.value || "").trim(),
+      };
+
+      if(!payload.statement){ alert("البيان مطلوب"); els.mStatement.focus(); return; }
+      if(!(payload.amount > 0)){ alert("المبلغ يجب أن يكون أكبر من صفر"); els.mAmount.focus(); return; }
+
+      try{
+        if(editId){
+          await apiFetch(API.upd(editId), {
+            method:"PUT",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify(payload)
+          });
+        }else{
+          await apiFetch(API.add, {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify(payload)
+          });
+        }
+        closeModal();
+        await load();
+      }catch(err){
+        alert("فشل الحفظ: " + (err.message||err));
+      }
+    }
+
+    window.onEdit = (id) => {
+      const r = rows.find(x => x.id === id);
+      if(!r) return;
+      openModal("edit", r);
+    };
+
+    window.onDelete = async (id) => {
+      const r = rows.find(x => x.id === id);
+      if(!r) return;
+      if(!confirm("حذف المصروف؟")) return;
+
+      try{
+        await apiFetch(API.del(id), { method:"DELETE" });
+        await load();
+      }catch(err){
+        alert("فشل الحذف: " + (err.message||err));
+      }
+    };
+
+    function wrapPrintHtml(inner, mode){
+      const is80 = mode === "80";
+      const pageCss = is80
+        ? "@page{ size: 80mm auto; margin: 4mm; }"
+        : "@page{ size: A4; margin: 12mm; }";
+
+      return `
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>طباعة مصروفات المتجر</title>
+<style>
+${pageCss}
+body{ font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial; color:#111827; }
+h2{ margin:0 0 10px; }
+small{ color:#6b7280; }
+table{ width:100%; border-collapse:collapse; margin-top:10px; }
+th,td{ border-bottom:1px solid #e5e7eb; padding:8px 6px; font-size:13px; text-align:right; }
+th{ background:#f3f4f6; }
+.total{ margin-top:10px; font-weight:800; }
+</style>
+</head>
+<body>
+${inner}
+<script>window.print();<\/script>
+</body>
+</html>`;
+    }
+
+    function buildPrintHtml(){
+      const p = buildParams();
+      const fd = els.fromDate.value || "كل الوقت";
+      const td = els.toDate.value || "كل الوقت";
+      const total = rows.reduce((s,x)=> s + Number(x.amount||0), 0);
+
+      const html = `
+        <h2>مصروفات المتجر</h2>
+        <small>الفترة: ${fd} → ${td}</small>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:110px;">التاريخ</th>
+              <th style="width:110px;">اليوم</th>
+              <th>البيان</th>
+              <th style="width:120px;">المبلغ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r=>`
+              <tr>
+                <td>${(r.date||"").slice(0,10)}</td>
+                <td>${dayName(r.date||"")}</td>
+                <td>${escapeHtml(r.statement||"")}</td>
+                <td>${fmtMoney(r.amount)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+        <div class="total">إجمالي المنصرف: ${fmtMoney(total)} ريال</div>
+      `;
+      return html;
+    }
+
+    function openPrint(mode){
+      const w = window.open("", "_blank");
+      if(!w){ alert("المتصفح منع فتح نافذة الطباعة"); return; }
+      w.document.open();
+      w.document.write(wrapPrintHtml(buildPrintHtml(), mode));
+      w.document.close();
+    }
+
+    // Events
+    els.btnSearch.addEventListener("click", load);
+    els.btnReset.addEventListener("click", ()=>{
+      els.q.value = "";
+      els.fromDate.value = "";
+      els.toDate.value = "";
+      els.minAmount.value = "0.00";
+      els.maxAmount.value = "0.00";
+      load();
+    });
+    els.btnAdd.addEventListener("click", ()=> openModal("add"));
+    els.btnCancel.addEventListener("click", closeModal);
+    els.modalBackdrop.addEventListener("click", (e)=>{ if(e.target === els.modalBackdrop) closeModal(); });
+    els.btnSave.addEventListener("click", save);
+
+    els.btnPrint80.addEventListener("click", ()=> openPrint("80"));
+    els.btnPrintA4.addEventListener("click", ()=> openPrint("A4"));
+
+    // Enter => search
+    [els.q, els.minAmount, els.maxAmount, els.fromDate, els.toDate].forEach(x=>{
+      x.addEventListener("keydown", (e)=>{
+        if(e.key === "Enter"){ e.preventDefault(); load(); }
+      });
+    });
+
+    // init
+    load();
+  </script>
+</body>
+</html>
+

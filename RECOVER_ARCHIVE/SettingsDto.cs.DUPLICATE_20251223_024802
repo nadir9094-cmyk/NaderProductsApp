@@ -1,0 +1,27 @@
+﻿public sealed class SettingsDto
+{
+    // عامة
+    public string? StoreName { get; set; }
+    public string? VatNumber { get; set; }
+    public string? CommercialRegister { get; set; }
+    public string? StoreAddress { get; set; }
+    public string? StorePhone { get; set; }
+
+    // فاتورة/طباعة
+    public string? InvoicePaper { get; set; }          // "A4" | "Cashier"
+    public int? CashierPaperWidthMm { get; set; }      // 58..120
+    public string? InvoiceFooterNotes { get; set; }
+
+    // باركود/زاتكا
+    public string? BarcodeType { get; set; }           // "QR"
+    public int? ZatcaPhase { get; set; }               // 1 | 2
+
+    // المرحلة الثانية (لو مخزنة عندك)
+    public string? Phase2InvoiceHash { get; set; }
+    public string? Phase2Signature { get; set; }
+    public string? Phase2PublicKey { get; set; }
+    public string? Phase2CertificateSignature { get; set; }
+
+    // لوجو
+    public string? StoreLogoBase64 { get; set; }
+}

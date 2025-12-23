@@ -1,0 +1,71 @@
+﻿namespace NaderProductsApp.Models;
+
+// ===== CUSTOMERS =====
+public sealed class CustomerLedgerRequest
+{
+    public double Amount { get; set; }
+    public string? Description { get; set; }
+    public string? Date { get; set; }        // قد تأتي من الشاشة
+    public string? InvoiceDate { get; set; } // بديل محتمل
+}
+
+public sealed class CustomerPaymentRequest
+{
+    public double Amount { get; set; }
+    public string? Method { get; set; }
+    public string? Note { get; set; }
+    public string? Date { get; set; }         // قد تأتي من الشاشة
+    public string? PaymentDate { get; set; }  // بديل محتمل
+}
+
+// ===== CASHIER =====
+public sealed class CashierInvoiceItemRequest
+{
+    public int ProductId { get; set;
+    // aliases for existing Program.cs fields
+    public string? ProductName { get; set; }   // same as Name
+    public double Discount { get; set; }       // per-line discount if used
+    public bool TaxIncluded { get; set; }      // same idea as IsVatIncluded
+    public bool HasOffer { get; set; }         // same idea as OfferEnabled
+}
+    public string? Name { get; set; }
+    public string? Barcode { get; set; }
+    public double UnitPrice { get; set; }
+    public double Quantity { get; set; }
+    public double LineTotal { get; set; }
+    public bool IsVatIncluded { get; set; }
+    public bool OfferEnabled { get; set; }
+    public string? OfferName { get; set; }
+    public double? OfferPrice { get; set; }
+}
+
+public sealed class CashierInvoiceRequest
+{
+    public string? InvoiceDate { get; set; }      // ISO string
+    public string? PaymentMethod { get; set; }    // cash/card/deferred...
+    public int? CustomerId { get; set; }          // للمؤجل
+    public string? CustomerName { get; set; }     // للعرض فقط
+    public double SubTotal { get; set; }
+    public double VatTotal { get; set; }
+    public double DiscountTotal { get; set; }
+    public double GrandTotal { get; set; }
+    public string? Notes { get; set; }
+    public bool IsSuspended { get; set; }
+    public List<CashierInvoiceItemRequest> Items { get; set; } = new();
+}
+
+// ===== RETURNS =====
+public sealed class ReturnItemRequest
+{
+    public int ItemId { get; set; }
+    public int ProductId { get; set; }
+    public double ReturnQuantity { get; set; }
+}
+
+public sealed class ReturnRequest
+{
+    public string? ReturnDate { get; set; }
+    public string? Note { get; set; }
+    public List<ReturnItemRequest> Items { get; set; } = new();
+}
+

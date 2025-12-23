@@ -1,0 +1,117 @@
+﻿using System.Diagnostics;
+using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
+
+public sealed class BackupSettings
+{
+    // Added for UI + Program.cs compatibility
+    public bool Enabled { get; set; } = true;
+    public string? TimeLocal { get; set; } = "02:00"; // HH:mm
+    public int RetainDays { get; set; } = 14;
+
+    public string? OutputDir { get; set; } = "wwwroot/backups";
+    public string? PgDumpPath { get; set; } = "pg_dump";
+    public string? ConnectionString { get; set; }
+    public int? KeepLast { get; set; } = 50;
+}
+
+public static class BackupRunner
+{
+    public static async Task<string> RunAsync(string contentRootPath, BackupSettings s, CancellationToken ct = default)
+    {
+        var outDir = Path.Combine(contentRootPath, s.OutputDir ?? "wwwroot/backups");
+        Directory.CreateDirectory(outDir);
+
+        var name = $"backup_{DateTime.Now:yyyyMMdd_HHmmss}.sql";
+        var path = Path.Combine(outDir, name);
+
+        // إذا ما عندك ConnectionString هنا، بنحاول نقرأه من env أو appsettings (عادةً التطبيق عندك يمرره)
+        var cs = s.ConnectionString ?? Environment.GetEnvironmentVariable("ConnectionStrings__Default")
+                               ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+
+        if (string.IsNullOrWhiteSpace(cs))
+            throw new InvalidOperationException("BackupSettings.ConnectionString غير موجود. ضعه في appsettings أو Environment.");
+
+        // تشغيل pg_dump
+        await RunProcessToFileAsync(s.PgDumpPath ?? "pg_dump", BuildPgDumpArgs(cs), path, ct);
+
+        // تنظيف النسخ القديمة
+        TryKeepLast(outDir, s.KeepLast ?? 50);
+
+        return name;
+    }
+
+    private static string BuildPgDumpArgs(string connectionString)
+    {
+        // pg_dump يفهم connection string كـ URI غالباً، أو عبر env vars. هنا أبسط: نمررها كـ --dbname
+        // ملاحظة: إذا عندك DATABASE_URL بصيغة postgres://.. أفضل.
+        return $"--no-owner --no-privileges --format=p --dbname=\"{connectionString}\"";
+    }
+
+    public static async Task RunProcessToFileAsync(string fileName, string args, string outFile, CancellationToken ct)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = args,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var p = Process.Start(psi) ?? throw new InvalidOperationException("تعذر تشغيل pg_dump");
+        await using var fs = new FileStream(outFile, FileMode.Create, FileAccess.Write, FileShare.None);
+        await p.StandardOutput.BaseStream.CopyToAsync(fs, ct);
+
+        var err = await p.StandardError.ReadToEndAsync();
+        await p.WaitForExitAsync(ct);
+
+        if (p.ExitCode != 0)
+            throw new InvalidOperationException("pg_dump failed: " + err);
+    }
+
+    private static void TryKeepLast(string dir, int keepLast)
+    {
+        try
+        {
+            var files = Directory.GetFiles(dir, "backup_*.sql")
+                .Select(f => new FileInfo(f))
+                .OrderByDescending(f => f.LastWriteTimeUtc)
+                .ToList();
+
+            foreach (var f in files.Skip(keepLast))
+                try { f.Delete(); } catch { }
+        }
+        catch { }
+    }
+}
+
+public sealed class DailyBackupService : BackgroundService
+{
+    private readonly IOptions<BackupSettings> _opt;
+    private readonly IHostEnvironment _env;
+
+    public DailyBackupService(IOptions<BackupSettings> opt, IHostEnvironment env)
+    {
+        _opt = opt;
+        _env = env;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        // بسيط: سليب 24 ساعة وتشغيل (تقدر نضبطه لاحقاً)
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                var s = _opt.Value ?? new BackupSettings();
+                await BackupRunner.RunAsync(_env.ContentRootPath, s, stoppingToken);
+            }
+            catch { /* تجاهل */ }
+
+            try { await Task.Delay(TimeSpan.FromHours(24), stoppingToken); } catch { }
+        }
+    }
+}
+

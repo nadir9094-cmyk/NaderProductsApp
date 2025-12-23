@@ -649,6 +649,7 @@
     <td>${retAmt.toFixed(2)}<br/>${returnBadge}</td>
     <td>${net.toFixed(2)}</td>
     <td>
+        <button class="btn btn-outline btn-sm" title="طباعة الفاتورة" onclick="printInvoice(${inv.id})">🖨</button>
         <button class="btn btn-outline btn-sm" onclick="openReturnModal(${inv.id})">مرتجع</button>
         <button class="btn btn-danger btn-sm" onclick="confirmDeleteInvoice(${inv.id})">حذف</button>
     </td>
@@ -711,7 +712,244 @@
         win.print();
     }
 
-    // ===== Delete Invoice =====
+        // ===== Print Single Invoice =====
+    async function _nader_fetchSettings() {
+        const res = await fetch(apiBase + "/api/settings");
+        if (!res.ok) throw new Error("settings");
+        return await res.json();
+    }
+
+    function _nader_escapeHtml(s) {
+        return String(s ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function _nader_money(n) {
+        const x = Number(n);
+        return (isNaN(x) ? 0 : x).toFixed(2);
+    }
+
+    function _nader_formatPaperCss(settings) {
+        const paper = String(settings?.invoicePaper || "Cashier");
+        const wmm = Number(settings?.cashierPaperWidthMm || 80);
+        if (paper.toLowerCase() === "a4") {
+            return `
+            @page { size: A4; margin: 12mm; }
+            .paper { width: 210mm; padding: 10mm; }
+            table.items th, table.items td { border: 1px solid #e5e7eb; padding: 6px; }
+            `;
+        }
+        // Cashier
+        return `
+        @page { size: ${wmm}mm 2000mm; margin: 4mm; }
+        .paper { width: ${wmm}mm; padding: 4mm; }
+        table.items th, table.items td { border-bottom: 1px dashed #e5e7eb; padding: 5px 4px; }
+        `;
+    }
+
+    function _nader_printHtml(inv, items, settings) {
+    const isA4 = String(settings?.invoicePaper || "Cashier").toLowerCase() === "a4";
+    const wmm = Number(settings?.cashierPaperWidthMm || 80);
+    const w = isA4 ? "210mm" : (wmm + "mm");
+    const pad = isA4 ? "10mm" : "3mm";
+
+    const logoRaw = settings?.storeLogoBase64 ? String(settings.storeLogoBase64) : "";
+    const logoClean = logoRaw.replace(/\s+/g, "").trim();
+    const logoSrc = logoClean ? (logoClean.startsWith("data:") ? logoClean : ("data:image/png;base64," + logoClean)) : "";
+
+    const total = Number(inv?.grandTotal || 0);
+    const vat = Number(inv?.vatTotal || 0);
+    const discount = Number(inv?.discountTotal || 0);
+    const beforeVat = (total - vat);
+
+    const invDateIso = inv?.invoiceDate ? String(inv.invoiceDate) : (inv?.createdAt ? String(inv.createdAt) : new Date().toISOString());
+    const invDateDisplay = inv?.invoiceDate ? formatDateTime(inv.invoiceDate) : (inv?.createdAt ? formatDateTime(inv.createdAt) : new Date().toLocaleString("ar-SA"));
+    const payText = formatPaymentMethod(inv?.paymentMethod || "");
+    const customerName = inv?.customerName || "";
+
+    const rows = (items || []).map(it => {
+        const name = _nader_escapeHtml(it.productName || it.name || "");
+        const qty = Number(it.quantity || it.qty || 0);
+        const price = Number(it.price || it.unitPrice || 0);
+        const line = qty * price;
+        return `<tr>
+          <td>${name}</td>
+          <td>${qty}</td>
+          <td>${price.toFixed(2)}</td>
+          <td>${line.toFixed(2)}</td>
+        </tr>`;
+    }).join("");
+
+    const rowsHtml = rows && rows.trim() ? rows : '<tr><td colspan="4" class="center">لا توجد أصناف</td></tr>';
+
+    // ===== ZATCA TLV Base64 (Phase 1/2) =====
+    function tlv(tag, value){
+        const enc = new TextEncoder();
+        const v = enc.encode(String(value ?? ""));
+        const out = new Uint8Array(2 + v.length);
+        out[0] = tag & 0xFF;
+        out[1] = v.length & 0xFF;
+        out.set(v, 2);
+        return out;
+    }
+    function concat(arrs){
+        let n=0; for(const a of arrs) n += a.length;
+        const out = new Uint8Array(n);
+        let o=0; for(const a of arrs){ out.set(a,o); o+=a.length; }
+        return out;
+    }
+    function b64(u8){
+        let s=""; for(let i=0;i<u8.length;i++) s += String.fromCharCode(u8[i]);
+        return btoa(s);
+    }
+
+    const seller = settings?.storeName || "";
+    const vatNo = settings?.vatNumber || "";
+    const fields = [
+        tlv(1, seller),
+        tlv(2, vatNo),
+        tlv(3, invDateIso),
+        tlv(4, total.toFixed(2)),
+        tlv(5, vat.toFixed(2))
+    ];
+
+    const phase = Number(settings?.zatcaPhase || 1);
+    if(phase === 2){
+        if(settings?.phase2InvoiceHash) fields.push(tlv(6, settings.phase2InvoiceHash));
+        if(settings?.phase2Signature) fields.push(tlv(7, settings.phase2Signature));
+        if(settings?.phase2PublicKey) fields.push(tlv(8, settings.phase2PublicKey));
+        if(settings?.phase2CertificateSignature) fields.push(tlv(9, settings.phase2CertificateSignature));
+    }
+
+    const qrB64 = b64(concat(fields));
+    const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(qrB64);
+
+    const footer = _nader_escapeHtml(settings?.invoiceFooterNotes || "").replace(/\n/g, "<br>");
+
+    return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+    <style>
+      body{font-family:Tahoma,Arial;margin:0}
+      html,body{margin:0;padding:0;width:${w};}
+      .box{margin:0;display:inline-block;}
+      @media print{ html,body{width:${w} !important;} }
+      html,body{width:${w};}
+      .box{width:${w};padding:${pad}}
+      .center{text-align:center}
+      table{width:100%;border-collapse:collapse;font-size:${isA4 ? "13px" : "12px"}}
+      th,td{padding:4px;text-align:center;border-bottom:${isA4 ? "1px solid #ddd" : "1px dashed #999"}}
+      hr{border:none;border-top:1px solid #ddd;margin:6px 0}
+      @page{ size:${isA4 ? "A4" : (wmm + "mm 2000mm")}; margin:${isA4 ? "10mm" : "0"}; }
+    </style></head><body>
+    <div class="box">
+      ${logoSrc ? `<div class="center"><img src="${logoSrc}" style="max-width:90px;margin-bottom:6px"></div>` : ""}
+      <div class="center"><b>${_nader_escapeHtml(settings?.storeName||"")}</b></div>
+      <div class="center">${_nader_escapeHtml(settings?.storeAddress||"")}</div>
+      <div class="center">هاتف: ${_nader_escapeHtml(settings?.storePhone||"")}</div>
+      <div class="center">الرقم الضريبي: ${_nader_escapeHtml(settings?.vatNumber||"")}</div>
+      <hr>
+      <div>رقم الفاتورة: ${_nader_escapeHtml(inv?.id ?? "")}</div>
+      <div>التاريخ: ${_nader_escapeHtml(invDateDisplay)}</div>
+      <div>طريقة الدفع: ${_nader_escapeHtml(payText)}</div>
+      ${customerName ? `<div>العميل: ${_nader_escapeHtml(customerName)}</div>` : ""}
+      <hr>
+      <table>
+        <tr><th>الصنف</th><th>ك</th><th>سعر</th><th>إجمالي</th></tr>
+        ${rowsHtml}
+      </table>
+      <hr>
+      <div>الإجمالي قبل الضريبة: ${beforeVat.toFixed(2)}</div>
+      <div>إجمالي الخصم: ${discount.toFixed(2)}</div>
+      <div>قيمة الضريبة (15%): ${vat.toFixed(2)}</div>
+      <div><b>المبلغ شامل الضريبة: ${total.toFixed(2)}</b></div>
+
+      <div class="center" style="margin-top:14px">
+        <img src="${qrUrl}" style="width:150px;height:150px">
+      </div>
+
+      <div class="center" style="margin-top:8px">${footer}</div>
+    </div>
+    </body></html>`;
+}async function printInvoice(invoiceId) {
+        try {
+            let inv = lastInvoices.find(x => x.id === invoiceId);
+            if (!inv) { alert("تعذر العثور على بيانات الفاتورة."); return; }
+
+            // ✅ حاول اجلب نفس الفاتورة من السيرفر (لضمان تطابق اسم العميل وباقي البيانات)
+            try{
+                const resInv = await fetch(apiBase + "/api/cashier/invoices/" + invoiceId);
+                if(resInv.ok){
+                    const full = await resInv.json();
+                    if(full && typeof full === "object"){
+                        inv = Object.assign({}, inv, full);
+                    }
+                }
+            }catch(e){
+                // إذا ما فيه endpoint، نكمل على بيانات الجدول
+            }if (!inv) { alert("تعذر العثور على بيانات الفاتورة."); return; }
+
+            const resItems = await fetch(apiBase + "/api/cashier/invoices/" + invoiceId + "/items");
+            if (!resItems.ok) throw new Error("items");
+            const items = await resItems.json();
+
+            const settings = await _nader_fetchSettings();
+            const html = _nader_printHtml(inv, Array.isArray(items) ? items : [], settings);
+
+            let fr = document.getElementById("__printFrame");
+            if (!fr) {
+                fr = document.createElement("iframe");
+                fr.id = "__printFrame";
+                fr.style.position = "fixed";
+                fr.style.right = "0";
+                fr.style.bottom = "0";
+                fr.style.width = "0";
+                fr.style.height = "0";
+                fr.style.border = "0";
+                fr.style.opacity = "0";
+                document.body.appendChild(fr);
+            }
+
+            const doc = fr.contentWindow.document;
+            doc.open();
+            doc.write(html);
+            doc.close();
+
+            setTimeout(() => {
+                try{
+                    const d = fr.contentWindow.document;
+
+                    // احسب ارتفاع المحتوى (px -> mm)
+                    const px = Math.max(
+                        d.documentElement.scrollHeight,
+                        d.body ? d.body.scrollHeight : 0
+                    );
+
+                    // 96dpi: 1px ≈ 0.264583mm
+                    const hMm = Math.ceil(px * 0.264583) + 6; // +6mm هامش بسيط فقط
+
+                    // بدّل "2000mm" داخل @page إلى الارتفاع الحقيقي
+                    const st = d.querySelector("style");
+                    if(st && st.textContent){
+                        st.textContent = st.textContent.replace(/mm\s+2000mm/g, "mm " + hMm + "mm");
+                    }
+                }catch(e){
+                    // إذا فشل الحساب لأي سبب، نطبع عادي
+                }
+
+                fr.contentWindow.focus();
+                fr.contentWindow.print();
+            }, 350);
+
+        } catch (e) {
+            console.error(e);
+            alert("تعذر طباعة الفاتورة. تأكد من تشغيل السيرفر وأن الإعدادات متاحة.");
+        }
+    }
+
+// ===== Delete Invoice =====
     async function confirmDeleteInvoice(id) {
         if (!confirm("هل أنت متأكد من حذف الفاتورة رقم " + id + "؟ هذا الإجراء لا يمكن التراجع عنه.")) {
             return;
@@ -922,6 +1160,14 @@
 <button class="nav-return-btn" onclick="window.location.href='index.html'">⬅ الرجوع للرئيسية</button>
 </body>
 </html>
+
+
+
+
+
+
+
+
 
 
 

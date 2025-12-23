@@ -1,0 +1,161 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>تسجيل الدخول</title>
+  <style>
+    :root{
+      --bg:#f6f8fb; --card:#fff; --text:#0f172a; --muted:#64748b;
+      --primary:#2563eb; --primary2:#1d4ed8; --line:#e2e8f0; --danger:#dc2626;
+      --shadow:0 18px 40px rgba(2,6,23,.10); --radius:22px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial;background:var(--bg);color:var(--text)}
+    .wrap{min-height:100vh;display:grid;place-items:center;padding:18px}
+    .card{width:min(980px,96vw);display:grid;grid-template-columns:1.1fr .9fr;gap:0;background:var(--card);
+      border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+    @media (max-width: 900px){ .card{grid-template-columns:1fr} }
+    .left{padding:26px 26px 22px 26px;background:linear-gradient(135deg,#ffffff 0%, #f8fbff 70%, #eef5ff 100%)}
+    .right{padding:26px;border-right:1px solid var(--line);background:#fff}
+    @media (max-width: 900px){ .right{border-right:0;border-top:1px solid var(--line)} }
+    h1{margin:0 0 10px 0;font-size:26px}
+    .sub{color:var(--muted);margin:0 0 18px 0;line-height:1.7}
+    .logo{display:flex;gap:10px;align-items:center;margin-bottom:14px}
+    .dot{width:14px;height:14px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 6px rgba(37,99,235,.12)}
+    .field{margin-bottom:12px}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input{
+      width:100%;padding:12px 12px;border:1px solid var(--line);border-radius:14px;outline:none;font:inherit;background:#fff
+    }
+    input:focus{border-color:#93c5fd;box-shadow:0 0 0 4px rgba(147,197,253,.35)}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:6px}
+    .btn{
+      width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--primary);background:var(--primary);color:#fff;
+      cursor:pointer;font-weight:800
+    }
+    .btn:hover{background:var(--primary2)}
+    .btn2{border:1px solid var(--line);background:#fff;color:var(--text);font-weight:700}
+    .btn2:hover{background:#f8fafc}
+    .hint{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.7}
+    .err{display:none;margin-top:12px;border:1px solid rgba(220,38,38,.35);background:rgba(220,38,38,.06);
+      color:var(--danger);padding:10px 12px;border-radius:14px}
+    .feat{display:grid;gap:10px;margin-top:18px}
+    .chip{border:1px solid var(--line);border-radius:16px;padding:12px;background:#fff}
+    .chip b{display:block;margin-bottom:4px}
+    .chip small{color:var(--muted)}
+    .foot{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:14px;flex-wrap:wrap}
+    .mini{font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="left">
+      <div class="logo"><span class="dot"></span><div>
+        <div style="font-weight:900;font-size:15px">Nader POS</div>
+        <div style="color:var(--muted);font-size:12px">تسجيل الدخول الآمن</div>
+      </div></div>
+
+      <h1>أهلاً 👋</h1>
+      <p class="sub">سجّل دخولك للوصول للبرنامج حسب الصلاحيات. إذا ما تملك صلاحية صفحة معينة… لا تزعل، مو كل شيء لنا 😄</p>
+
+      <div class="feat">
+        <div class="chip"><b>صلاحيات دقيقة</b><small>كل موظف له دخول محدد للشاشات.</small></div>
+        <div class="chip"><b>جلسة آمنة</b><small>Token مع انتهاء + إمكانية تسجيل خروج.</small></div>
+        <div class="chip"><b>جاهز للتوسع</b><small>نفس الأساس بنبني عليه لوحة التحكم والاشتراكات.</small></div>
+      </div>
+
+      <div class="foot">
+        <span class="mini">Local: <span dir="ltr">http://127.0.0.1:5050</span></span>
+        <button class="btn btn2" id="goHome" type="button">الدخول بدون تسجيل؟ (لا)</button>
+      </div>
+    </div>
+
+    <div class="right">
+      <div style="font-weight:900;font-size:16px;margin-bottom:12px">تسجيل الدخول</div>
+
+      <div class="field">
+        <label>اسم المستخدم</label>
+        <input id="username" placeholder="مثال: admin" dir="ltr" autocomplete="username"/>
+      </div>
+
+      <div class="field">
+        <label>كلمة المرور</label>
+        <input id="password" type="password" placeholder="••••••" dir="ltr" autocomplete="current-password"/>
+      </div>
+
+      <div class="row">
+        <label style="display:flex;gap:8px;align-items:center;margin:0">
+          <input id="remember" type="checkbox" style="width:auto"/>
+          <span style="font-size:13px;color:var(--muted)">تذكرني</span>
+        </label>
+        <span class="mini" id="caps" style="display:none;color:var(--danger)">Caps Lock شغال</span>
+      </div>
+
+      <button class="btn" id="btnLogin">دخول</button>
+      <div class="err" id="err"></div>
+
+      <div class="hint">
+        حساب افتراضي (للاختبار):<br/>
+        <b dir="ltr">admin</b> / <b dir="ltr">admin123</b>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/auth.js"></script>
+<script>
+  const $ = (id)=>document.getElementById(id);
+  const err = (m)=>{ const e=$("err"); e.style.display="block"; e.textContent=m; };
+
+  // لو فيه توكن شغال، حول للرئيسية
+  (async ()=>{
+    if(NaderAuth.getToken()){
+      try{ await NaderAuth.getMe(); location.href="/index.html"; return; }
+      catch{ NaderAuth.setToken(""); }
+    }
+  })();
+
+  $("goHome").onclick = ()=> location.href="/index.html";
+
+  // Caps lock hint
+  $("password").addEventListener("keyup",(ev)=>{
+    const on = ev.getModifierState && ev.getModifierState("CapsLock");
+    $("caps").style.display = on ? "inline" : "none";
+  });
+
+  async function doLogin(){
+    $("err").style.display="none";
+    const username = ($("username").value||"").trim();
+    const password = $("password").value||"";
+    if(!username || !password) return err("اكتب اسم المستخدم وكلمة المرور.");
+
+    try{
+      const r = await NaderAuth.apiFetch("/api/auth/login", { method:"POST", body: JSON.stringify({ username, password }) });
+      NaderAuth.setToken(r.token);
+
+      if($("remember").checked){
+        localStorage.setItem("emp_remember","1");
+      }else{
+        localStorage.removeItem("emp_remember");
+      }
+
+      location.href="/index.html";
+    }catch(e){
+      if(e.status===401) err("اسم المستخدم أو كلمة المرور غير صحيحة.");
+      else err("تعذر تسجيل الدخول: " + (e.message||""));
+    }
+  }
+
+  $("btnLogin").onclick = doLogin;
+  $("password").addEventListener("keydown",(e)=>{ if(e.key==="Enter") doLogin(); });
+  $("username").addEventListener("keydown",(e)=>{ if(e.key==="Enter") $("password").focus(); });
+
+  // remember behavior
+  if(localStorage.getItem("emp_remember")==="1"){
+    $("remember").checked=true;
+  }
+</script>
+</body>
+</html>

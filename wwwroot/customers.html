@@ -647,6 +647,11 @@ async function loadCustomersFromApi() {
         const res = await fetch("/api/customers/full");
         if (!res.ok) throw new Error();
         customersData = await res.json();
+        // ✅ Normalize: ensure customersData is always an Array
+        if (!Array.isArray(customersData)) {
+            customersData = (customersData && (customersData.$values || customersData.items || customersData.customers || customersData.data)) || [];
+        }
+        if (!Array.isArray(customersData)) customersData = [];
         renderMainTable();
         renderAllCustomersModal();
         if (currentPaymentsCustomerId) renderPaymentsList();

@@ -1,0 +1,204 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ط§ظ„ظ†ط³ط® ط§ظ„ط§ط­طھظٹط§ط·ظٹ ظˆط§ظ„ط§ط³طھط¹ط§ط¯ط©</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#0f172a;
+      --card2:#111c33;
+      --text:#e5e7eb;
+      --muted:#9ca3af;
+      --line:rgba(255,255,255,.10);
+      --pri:#22c55e;
+      --pri2:#60a5fa;
+      --warn:#f59e0b;
+      --danger:#ef4444;
+    }
+    body{margin:0;background:linear-gradient(180deg,#070a14,#0b1020 35%,#070a14); color:var(--text);
+         font-family:system-ui,Segoe UI,Tahoma,Arial; min-height:100vh; }
+    .wrap{max-width:1050px;margin:0 auto;padding:22px;}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+    .title{display:flex;gap:12px;align-items:center}
+    .badge{width:42px;height:42px;border-radius:14px;background:rgba(96,165,250,.16);display:grid;place-items:center;border:1px solid var(--line)}
+    h1{font-size:20px;margin:0}
+    .sub{color:var(--muted);font-size:13px;margin-top:2px}
+    .btns{display:flex;gap:10px;flex-wrap:wrap}
+    button,.btnlink{cursor:pointer;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);
+      padding:10px 12px;border-radius:14px;font-weight:800}
+    button:hover,.btnlink:hover{background:rgba(255,255,255,.07)}
+    .pri{background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.35)}
+    .pri:hover{background:rgba(34,197,94,.24)}
+    .blue{background:rgba(96,165,250,.16);border-color:rgba(96,165,250,.35)}
+    .blue:hover{background:rgba(96,165,250,.22)}
+    .warn{background:rgba(245,158,11,.16);border-color:rgba(245,158,11,.35)}
+    .warn:hover{background:rgba(245,158,11,.22)}
+    .danger{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.35)}
+    .danger:hover{background:rgba(239,68,68,.22)}
+    .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}
+    @media (max-width: 920px){ .grid{grid-template-columns:1fr} }
+    .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 16px 40px rgba(0,0,0,.35)}
+    .card h2{margin:0 0 10px 0;font-size:15px}
+    .status{margin:10px 0 0 0;color:var(--muted);font-weight:700}
+    table{width:100%;border-collapse:collapse;margin-top:10px;overflow:hidden;border-radius:14px}
+    th,td{padding:10px;border-bottom:1px solid var(--line);text-align:right;font-size:14px}
+    th{color:#cbd5e1;font-size:13px;background:rgba(255,255,255,.03)}
+    tr:hover td{background:rgba(255,255,255,.03)}
+    a{color:#93c5fd;font-weight:900;text-decoration:none}
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:8px 10px;border-radius:999px;border:1px solid var(--line);
+          background:rgba(255,255,255,.03);color:var(--muted);font-size:12px}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .input{width:100%;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text)}
+    .hint{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.6}
+    .sep{height:1px;background:var(--line);margin:12px 0}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title">
+        <div class="badge">ًں—„ï¸ڈ</div>
+        <div>
+          <h1>ط§ظ„ظ†ط³ط® ط§ظ„ط§ط­طھظٹط§ط·ظٹ ظˆط§ظ„ط§ط³طھط¹ط§ط¯ط©</h1>
+          <div class="sub">ط§ظ„ظ†ط³ط®: <span class="mono">/api/backup/run</span> â€¢ ط§ظ„ظ‚ط§ط¦ظ…ط©: <span class="mono">/api/backup/list</span> â€¢ ط§ظ„طھط­ظ…ظٹظ„: <span class="mono">/api/backup/download/{name}</span> â€¢ ط§ظ„ط§ط³طھط¹ط§ط¯ط© (ظƒط§ظ…ظ„ ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ): <span class="mono">/api/backup/restore/{name}</span></div>
+        </div>
+      </div>
+      <div class="btns">
+        <a class="btnlink blue" href="/" title="ط§ظ„ط¹ظˆط¯ط© ظ„ظ„ط±ط¦ظٹط³ظٹط©">ًںڈ  ط§ظ„ط±ط¦ظٹط³ظٹط©</a>
+        <button class="blue" onclick="refreshList()">ًں”„ طھط­ط¯ظٹط«</button>
+        <button class="pri" onclick="runNow()">âœ… ط¥ظ†ط´ط§ط، ظ†ط³ط®ط© ط§ظ„ط¢ظ†</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>ط§ظ„ظ†ط³ط® ط§ظ„ظ…ظˆط¬ظˆط¯ط©</h2>
+        <div class="row">
+          <span class="pill">ًں“پ ظٹطھظ… ط­ظپط¸ ط§ظ„ظ†ط³ط® ط¯ط§ط®ظ„ ظ…ط¬ظ„ط¯ <span class="mono">backups</span> ظپظٹ ط¬ط°ط± ط§ظ„ظ…ط´ط±ظˆط¹</span>
+        </div>
+        <p id="status" class="status">ط¬ط§ظ‡ط².</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>ط§ظ„ظ…ظ„ظپ</th>
+              <th>ط§ظ„ط­ط¬ظ…</th>
+              <th>ط¢ط®ط± طھط¹ط¯ظٹظ„</th>
+              <th>طھط­ظ…ظٹظ„</th>
+              <th>ط§ط³طھط¹ط§ط¯ط©</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>ط§ط³طھط¹ط§ط¯ط© ظ†ط³ط®ط©</h2>
+        <div class="hint">
+          âڑ ï¸ڈ <b>طھظ†ط¨ظٹظ‡ ظ…ظ‡ظ…:</b> ط§ظ„ط§ط³طھط¹ط§ط¯ط© ظ‡ظ†ط§ <b>ظƒط§ظ…ظ„ ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ</b> (ظƒظ„ ط§ظ„ط¬ط¯ط§ظˆظ„ ظˆط§ظ„ط¨ظٹط§ظ†ط§طھ).<br/>
+          ظ‚ط¨ظ„ ط§ظ„ط§ط³طھط¹ط§ط¯ط© ط§ظ„ط£ظپط¶ظ„ ط¥ظ†ط´ط§ط، ظ†ط³ط®ط© ط¬ط¯ظٹط¯ط© ط§ط­طھظٹط§ط·ظ‹ط§طŒ ظˆط¨ط¹ط¯ظ‡ط§ ط§ط®طھط± ط§ظ„ظ…ظ„ظپ ظˆط§ط¶ط؛ط· ط§ط³طھط¹ط§ط¯ط©.
+        </div>
+        <div class="sep"></div>
+
+        <label class="hint">ط§ط³ظ… ظ…ظ„ظپ ط§ظ„ظ†ط³ط®ط© (ظ…ظ† ط§ظ„ظ‚ط§ط¦ظ…ط©):</label>
+        <input id="restoreName" class="input mono" placeholder="ظ…ط«ط§ظ„: backup_20251223_012000.sql" />
+
+        <div class="row" style="margin-top:10px">
+          <button class="warn" onclick="restoreSelected()">â™»ï¸ڈ ط§ط³طھط¹ط§ط¯ط© ط§ظ„ظ†ط³ط®ط© ط§ظ„ظ…ط®طھط§ط±ط©</button>
+          <button class="danger" onclick="hardReload()">ًں§¹ طھط­ط¯ظٹط« ظ‚ظˆظٹ</button>
+        </div>
+
+        <div class="hint">
+          ط¥ط°ط§ ط¸ظ‡ط± ظپط´ظ„ ط¹ظ†ط¯ ط§ظ„ط§ط³طھط¹ط§ط¯ط©: طھط£ظƒط¯ ط£ظ† <span class="mono">psql</span> ظ…ظˆط¬ظˆط¯ ظپظٹ PATH ط¹ظ„ظ‰ ط§ظ„ط¬ظ‡ط§ط² ط§ظ„ط°ظٹ ظٹط´ط؛ظ‘ظ„ ط§ظ„ط³ظٹط±ظپط±.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+async function api(path, options){
+  const res = await fetch(path, Object.assign({
+    headers: { "Content-Type":"application/json" }
+  }, options || {}));
+  if(!res.ok){
+    const t = await res.text().catch(() => "");
+    throw new Error("HTTP " + res.status + " " + (t || res.statusText));
+  }
+  return res;
+}
+
+function fmtBytes(n){
+  n = Number(n||0);
+  if(n < 1024) return n + " B";
+  const u = ["KB","MB","GB","TB"];
+  let i=-1, v=n;
+  while(v >= 1024 && i < u.length-1){ v/=1024; i++; }
+  return v.toFixed(i<=0?1:2) + " " + u[i];
+}
+
+function setStatus(t){ document.getElementById("status").textContent = t; }
+
+async function refreshList(){
+  setStatus("âڈ³ ط¬ط§ط±ظٹ ط¬ظ„ط¨ ط§ظ„ظ†ط³ط®...");
+  try{
+    const j = await (await api("/api/backup/list")).json();
+    const tbody = document.getElementById("rows");
+    tbody.innerHTML = "";
+    (j.files || []).forEach(function(f){
+      const name = f.name || "";
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td class='mono'>" + name + "</td>" +
+        "<td>" + fmtBytes(f.size || 0) + "</td>" +
+        "<td class='mono'>" + (f.modifiedLocal || "") + "</td>" +
+        "<td><a href=\"/api/backup/download/" + encodeURIComponent(name) + "\" target=\"_blank\">طھط­ظ…ظٹظ„</a></td>" +
+        "<td><button class='warn' onclick=\"restoreFile('" + name.replace(/'/g,"\\'") + "')\">ط§ط³طھط¹ط§ط¯ط©</button></td>";
+      tbody.appendChild(tr);
+    });
+    setStatus("âœ… طھظ…. ط¹ط¯ط¯ ط§ظ„ظ†ط³ط®: " + ((j.files||[]).length));
+  }catch(e){
+    setStatus("â‌Œ " + e.message);
+  }
+}
+
+async function runNow(){
+  setStatus("âڈ³ ط¬ط§ط±ظٹ ط¥ظ†ط´ط§ط، ط§ظ„ظ†ط³ط®ط©...");
+  try{
+    const j = await (await api("/api/backup/run", { method:"POST" })).json();
+    setStatus("âœ… طھظ… ط¥ظ†ط´ط§ط،: " + (j.file || "(ط¨ط¯ظˆظ† ط§ط³ظ…)"));
+    await refreshList();
+  }catch(e){
+    setStatus("â‌Œ " + e.message);
+  }
+}
+
+function restoreFile(name){
+  document.getElementById("restoreName").value = name || "";
+  restoreSelected();
+}
+
+async function restoreSelected(){
+  const name = (document.getElementById("restoreName").value || "").trim();
+  if(!name){ alert("ط§ظƒطھط¨ ط§ط³ظ… ط§ظ„ظ…ظ„ظپ ط£ظˆظ„ط§ظ‹."); return; }
+  if(!confirm("طھط£ظƒظٹط¯ ط§ظ„ط§ط³طھط¹ط§ط¯ط©طں ط³ظٹطھظ… ط§ط³طھط¨ط¯ط§ظ„ ظƒط§ظ…ظ„ ط¨ظٹط§ظ†ط§طھ ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ!")) return;
+
+  setStatus("â™»ï¸ڈ ط¬ط§ط±ظٹ ط§ظ„ط§ط³طھط¹ط§ط¯ط©... ظ‚ط¯ ظٹط³طھط؛ط±ظ‚ ظ‡ط°ط§ ظˆظ‚طھظ‹ط§ ط­ط³ط¨ ط­ط¬ظ… ط§ظ„ظ†ط³ط®ط©.");
+  try{
+    await api("/api/backup/restore/" + encodeURIComponent(name), { method:"POST" });
+    setStatus("âœ… طھظ…طھ ط§ظ„ط§ط³طھط¹ط§ط¯ط© ط¨ظ†ط¬ط§ط­. (ظ‚ط¯ طھط­طھط§ط¬ طھط­ط¯ظٹط« ط§ظ„طµظپط­ط§طھ)");
+  }catch(e){
+    setStatus("â‌Œ " + e.message);
+  }
+}
+
+function hardReload(){
+  location.reload(true);
+}
+
+refreshList();
+</script>
+</body>
+</html>

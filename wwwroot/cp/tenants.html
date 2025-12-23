@@ -1,0 +1,239 @@
+﻿<!doctype html><html lang="ar" dir="rtl"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>لوحة التحكم - المشتركين</title>
+<style>
+:root{--bg:#f6f8fb;--card:#fff;--txt:#0f172a;--mut:#64748b;--b:#e2e8f0;--pri:#2563eb;--ok:#15803d;--err:#b91c1c}
+*{box-sizing:border-box;font-family:system-ui}
+body{margin:0;background:var(--bg);color:var(--txt)}
+.top{position:sticky;top:0;z-index:10;background:rgba(246,248,251,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--b)}
+.topin{max-width:1400px;margin:0 auto;padding:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.h{display:flex;gap:10px;align-items:center}
+.badge{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:999px;padding:6px 10px;font-weight:900;font-size:12px}
+.btn{border:1px solid var(--b);background:#fff;padding:10px 12px;border-radius:12px;cursor:pointer;font-weight:900}
+.btnpri{border-color:#1d4ed8;background:linear-gradient(180deg,#3b82f6,#2563eb);color:#fff}
+.main{max-width:1400px;margin:0 auto;padding:14px;display:grid;gap:12px}
+.grid{display:grid;grid-template-columns:420px 1fr;gap:12px}
+@media(max-width:1050px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--b);border-radius:18px;box-shadow:0 12px 30px rgba(15,23,42,.06);padding:14px}
+h1{margin:0;font-size:16px}
+p{margin:6px 0 0;color:var(--mut);font-size:13px}
+label{font-size:12px;color:var(--mut);font-weight:900}
+input,select{width:100%;padding:12px;border:1px solid var(--b);border-radius:12px;font-size:14px;outline:none;background:#fff}
+input:focus,select:focus{border-color:#93c5fd;box-shadow:0 0 0 4px rgba(147,197,253,.35)}
+.row{display:grid;gap:10px;margin-top:12px}
+.table{width:100%;border-collapse:separate;border-spacing:0}
+th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:right;font-size:13px}
+th{color:var(--mut);font-size:12px}
+tr:hover td{background:#fafcff}
+.k{display:inline-flex;gap:8px;align-items:center}
+.small{color:var(--mut);font-size:12px}
+.msg{margin-top:10px;font-size:13px}
+.ok{color:var(--ok)} .err{color:var(--err)}
+</style></head><body>
+
+<div class="top">
+  <div class="topin">
+    <div class="h">
+      <div class="badge">CONTROL PANEL</div>
+      <div>
+        <h1>المشتركين والخطط</h1>
+        <p class="small">إدارة المشتركين (Tenants) وخطة كل مشترك ومدة الاشتراك.</p>
+      </div>
+    </div>
+    <div class="h">
+      <a class="btn" href="/index.html">🏠 رجوع للبرنامج</a>
+      <button class="btn" id="logout">خروج</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="grid">
+    <div class="card">
+      <h1>إضافة / تعديل مشترك</h1>
+      <p>كل مشترك لاحقاً بيصير له قاعدة/عزل مستقل. الآن نبدأ بإدارة البيانات الأساسية.</p>
+
+      <div class="row">
+        <input type="hidden" id="id">
+        <div>
+          <label>كود المشترك (Unique)</label>
+          <input id="tenantCode" placeholder="مثال: tarif001">
+        </div>
+        <div>
+          <label>اسم صاحب المحل</label>
+          <input id="ownerName" placeholder="اسم المالك">
+        </div>
+        <div>
+          <label>الجوال</label>
+          <input id="phone" placeholder="05xxxxxxxx">
+        </div>
+        <div>
+          <label>البريد</label>
+          <input id="email" placeholder="example@mail.com">
+        </div>
+        <div>
+          <label>الخطة</label>
+          <select id="plan"></select>
+        </div>
+        <div>
+          <label>تاريخ نهاية الاشتراك (UTC اختياري)</label>
+          <input id="expiresAt" placeholder="2026-01-31T00:00:00Z">
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <label style="display:flex;gap:8px;align-items:center">
+            <input type="checkbox" id="isActive" checked> مفعّل
+          </label>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btnpri" id="save">حفظ</button>
+          <button class="btn" id="clear">تفريغ</button>
+          <button class="btn" id="del" style="border-color:#fecaca;color:#b91c1c;background:#fff5f5">حذف</button>
+        </div>
+        <div class="msg" id="msg"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h1>قائمة المشتركين</h1>
+        <button class="btn" id="refresh">تحديث</button>
+      </div>
+
+      <div style="overflow:auto;margin-top:10px">
+        <table class="table" id="tbl">
+          <thead>
+            <tr>
+              <th>الكود</th><th>المالك</th><th>الخطة</th><th>النهاية</th><th>الحالة</th><th>الاستهلاك</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="small">اضغط على أي صف للتعديل.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const token = ()=> localStorage.getItem("cp_token") || "";
+const api = async (url, opt={})=>{
+  const headers = { "Content-Type":"application/json", "X-CP-Token": token(), ...(opt.headers||{}) };
+  const r = await fetch(url, { headers, ...opt });
+  const txt = await r.text();
+  let data=null; try{ data=txt?JSON.parse(txt):null }catch{ data=txt }
+  if(!r.ok) throw data||("HTTP "+r.status);
+  return data;
+};
+const msg=(t,ok=false)=>{
+  const el=document.getElementById('msg');
+  el.className="msg "+(ok?"ok":"err");
+  el.textContent=t||"";
+};
+
+const fillPlans = (plans)=>{
+  const s=document.getElementById('plan');
+  s.innerHTML = plans.map(p=>`<option value="${p.id}">${p.name} (${p.code}) - ${p.priceMonthly} SAR</option>`).join('');
+};
+
+const render = (tenants)=>{
+  const tb=document.querySelector('#tbl tbody');
+  tb.innerHTML='';
+  for(const t of tenants){
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="k"><b>${t.tenantCode}</b></span></td>
+      <td>${t.ownerName||''}</td>
+      <td>${t.planName||''}</td>
+      <td>${new Date(t.expiresAt).toLocaleString()}</td>
+      <td>${t.isActive? '✅ مفعّل':'⛔ موقوف'}</td>
+      <td>${(t.currentDbBytes||0)} bytes</td>`;
+    tr.onclick=()=>{
+      document.getElementById('id').value=t.id;
+      document.getElementById('tenantCode').value=t.tenantCode||'';
+      document.getElementById('ownerName').value=t.ownerName||'';
+      document.getElementById('phone').value=t.phone||'';
+      document.getElementById('email').value=t.email||'';
+      document.getElementById('plan').value=t.planId;
+      document.getElementById('expiresAt').value = new Date(t.expiresAt).toISOString();
+      document.getElementById('isActive').checked = !!t.isActive;
+      msg("جاهز للتعديل ✅", true);
+    };
+    tb.appendChild(tr);
+  }
+};
+
+async function load(){
+  try{
+    const d = await api("/api/cp/tenants");
+    fillPlans(d.plans);
+    render(d.tenants);
+    msg("تم التحميل ✅", true);
+  }catch(e){
+    msg("غير مصرح أو انتهت الجلسة. ارجع للدخول.");
+    setTimeout(()=>location.href="/cp/login.html", 700);
+  }
+}
+
+document.getElementById('refresh').onclick=load;
+
+document.getElementById('clear').onclick=()=>{
+  document.getElementById('id').value='';
+  document.getElementById('tenantCode').value='';
+  document.getElementById('ownerName').value='';
+  document.getElementById('phone').value='';
+  document.getElementById('email').value='';
+  document.getElementById('expiresAt').value='';
+  document.getElementById('isActive').checked=true;
+  msg("");
+};
+
+document.getElementById('save').onclick=async ()=>{
+  const id = document.getElementById('id').value;
+  const body = {
+    tenantCode: document.getElementById('tenantCode').value.trim(),
+    ownerName: document.getElementById('ownerName').value.trim(),
+    phone: document.getElementById('phone').value.trim() || null,
+    email: document.getElementById('email').value.trim() || null,
+    planId: parseInt(document.getElementById('plan').value,10),
+    expiresAtUtc: document.getElementById('expiresAt').value.trim() || null,
+    isActive: document.getElementById('isActive').checked
+  };
+  try{
+    if(!body.tenantCode || !body.ownerName){ msg("الكود واسم المالك مطلوبين"); return }
+    if(id){
+      await api("/api/cp/tenants/"+id, { method:"PUT", body: JSON.stringify(body) });
+      msg("تم التعديل ✅", true);
+    }else{
+      await api("/api/cp/tenants", { method:"POST", body: JSON.stringify(body) });
+      msg("تمت الإضافة ✅", true);
+    }
+    await load();
+  }catch(e){
+    msg("فشل الحفظ: " + (e?.detail || e));
+  }
+};
+
+document.getElementById('del').onclick=async ()=>{
+  const id = document.getElementById('id').value;
+  if(!id){ msg("اختر مشترك أولاً"); return }
+  if(!confirm("متأكد حذف المشترك؟")) return;
+  try{
+    await api("/api/cp/tenants/"+id, { method:"DELETE" });
+    msg("تم الحذف ✅", true);
+    document.getElementById('clear').click();
+    await load();
+  }catch(e){
+    msg("فشل الحذف: " + (e?.detail || e));
+  }
+};
+
+document.getElementById('logout').onclick=async ()=>{
+  try{ await api("/api/cp/logout", { method:"POST", body:"{}" }); }catch{}
+  localStorage.removeItem("cp_token");
+  location.href="/cp/login.html";
+};
+
+load();
+</script>
+</body></html>

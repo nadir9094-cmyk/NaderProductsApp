@@ -1,0 +1,43 @@
+﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using System.Diagnostics;
+using Microsoft.Data.Sqlite;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+record SettingsDto(
+    string? StoreName,
+    string? CommercialRegister,
+    string? VatNumber,
+    string? StoreAddress,
+    string? StorePhone,
+
+    string? InvoicePaper,
+    int CashierPaperWidthMm,
+    string? StoreLogoBase64,
+    string? InvoiceFooterNotes,
+
+    string? BarcodeType,
+    int ZatcaPhase,
+
+    string? Phase2InvoiceHash,
+    string? Phase2Signature,
+    string? Phase2PublicKey,
+    string? Phase2CertificateSignature
+);
+//
+// ===================== BACKUP_FEATURE_V2 =====================
+app.MapGet("/api/backup/list", (IOptions<BackupSettings> opt, IHostEnvironment env) =>
+{
+    var s = opt.Value ?? new BackupSettings();
+    var dir = Path.Combine(env.ContentRootPath, s.OutputDir ?? "wwwroot/backups");
+    Directory.CreateDirectory(dir);
+
+    var files = new DirectoryInfo(dir).GetFiles("*.sql")
+        .OrderByDescending(f => f.LastWriteTimeUtc)
+        .Select(f => new { name = f.Name, size = f.Length, modifiedLocal = f.LastWriteTime.ToString("yyyy-MM-dd HH:mm") })
+        .ToList();
+
+    return Results.Json(new { settings = new { enabled = s.Enabled, timeLocal = s.TimeLocal, retainDays = s.RetainDays }, files });
+});
+

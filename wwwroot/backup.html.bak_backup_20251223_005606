@@ -1,0 +1,112 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>النسخ الاحتياطي</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Tahoma,Arial; margin:20px; background:#f7f7f9}
+    .card{background:#fff; border:1px solid #e6e6ef; border-radius:12px; padding:16px; box-shadow:0 6px 18px rgba(0,0,0,.05)}
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between}
+    button{cursor:pointer; border:0; border-radius:10px; padding:10px 14px; font-weight:700}
+    .btn{background:#1f7aec; color:#fff}
+    .btn2{background:#111827; color:#fff}
+    .muted{color:#6b7280}
+    table{width:100%; border-collapse:collapse; margin-top:12px}
+    th,td{padding:10px; border-bottom:1px solid #eee; text-align:right}
+    a{color:#1f7aec; text-decoration:none; font-weight:700}
+    code{background:#f3f4f6; padding:2px 6px; border-radius:6px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="row">
+      <div>
+        <h2 style="margin:0 0 6px 0">النسخ الاحتياطي</h2>
+        <div class="muted">API: <code>/api/backup/list</code> - <code>/api/backup/run</code> - <code>/api/backup/download/{name}</code></div>
+      </div>
+      <div class="row">
+        <button class="btn2" id="btnRefresh">تحديث</button>
+        <button class="btn" id="btnRun">إنشاء نسخة الآن</button>
+      </div>
+    </div>
+
+    <p id="status" class="muted" style="margin:10px 0 0 0"></p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>الملف</th>
+          <th>الحجم</th>
+          <th>آخر تعديل</th>
+          <th>تحميل</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+<script>
+(function(){
+  async function api(path, options){
+    const res = await fetch(path, Object.assign({
+      headers: { "Content-Type":"application/json" }
+    }, options || {}));
+    if(!res.ok){
+      const t = await res.text().catch(function(){ return ""; });
+      throw new Error("HTTP " + res.status + " " + (t || res.statusText));
+    }
+    return res;
+  }
+
+  function fmtBytes(n){
+    n = Number(n||0);
+    if(n < 1024) return n + " B";
+    const u = ["KB","MB","GB","TB"];
+    let i=-1, v=n;
+    while(v >= 1024 && i < u.length-1){ v/=1024; i++; }
+    return v.toFixed(i<=0?1:2) + " " + u[i];
+  }
+
+  async function refresh(){
+    const st = document.getElementById("status");
+    st.textContent = "⏳ جاري جلب النسخ...";
+    try{
+      const j = await (await api("/api/backup/list")).json();
+      const tbody = document.getElementById("rows");
+      tbody.innerHTML = "";
+      (j.files || []).forEach(function(f){
+        const tr = document.createElement("tr");
+        const name = f.name || "";
+        const size = fmtBytes(f.size || 0);
+        const mod  = f.modifiedLocal || "";
+        const a = '<a href="/api/backup/download/' + encodeURIComponent(name) + '" target="_blank">تحميل</a>';
+        tr.innerHTML = "<td>"+name+"</td><td>"+size+"</td><td>"+mod+"</td><td>"+a+"</td>";
+        tbody.appendChild(tr);
+      });
+      st.textContent = "✅ تم. عدد النسخ: " + ((j.files||[]).length);
+    }catch(e){
+      st.textContent = "❌ " + (e && e.message ? e.message : e);
+    }
+  }
+
+  async function runNow(){
+    const st = document.getElementById("status");
+    st.textContent = "⏳ جاري إنشاء النسخة...";
+    try{
+      const j = await (await api("/api/backup/run", { method:"POST" })).json();
+      st.textContent = "✅ تم إنشاء: " + (j.file || "(unknown)") + (j.note ? " - " + j.note : "");
+      await refresh();
+    }catch(e){
+      st.textContent = "❌ " + (e && e.message ? e.message : e);
+    }
+  }
+
+  document.getElementById("btnRefresh").addEventListener("click", refresh);
+  document.getElementById("btnRun").addEventListener("click", runNow);
+
+  refresh();
+})();
+</script>
+</body>
+</html>

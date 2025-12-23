@@ -1,0 +1,305 @@
+﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Hosting;
+using System.Diagnostics;
+using Microsoft.Data.Sqlite;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using NaderProductsApp.Data;
+using NaderProductsApp.Models;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<BackupSettings>(builder.Configuration.GetSection("BackupSettings"));
+builder.Services.AddHostedService<DailyBackupService>();
+builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+
+var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+}
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+//
+// ===================== API_ALIASES_404_FIX =====================
+// ملاحظة: هذه مسارات مؤقتة لتوافق الشاشات القديمة (404 fixes).
+// لاحقاً نبدلها بتنفيذ حقيقي من DB.
+
+app.MapGet("/api/customers/full", () =>
+{
+    // شاشات customers.html تتوقع قائمة أو كائن… نعطيها قائمة فاضية
+    return Results.Json(new List<object>());
+});
+
+app.MapGet("/api/suppliers-store", async (AppDbContext db) =>
+{
+    // Alias إلى نفس بيانات الموردين الموجودة فعلياً
+    // /api/suppliers موجود عندك: GET/POST
+    var list = await db.Suppliers.OrderByDescending(x => x.Id).ToListAsync();
+    return Results.Json(list);
+});
+
+app.MapGet("/api/expenses", () =>
+{
+    // Alias مؤقت: مصروفات فاضية
+    return Results.Json(new List<object>());
+});
+
+app.MapGet("/api/cashier/invoices/report", () =>
+{
+    // Alias مؤقت لتقرير الفواتير
+    return Results.Json(new List<object>());
+});
+
+app.MapGet("/api/settings", () =>
+{
+    // Alias مؤقت لإعدادات النظام (حتى settings.html ما يطيح)
+    // رجّع قيم افتراضية مناسبة
+    return Results.Json(new {
+        storeName = "",
+        vatNumber = "",
+        phone = "",
+        address = "",
+        invoicePaper = "Cashier",
+        cashierPaperWidthMm = 80,
+        barcodeType = "QR",
+        zatcaPhase = 1,
+        invoiceFooterNotes = ""
+    });
+});
+
+// =================== END API_ALIASES_404_FIX ===================
+//
+
+
+//
+// ===================== BACKUP_FEATURE_V2 =====================
+app.MapGet("/api/backup/list", (IOptions<BackupSettings> opt, IHostEnvironment env) =>
+{
+    var s = opt.Value ?? new BackupSettings();
+    var dir = Path.Combine(env.ContentRootPath, s.OutputDir ?? "wwwroot/backups");
+    Directory.CreateDirectory(dir);
+
+    var files = new DirectoryInfo(dir).GetFiles("*.sql")
+        .OrderByDescending(f => f.LastWriteTimeUtc)
+        .Select(f => new
+        {
+            name = f.Name,
+            size = f.Length,
+            modifiedLocal = f.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
+        })
+        .ToList();
+
+    return Results.Json(new
+    {
+        settings = new { enabled = s.Enabled, timeLocal = s.TimeLocal, retainDays = s.RetainDays },
+        files
+    });
+});
+
+app.MapGet("/api/backup/download/{name}", (string name, IOptions<BackupSettings> opt, IHostEnvironment env) =>
+{
+    var s = opt.Value ?? new BackupSettings();
+    var dir = Path.Combine(env.ContentRootPath, s.OutputDir ?? "wwwroot/backups");
+    var path = Path.Combine(dir, name);
+    if (!System.IO.File.Exists(path)) return Results.NotFound("File not found");
+    return Results.File(System.IO.File.ReadAllBytes(path), "application/sql", name);
+});
+
+app.MapPost("/api/backup/run", async (IOptions<BackupSettings> opt, IHostEnvironment env) =>
+{
+    var s = opt.Value ?? new BackupSettings();
+    var file = await BackupRunner.RunAsync(env.ContentRootPath, s);
+    return Results.Json(new { ok = true, file });
+});
+// =================== END BACKUP_FEATURE_V2 ===================
+
+app.MapGet("/health", () => Results.Ok("OK"));
+
+static string NormPm(string? pm)
+{
+    pm = (pm ?? "").Trim().ToLowerInvariant();
+    if (pm is "cash" or "card" or "deferred") return pm;
+    return "cash";
+}
+
+// ======================= PRODUCTS =======================
+app.MapGet("/api/products", async ([FromServices] AppDbContext db) =>
+    Results.Ok(await db.Products.OrderByDescending(x => x.Id).ToListAsync()));
+
+app.MapGet("/api/products/cashier", async ([FromServices] AppDbContext db) =>
+{
+    var list = await db.Products
+        .Select(p => new
+        {
+            id = p.Id,
+            name = p.Name,
+            barcode = p.Barcode,
+            salePrice = p.SalePrice,
+            isVatIncluded = p.IsVatIncluded,
+            offerEnabled = p.OfferEnabled,
+            offerName = p.OfferName,
+            offerPrice = p.OfferPrice,
+            offerVatIncluded = p.OfferVatIncluded,
+            offerStart = p.OfferStart,
+            offerEnd = p.OfferEnd
+        })
+        .OrderByDescending(x => x.id)
+        .ToListAsync();
+
+    return Results.Ok(list);
+});
+
+app.MapPost("/api/products", async ([FromServices] AppDbContext db, Product input) =>
+{
+    input.Barcode = (input.Barcode ?? "").Trim();
+    input.Name = (input.Name ?? "").Trim();
+
+    if (string.IsNullOrWhiteSpace(input.Barcode) || string.IsNullOrWhiteSpace(input.Name))
+        return Results.BadRequest("REQUIRED_FIELDS");
+
+    var exists = await db.Products.AnyAsync(p => p.Barcode == input.Barcode);
+    if (exists) return Results.BadRequest("BARCODE_DUPLICATE");
+
+    db.Products.Add(input);
+    await db.SaveChangesAsync();
+    return Results.Ok(input);
+});
+
+app.MapPut("/api/products/{id:int}", async ([FromServices] AppDbContext db, int id, Product input) =>
+{
+    var p = await db.Products.FindAsync(id);
+    if (p is null) return Results.NotFound();
+
+    p.Barcode = (input.Barcode ?? "").Trim();
+    p.Name = (input.Name ?? "").Trim();
+    p.Category = (input.Category ?? "").Trim();
+
+    p.PurchasePrice = input.PurchasePrice;
+    p.SalePrice = input.SalePrice;
+    p.IsVatIncluded = input.IsVatIncluded;
+
+    p.ExpiryDate = input.ExpiryDate;
+    p.MinQuantity = input.MinQuantity;
+
+    p.OfferEnabled = input.OfferEnabled;
+    p.OfferName = input.OfferName;
+    p.OfferPrice = input.OfferPrice;
+    p.OfferVatIncluded = input.OfferVatIncluded;
+    p.OfferStart = input.OfferStart;
+    p.OfferEnd = input.OfferEnd;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(p);
+});
+
+app.MapDelete("/api/products/{id:int}", async ([FromServices] AppDbContext db, int id) =>
+{
+    var p = await db.Products.FindAsync(id);
+    if (p is null) return Results.NotFound();
+
+    db.Products.Remove(p);
+    await db.SaveChangesAsync();
+    return Results.Ok(new { ok = true });
+});
+
+// ======================= SUPPLIERS (SQLite) =======================
+static string SuppliersDbPath(string contentRoot) => Path.Combine(contentRoot, "suppliers.db");
+static void EnsureSuppliersDb(string contentRoot)
+{
+    var path = SuppliersDbPath(contentRoot);
+    Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+
+    using var con = new SqliteConnection($"Data Source={path}");
+    con.Open();
+
+    var cmd = con.CreateCommand();
+    cmd.CommandText = @"
+CREATE TABLE IF NOT EXISTS suppliers(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  phone TEXT,
+  vatNumber TEXT,
+  crNumber TEXT,
+  address TEXT,
+  notes TEXT
+);
+CREATE TABLE IF NOT EXISTS supplier_invoices(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  supplierId INTEGER NOT NULL,
+  invoiceNo TEXT,
+  invoiceDate TEXT,
+  total REAL NOT NULL,
+  vat REAL NOT NULL,
+  notes TEXT,
+  createdAt TEXT NOT NULL,
+  FOREIGN KEY(supplierId) REFERENCES suppliers(id)
+);
+";
+    cmd.ExecuteNonQuery();
+}
+
+app.MapGet("/api/suppliers", (IHostEnvironment env) =>
+{
+    EnsureSuppliersDb(env.ContentRootPath);
+    using var con = new SqliteConnection($"Data Source={SuppliersDbPath(env.ContentRootPath)}");
+    con.Open();
+    using var cmd = con.CreateCommand();
+    cmd.CommandText = "SELECT id,name,phone,vatNumber,crNumber,address,notes FROM suppliers ORDER BY id DESC;";
+    using var r = cmd.ExecuteReader();
+    var list = new List<object>();
+    while (r.Read())
+    {
+        list.Add(new
+        {
+            id = r.GetInt64(0),
+            name = r.GetString(1),
+            phone = r.IsDBNull(2) ? "" : r.GetString(2),
+            vatNumber = r.IsDBNull(3) ? "" : r.GetString(3),
+            crNumber = r.IsDBNull(4) ? "" : r.GetString(4),
+            address = r.IsDBNull(5) ? "" : r.GetString(5),
+            notes = r.IsDBNull(6) ? "" : r.GetString(6)
+        });
+    }
+    return Results.Ok(list);
+});
+
+app.MapPost("/api/suppliers", (IHostEnvironment env, [FromBody] dynamic body) =>
+{
+    EnsureSuppliersDb(env.ContentRootPath);
+
+    string Get(string k) => body is null ? "" : (string?)body[k] ?? "";
+    var name = Get("name").Trim();
+    if (string.IsNullOrWhiteSpace(name)) return Results.BadRequest("REQUIRED_NAME");
+
+    using var con = new SqliteConnection($"Data Source={SuppliersDbPath(env.ContentRootPath)}");
+    con.Open();
+    using var cmd = con.CreateCommand();
+    cmd.CommandText = @"
+INSERT INTO suppliers(name,phone,vatNumber,crNumber,address,notes)
+VALUES ($name,$phone,$vat,$cr,$addr,$notes);
+SELECT last_insert_rowid();
+";
+    cmd.Parameters.AddWithValue("$name", name);
+    cmd.Parameters.AddWithValue("$phone", Get("phone"));
+    cmd.Parameters.AddWithValue("$vat", Get("vatNumber"));
+    cmd.Parameters.AddWithValue("$cr", Get("crNumber"));
+    cmd.Parameters.AddWithValue("$addr", Get("address"));
+    cmd.Parameters.AddWithValue("$notes", Get("notes"));
+
+    var id = (long)cmd.ExecuteScalar()!;
+    return Results.Ok(new { id });
+});
+
+// ======================= SETTINGS (existing code in your Program.cs continues) =======================
+// ملاحظة: باقي ملفك الحالي (Routes/settings/invoices/expenses...) لازم يكون موجود عندك.
+// إذا كان عندك Program.cs أطول من هذا: لا تقلق.
+// الهدف هنا إننا نمنع أي Types داخل Program.cs ونمنع أي app.Map بعد app.Run.
+
+app.Run("http://127.0.0.1:5050");
+
+

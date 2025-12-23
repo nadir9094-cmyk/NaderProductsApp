@@ -1,0 +1,12 @@
+﻿public sealed class SettingsDto
+{
+    // خليها مفتوحة.. حتى لو عندك خصائص كثيرة لاحقاً ما يمنع
+    public string? StoreName { get; set; }
+    public string? VatNumber { get; set; }
+    public string? Phone { get; set; }
+    public string? Address { get; set; }
+
+    // لو عندك إعدادات رقمية تسبب مشاكل تحويل:
+    public int? VatPercent { get; set; }
+    public int? CashierPaperWidthMm { get; set; }
+}

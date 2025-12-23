@@ -1,0 +1,93 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>النسخ الاحتياطي</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Tahoma,Arial; margin:16px; background:#f7f7fb;}
+    .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 4px 18px rgba(0,0,0,.06);}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:right}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    button{padding:10px 14px;border:0;border-radius:10px;cursor:pointer}
+    .primary{background:#1f6feb;color:#fff}
+    .muted{color:#666}
+    .status{margin-top:10px;font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="row">
+      <h2 style="margin:0">النسخ الاحتياطي</h2>
+      <div class="muted">يعتمد على API: /api/backup/*</div>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <button class="primary" id="btnRun">إنشاء نسخة الآن</button>
+      <button id="btnRefresh">تحديث القائمة</button>
+      <div class="status" id="status"></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>الاسم</th><th>الحجم</th><th>آخر تعديل</th><th>تحميل</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+<script>
+const API_BASE = "";
+async function api(path, options){
+  const res = await fetch(API_BASE + path, Object.assign({
+    headers: { "Content-Type":"application/json" }
+  }, options||{}));
+  if(!res.ok){
+    const t = await res.text().catch(()=> "");
+    throw new Error(t || ("HTTP " + res.status));
+  }
+  return res;
+}
+
+async function refresh(){
+  const st = document.getElementById('status');
+  st.textContent = '⏳ جاري جلب النسخ...';
+  const tbody = document.getElementById('rows');
+  tbody.innerHTML = '';
+  try{
+    const j = await (await api('/api/backup/list')).json();
+    (j.files||[]).forEach(f=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${f.name||''}</td>
+        <td>${(f.size||0).toLocaleString()}</td>
+        <td>${f.modifiedLocal||''}</td>
+        <td><a href="/api/backup/download/${encodeURIComponent(f.name)}">تحميل</a></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    st.textContent = '✅ تم. عدد النسخ: ' + (j.files||[]).length;
+  }catch(e){
+    st.textContent = '❌ ' + e.message;
+  }
+}
+
+async function runNow(){
+  const st = document.getElementById('status');
+  st.textContent = '⏳ جاري إنشاء النسخة...';
+  try{
+    const j = await (await api('/api/backup/run', {method:'POST'})).json();
+    st.textContent = '✅ تم إنشاء: ' + (j.file||'');
+    await refresh();
+  }catch(e){
+    st.textContent = '❌ ' + e.message;
+  }
+}
+
+document.getElementById('btnRun').addEventListener('click', runNow);
+document.getElementById('btnRefresh').addEventListener('click', refresh);
+refresh();
+</script>
+</body>
+</html>

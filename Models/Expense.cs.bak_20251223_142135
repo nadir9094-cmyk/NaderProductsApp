@@ -1,0 +1,12 @@
+﻿namespace NaderProductsApp.Models;
+
+public class Expense
+{
+    public int Id { get; set; }
+    public string? Title { get; set; }          // اسم المصروف
+    public string? Category { get; set; }       // تصنيف
+    public decimal Amount { get; set; }         // المبلغ
+    public string? Note { get; set; }           // ملاحظة
+    public string Date { get; set; } = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
+    public string? PaymentMethod { get; set; }  // كاش/شبكة...
+}

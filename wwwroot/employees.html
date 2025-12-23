@@ -1,0 +1,478 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>الموظفين والصلاحيات</title>
+  <style>
+    :root{
+      --bg:#f6f8fb; --card:#ffffff; --text:#0f172a; --muted:#64748b;
+      --primary:#2563eb; --primary2:#1d4ed8; --danger:#dc2626; --ok:#16a34a;
+      --line:#e2e8f0; --shadow:0 12px 30px rgba(2,6,23,.08);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial;background:var(--bg);color:var(--text)}
+    header{
+      position:sticky;top:0;background:rgba(246,248,251,.92);backdrop-filter:blur(10px);
+      border-bottom:1px solid var(--line); z-index:5;
+    }
+    .wrap{max-width:1200px;margin:0 auto;padding:18px}
+    .top{
+      display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap
+    }
+    .title{
+      display:flex;gap:12px;align-items:center
+    }
+    .badge{font-size:12px;color:var(--muted);border:1px solid var(--line);background:#fff;padding:6px 10px;border-radius:999px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:14px}
+    .left, .right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    input,select,button{
+      font:inherit;border-radius:12px;border:1px solid var(--line);background:#fff;padding:10px 12px;outline:none
+    }
+    input:focus,select:focus{border-color:#93c5fd;box-shadow:0 0 0 4px rgba(147,197,253,.35)}
+    button{cursor:pointer}
+    .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+    .btn-primary:hover{background:var(--primary2)}
+    .btn-danger{background:var(--danger);border-color:var(--danger);color:#fff}
+    .btn-ghost{background:#fff}
+    .grid{display:grid;grid-template-columns:1fr;gap:14px;padding:14px}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    th,td{padding:12px 10px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+    th{color:var(--muted);font-weight:600;background:#fbfdff}
+    tr:hover td{background:#fbfdff}
+    .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 10px;font-size:12px;color:var(--muted)}
+    .ok{color:var(--ok);font-weight:700}
+    .off{color:var(--danger);font-weight:700}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .link{border:0;background:transparent;color:var(--primary);padding:0;cursor:pointer}
+    .link.danger{color:var(--danger)}
+    .modal{
+      position:fixed;inset:0;background:rgba(2,6,23,.55);display:none;align-items:center;justify-content:center;z-index:50
+    }
+    .modal.show{display:flex}
+    .modal .box{
+      width:min(900px,94vw);max-height:90vh;overflow:auto;
+      background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)
+    }
+    .modal .head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+    .modal .body{padding:16px}
+    .modal .foot{display:flex;gap:10px;justify-content:flex-start;flex-wrap:wrap;padding:14px 16px;border-top:1px solid var(--line)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width: 900px){ .row{grid-template-columns:1fr} }
+    .hint{color:var(--muted);font-size:12px;margin-top:6px}
+    .perms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+    @media (max-width: 900px){ .perms{grid-template-columns:1fr} }
+    .perm{
+      border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;background:#fff
+    }
+    .perm small{color:var(--muted)}
+    .toast{
+      position:fixed;left:16px;bottom:16px;min-width:260px;max-width:90vw;
+      background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:12px 14px;display:none;z-index:60
+    }
+    .toast.show{display:block}
+    .toast.ok{border-color:rgba(22,163,74,.35)}
+    .toast.bad{border-color:rgba(220,38,38,.35)}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap top">
+    <div class="title">
+      <h2 style="margin:0">الموظفين والصلاحيات</h2>
+      <span class="badge">employees.html</span>
+    </div>
+    <div class="right">
+      <span id="me" class="pill">غير مسجل</span>
+      <button class="btn-ghost" id="btnHome" title="العودة للرئيسية">الرئيسية</button>
+      <button class="btn-ghost" id="btnLogout" title="تسجيل الخروج">خروج</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="card">
+    <div class="toolbar">
+      <div class="left">
+        <input id="q" placeholder="بحث بالاسم أو اسم المستخدم…" style="min-width:260px"/>
+        <select id="filterActive">
+          <option value="all">الكل</option>
+          <option value="active">نشط</option>
+          <option value="inactive">موقوف</option>
+        </select>
+      </div>
+      <div class="right">
+        <button class="btn-primary" id="btnAdd">+ إضافة موظف</button>
+        <button id="btnRefresh">تحديث</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div style="overflow:auto;border-radius:14px;border:1px solid var(--line)">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:70px">#</th>
+              <th>اسم الموظف</th>
+              <th>اسم المستخدم</th>
+              <th>الحالة</th>
+              <th>الصلاحيات</th>
+              <th style="width:190px">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="hint">
+        💡 تلميح: اسم المستخدم لازم يكون فريد، وكلمة المرور ما تُعرض أبدًا (حتى للمدير… للأسف 😄).
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Modal -->
+<div class="modal" id="modal">
+  <div class="box">
+    <div class="head">
+      <div>
+        <div id="modalTitle" style="font-weight:800;font-size:16px">إضافة موظف</div>
+        <div class="hint" id="modalSub">املأ البيانات وحدد الصلاحيات</div>
+      </div>
+      <button id="btnClose">✕</button>
+    </div>
+    <div class="body">
+      <div class="row">
+        <div>
+          <label>اسم الموظف</label>
+          <input id="fullName" placeholder="مثال: محمد أحمد"/>
+        </div>
+        <div>
+          <label>اسم المستخدم (فريد)</label>
+          <input id="username" placeholder="مثال: mohammad" dir="ltr"/>
+          <div class="hint">يتم تحويله تلقائياً إلى حروف صغيرة.</div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <div>
+          <label>كلمة المرور</label>
+          <input id="password" type="password" placeholder="••••" dir="ltr"/>
+          <div class="hint" id="passHint">مطلوبة عند الإضافة. عند التعديل: اتركها فاضية إن ما تبي تغيرها.</div>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:10px">
+          <label class="perm" style="width:100%">
+            <div>
+              <div style="font-weight:700">نشط</div>
+              <small>إذا كان موقوف ما يقدر يسجل دخول</small>
+            </div>
+            <input id="isActive" type="checkbox" checked/>
+          </label>
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div style="font-weight:800;margin-bottom:8px">الصلاحيات</div>
+        <div class="perms" id="perms"></div>
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+          <button id="btnAll">تحديد الكل</button>
+          <button id="btnNone">إلغاء الكل</button>
+        </div>
+      </div>
+    </div>
+    <div class="foot">
+      <button class="btn-primary" id="btnSave">حفظ</button>
+      <button id="btnCancel">إلغاء</button>
+      <button class="btn-danger" id="btnDelete" style="display:none">حذف الموظف</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = (p)=> (p.startsWith("http")?p:(location.origin + p));
+  const permList = [
+    { key:"Products", bit:0,  name:"المنتجات", desc:"الدخول لشاشة المنتجات" },
+    { key:"CustomersDeferred", bit:1, name:"العملاء والدفع المؤجل", desc:"إدارة العملاء والسداد" },
+    { key:"Suppliers", bit:2, name:"الموردين", desc:"شاشة الموردين والفواتير" },
+    { key:"Expenses", bit:3, name:"مصروفات المتجر", desc:"تسجيل المصروفات" },
+    { key:"Cashier", bit:4, name:"شاشة الكاشير", desc:"البيع المباشر" },
+    { key:"SalesInvoices", bit:5, name:"فواتير المبيعات", desc:"عرض وطباعة فواتير البيع" },
+    { key:"Employees", bit:6, name:"الموظفين والصلاحيات", desc:"إدارة الموظفين" },
+    { key:"Settings", bit:7, name:"الإعدادات", desc:"إعدادات النظام" },
+    { key:"Backup", bit:8, name:"النسخ الاحتياطي", desc:"نسخ/استعادة" },
+    { key:"SubscriptionPlan", bit:9, name:"خطة الاشتراك", desc:"إدارة خطة الاشتراك" },
+  ];
+  const bit = (b)=> (1n << BigInt(b));
+  const toBig = (n)=> BigInt(n||0);
+  const has = (mask, b)=> (toBig(mask) & bit(b)) !== 0n;
+
+  function toast(msg, ok=true){
+    const t=document.getElementById("toast");
+    t.className="toast show " + (ok?"ok":"bad");
+    t.textContent=msg;
+    setTimeout(()=>t.className="toast", 2600);
+  }
+
+  function token(){ return localStorage.getItem("emp_token") || ""; }
+  async function apiFetch(path, opt={}){
+    const headers = Object.assign({ "Content-Type":"application/json" }, opt.headers||{});
+    if(token()) headers["Authorization"] = "Bearer " + token();
+    const res = await fetch(API(path), Object.assign(opt,{headers}));
+    const txt = await res.text();
+    let data = null;
+    try{ data = txt ? JSON.parse(txt) : null; }catch{ data = txt; }
+    if(!res.ok){
+      throw new Error(typeof data==="string"?data:(data?.title || data?.detail || "ERROR"));
+    }
+    return data;
+  }
+
+  // Simple login prompt if no token
+  async function ensureLogin(){
+    if(token()) return true;
+    const u = prompt("اسم المستخدم:");
+    if(!u) return false;
+    const p = prompt("كلمة المرور:");
+    if(!p) return false;
+    try{
+      const r = await apiFetch("/api/auth/login", { method:"POST", body: JSON.stringify({ username:u, password:p }) });
+      localStorage.setItem("emp_token", r.token);
+      return true;
+    }catch(e){
+      toast("فشل تسجيل الدخول: " + e.message, false);
+      return false;
+    }
+  }
+
+  async function loadMe(){
+    try{
+      const me = await apiFetch("/api/auth/me");
+      document.getElementById("me").textContent = "مرحباً: " + me.fullName + " ("+me.username+")";
+    }catch{
+      document.getElementById("me").textContent = "غير مسجل";
+    }
+  }
+
+  const state = { list:[], editId:null, permsMask:0n };
+
+  function renderPerms(container, mask){
+    container.innerHTML="";
+    permList.forEach(p=>{
+      const el=document.createElement("label");
+      el.className="perm";
+      el.innerHTML = `
+        <div>
+          <div style="font-weight:800">${p.name}</div>
+          <small>${p.desc}</small>
+        </div>
+        <input type="checkbox" ${has(mask,p.bit)?"checked":""}/>
+      `;
+      const cb = el.querySelector("input");
+      cb.addEventListener("change", ()=>{
+        if(cb.checked) state.permsMask = (state.permsMask | bit(p.bit));
+        else state.permsMask = (state.permsMask & ~bit(p.bit));
+      });
+      container.appendChild(el);
+    });
+  }
+
+  function permsSummary(mask){
+    const names = permList.filter(p=>has(mask,p.bit)).map(p=>p.name);
+    if(!names.length) return "بدون";
+    return names.slice(0,3).join("، ") + (names.length>3?` +${names.length-3}`:"");
+  }
+
+  function filterList(){
+    const q=(document.getElementById("q").value||"").trim().toLowerCase();
+    const fa=document.getElementById("filterActive").value;
+    return state.list.filter(x=>{
+      if(fa==="active" && !x.isActive) return false;
+      if(fa==="inactive" && x.isActive) return false;
+      if(!q) return true;
+      return (x.fullName||"").toLowerCase().includes(q) || (x.username||"").toLowerCase().includes(q);
+    });
+  }
+
+  function renderTable(){
+    const rows=document.getElementById("rows");
+    rows.innerHTML="";
+    const list = filterList();
+    list.forEach(x=>{
+      const tr=document.createElement("tr");
+      tr.innerHTML = `
+        <td>${x.id}</td>
+        <td>${x.fullName}</td>
+        <td dir="ltr">${x.username}</td>
+        <td>${x.isActive ? '<span class="ok">نشط</span>' : '<span class="off">موقوف</span>'}</td>
+        <td><span class="pill">${permsSummary(x.permissions)}</span></td>
+        <td>
+          <div class="actions">
+            <button class="link" data-act="edit">تعديل</button>
+            <button class="link danger" data-act="del">حذف</button>
+          </div>
+        </td>
+      `;
+      tr.querySelector('[data-act="edit"]').onclick = ()=> openEdit(x);
+      tr.querySelector('[data-act="del"]').onclick = ()=> delEmployee(x);
+      rows.appendChild(tr);
+    });
+  }
+
+  async function loadEmployees(){
+    state.list = await apiFetch("/api/employees");
+    renderTable();
+  }
+
+  // Modal
+  const modal = document.getElementById("modal");
+  const permsBox = document.getElementById("perms");
+  function openAdd(){
+    state.editId=null;
+    document.getElementById("modalTitle").textContent="إضافة موظف";
+    document.getElementById("modalSub").textContent="املأ البيانات وحدد الصلاحيات";
+    document.getElementById("fullName").value="";
+    document.getElementById("username").value="";
+    document.getElementById("password").value="";
+    document.getElementById("isActive").checked=true;
+    document.getElementById("btnDelete").style.display="none";
+    document.getElementById("passHint").textContent="مطلوبة عند الإضافة. عند التعديل: اتركها فاضية إن ما تبي تغيرها.";
+    state.permsMask = 0n;
+    renderPerms(permsBox, state.permsMask);
+    modal.classList.add("show");
+  }
+  function openEdit(x){
+    state.editId=x.id;
+    document.getElementById("modalTitle").textContent="تعديل موظف";
+    document.getElementById("modalSub").textContent="عدّل البيانات والصلاحيات";
+    document.getElementById("fullName").value=x.fullName||"";
+    document.getElementById("username").value=x.username||"";
+    document.getElementById("password").value="";
+    document.getElementById("isActive").checked=!!x.isActive;
+    document.getElementById("btnDelete").style.display="inline-block";
+    document.getElementById("passHint").textContent="لتغيير كلمة المرور اكتب جديدة، وإلا اتركها فاضية.";
+    state.permsMask = toBig(x.permissions);
+    renderPerms(permsBox, state.permsMask);
+    modal.classList.add("show");
+  }
+  function closeModal(){ modal.classList.remove("show"); }
+
+  async function saveEmployee(){
+    const fullName = document.getElementById("fullName").value.trim();
+    const username = document.getElementById("username").value.trim().toLowerCase();
+    const password = document.getElementById("password").value;
+    const isActive = document.getElementById("isActive").checked;
+    const permissions = Number(state.permsMask); // ok for our bits
+
+    if(!fullName || !username) return toast("أكمل الاسم واسم المستخدم", false);
+
+    try{
+      if(state.editId==null){
+        if(!password || password.length<4) return toast("كلمة المرور لا تقل عن 4 أحرف", false);
+        await apiFetch("/api/employees", { method:"POST", body: JSON.stringify({ fullName, username, password, permissions, isActive }) });
+        toast("تم إضافة الموظف ✅");
+      }else{
+        const newPassword = password?.trim() ? password : null;
+        await apiFetch("/api/employees/"+state.editId, { method:"PUT", body: JSON.stringify({ fullName, username, newPassword, permissions, isActive }) });
+        toast("تم تعديل الموظف ✅");
+      }
+      closeModal();
+      await loadEmployees();
+    }catch(e){
+      if((e.message||"").includes("USERNAME_EXISTS")) toast("اسم المستخدم مستخدم مسبقاً ❌", false);
+      else toast("فشل: "+e.message, false);
+    }
+  }
+
+  async function delEmployee(x){
+    if(!confirm("حذف الموظف: "+x.fullName+" ؟")) return;
+    try{
+      await apiFetch("/api/employees/"+x.id, { method:"DELETE" });
+      toast("تم الحذف ✅");
+      await loadEmployees();
+    }catch(e){
+      toast("فشل الحذف: "+e.message, false);
+    }
+  }
+
+  document.getElementById("btnAdd").onclick = openAdd;
+  document.getElementById("btnRefresh").onclick = ()=> loadEmployees().catch(e=>toast(e.message,false));
+  document.getElementById("q").oninput = renderTable;
+  document.getElementById("filterActive").onchange = renderTable;
+  document.getElementById("btnClose").onclick = closeModal;
+  document.getElementById("btnCancel").onclick = closeModal;
+  document.getElementById("btnSave").onclick = ()=> saveEmployee();
+  document.getElementById("btnDelete").onclick = async ()=>{
+    const id=state.editId;
+    const x=state.list.find(z=>z.id===id);
+    if(x) await delEmployee(x);
+    closeModal();
+  };
+  document.getElementById("btnAll").onclick = ()=>{
+    state.permsMask = 0n;
+    permList.forEach(p=> state.permsMask = (state.permsMask | bit(p.bit)));
+    renderPerms(permsBox, state.permsMask);
+  };
+  document.getElementById("btnNone").onclick = ()=>{
+    state.permsMask = 0n;
+    renderPerms(permsBox, state.permsMask);
+  };
+  document.getElementById("btnHome").onclick = ()=> { location.href = "/index.html"; };
+  document.getElementById("btnLogout").onclick = async ()=>{
+    try{ await apiFetch("/api/auth/logout", {method:"POST"}); }catch{}
+    localStorage.removeItem("emp_token");
+    toast("تم تسجيل الخروج");
+    location.reload();
+  };
+
+  (async function init(){
+  // لو فيه توكن قديم: تأكد منه أولاً
+  if(token()){
+    try{
+      await apiFetch("/api/auth/me");
+    }catch(e){
+      localStorage.removeItem("emp_token");
+    }
+  }
+
+  const ok = await ensureLogin();
+  if(!ok) return;
+
+  await loadMe();
+
+  try{
+    await loadEmployees();
+  }catch(e){
+    // لو المشكلة بسبب توكن/جلسة: جرّب تسجيل دخول من جديد مرة واحدة
+    if((e.message||"").toLowerCase().includes("unauthorized")){
+      localStorage.removeItem("emp_token");
+      const ok2 = await ensureLogin();
+      if(!ok2) return;
+      await loadMe();
+      await loadEmployees();
+      return;
+    }
+    toast("لا تملك صلاحية شاشة الموظفين أو التوكن غير صحيح.", false);
+  }
+})();
+</script>
+<script src="/js/auth.js"></script>
+<script>
+(async ()=>{
+  await window.NaderAuth?.requireAuth({ permissionBit: 6, redirect:"/login.html" });
+})();
+</script>
+<!-- NADER_AUTH_GUARD -->
+<script>
+(async ()=>{
+  await window.NaderAuth?.requireAuth({ permissionBit: 6, redirect:"/login.html" });
+})();
+</script>
+</body>
+</html>
+
+
+
+

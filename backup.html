@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>النسخ الاحتياطي</title>
+  <style>
+    :root{--bg:#0b1220;--card:#0f1b33;--muted:#a8b3cf;--text:#eaf0ff;--line:#223155;--btn:#2f6bff;--btn2:#111b33;--danger:#ef4444;--ok:#22c55e}
+    body{margin:0;background:linear-gradient(180deg,#08101f 0%, #0b1220 60%, #070c16 100%);font-family:system-ui,Segoe UI,Tahoma,Arial;color:var(--text)}
+    .wrap{max-width:980px;margin:24px auto;padding:0 14px}
+    .topbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .title{display:flex;flex-direction:column;gap:6px}
+    h1{margin:0;font-size:22px}
+    .sub{color:var(--muted);font-size:13px;line-height:1.6}
+    .card{background:rgba(15,27,51,.78);border:1px solid rgba(34,49,85,.9);border-radius:16px;box-shadow:0 18px 55px rgba(0,0,0,.45);overflow:hidden}
+    .cardHead{padding:14px 14px 10px;border-bottom:1px solid var(--line);display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+    .btns{display:flex;gap:10px;flex-wrap:wrap}
+    button,a.btn{cursor:pointer;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 12px;font-weight:800;color:var(--text);background:var(--btn2);text-decoration:none}
+    button.primary{background:var(--btn)}
+    button.danger{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35)}
+    button:disabled{opacity:.55;cursor:not-allowed}
+    .body{padding:14px}
+    .status{margin:0 0 10px 0;color:var(--muted);font-size:13px}
+    .status.ok{color:var(--ok)}
+    .status.bad{color:#ff7b7b}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media (min-width:860px){.grid{grid-template-columns:1.15fr .85fr}}
+    .panel{background:rgba(7,12,22,.55);border:1px solid rgba(34,49,85,.8);border-radius:14px;padding:12px}
+    .panel h3{margin:0 0 8px;font-size:15px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    select{min-width:260px;max-width:100%;background:#091126;border:1px solid rgba(255,255,255,.08);color:var(--text);padding:10px 12px;border-radius:12px}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{padding:10px;border-bottom:1px solid rgba(34,49,85,.7);text-align:right;font-size:13px}
+    th{color:#cfe0ff;font-weight:900}
+    td a{color:#9cc1ff;font-weight:900;text-decoration:none}
+    code{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);padding:2px 6px;border-radius:8px;color:#dbe7ff}
+    .hint{color:var(--muted);font-size:12px;line-height:1.7;margin-top:6px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="title">
+        <h1>النسخ الاحتياطي والاستعادة</h1>
+        <div class="sub">
+          المسارات: <code>/api/backup/list</code> • <code>/api/backup/run</code> • <code>/api/backup/restore/{name}</code> • <code>/api/backup/download/{name}</code>
+        </div>
+      </div>
+      <div class="btns">
+        <a class="btn" href="/" title="العودة للرئيسية">🏠 العودة للرئيسية</a>
+        <button onclick="refreshList()">🔄 تحديث</button>
+        <button class="primary" onclick="runNow()">⚡ إنشاء نسخة الآن</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="cardHead">
+        <div class="sub" id="meta">—</div>
+        <div class="sub">آخر تحديث: <span id="last">—</span></div>
+      </div>
+
+      <div class="body">
+        <p id="status" class="status">جاهز.</p>
+
+        <div class="grid">
+          <div class="panel">
+            <h3>النسخ الموجودة</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>الملف</th>
+                  <th>الحجم</th>
+                  <th>آخر تعديل</th>
+                  <th>تحميل</th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+
+          <div class="panel">
+            <h3>استعادة نسخة كاملة</h3>
+            <div class="row">
+              <select id="restoreSelect"></select>
+              <button class="danger" onclick="restoreSelected()">♻️ استعادة</button>
+            </div>
+            <div class="hint">
+              ⚠️ الاستعادة هنا <b>لكامل قاعدة البيانات والجداول</b> حسب محتوى ملف <code>.sql</code>.<br/>
+              تتطلب أدوات PostgreSQL (وجود <code>psql</code> في PATH). إذا لم تكن موجودة سيظهر لك خطأ واضح.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+<script>
+async function api(path, options){
+  const res = await fetch(path, Object.assign({
+    headers: { "Content-Type":"application/json" }
+  }, options || {}));
+  if(!res.ok){
+    const t = await res.text().catch(() => "");
+    throw new Error("HTTP " + res.status + " " + (t || res.statusText));
+  }
+  return res;
+}
+
+function fmtBytes(n){
+  n = Number(n||0);
+  if(n < 1024) return n + " B";
+  const u = ["KB","MB","GB","TB"];
+  let i=-1, v=n;
+  while(v >= 1024 && i < u.length-1){ v/=1024; i++; }
+  return v.toFixed(i<=0?1:2) + " " + u[i];
+}
+
+function setStatus(msg, kind){
+  const el = document.getElementById("status");
+  el.className = "status" + (kind ? (" " + kind) : "");
+  el.textContent = msg;
+}
+
+async function refreshList(){
+  setStatus("⏳ جاري جلب النسخ...", "");
+  try{
+    const j = await (await api("/api/backup/list")).json();
+    document.getElementById("last").textContent = new Date().toLocaleString("ar-SA");
+    document.getElementById("meta").textContent =
+      "مفعّل: " + (j.settings && j.settings.enabled ? "نعم" : "لا") +
+      " • الاحتفاظ (أيام): " + (j.settings && j.settings.retainDays != null ? j.settings.retainDays : "—") +
+      " • المجلد: " + (j.settings && j.settings.outputDir ? j.settings.outputDir : "—");
+
+    const files = (j.files || []);
+    const tbody = document.getElementById("rows");
+    tbody.innerHTML = "";
+    files.forEach(f => {
+      const tr = document.createElement("tr");
+      const name = f.name || "";
+      tr.innerHTML =
+        "<td>" + name + "</td>" +
+        "<td>" + fmtBytes(f.size || 0) + "</td>" +
+        "<td>" + (f.modifiedLocal || "") + "</td>" +
+        "<td><a href=\"/api/backup/download/" + encodeURIComponent(name) + "\" target=\"_blank\">تحميل</a></td>";
+      tbody.appendChild(tr);
+    });
+
+    const sel = document.getElementById("restoreSelect");
+    sel.innerHTML = "";
+    if(files.length===0){
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "لا توجد نسخ";
+      sel.appendChild(opt);
+      sel.disabled = true;
+    }else{
+      files.forEach(f => {
+        const opt = document.createElement("option");
+        opt.value = f.name || "";
+        opt.textContent = (f.name || "");
+        sel.appendChild(opt);
+      });
+      sel.disabled = false;
+    }
+
+    setStatus("✅ تم. عدد النسخ: " + files.length, "ok");
+  }catch(e){
+    setStatus("❌ " + e.message, "bad");
+  }
+}
+
+async function runNow(){
+  setStatus("⏳ جاري إنشاء النسخة...", "");
+  try{
+    const j = await (await api("/api/backup/run", { method:"POST" })).json();
+    setStatus("✅ تم إنشاء: " + (j.file || "(بدون اسم)"), "ok");
+    await refreshList();
+  }catch(e){
+    setStatus("❌ " + e.message, "bad");
+  }
+}
+
+async function restoreSelected(){
+  const sel = document.getElementById("restoreSelect");
+  const name = sel.value || "";
+  if(!name) return;
+
+  const ok = confirm("⚠️ تأكيد: سيتم استعادة قاعدة البيانات كاملة من:\n" + name + "\n\nهل أنت متأكد؟");
+  if(!ok) return;
+
+  setStatus("⏳ جاري الاستعادة... (قد تأخذ وقت)", "");
+  try{
+    await api("/api/backup/restore/" + encodeURIComponent(name), { method:"POST" });
+    setStatus("✅ تمّت الاستعادة بنجاح: " + name, "ok");
+  }catch(e){
+    setStatus("❌ " + e.message, "bad");
+  }
+}
+
+refreshList();
+</script>
+</body>
+</html>
