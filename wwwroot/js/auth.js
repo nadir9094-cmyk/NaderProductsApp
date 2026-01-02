@@ -1,4 +1,4 @@
-// js/auth.js - FULL COMPAT + fixes 415 + fixes login redirect loop by fetching /api/auth/me
+﻿// js/auth.js - FULL COMPAT + fixes 415 + fixes login redirect loop by fetching /api/auth/me
 (function(){
   const PERMS = {
     PRODUCTS:1, CASHIER:2, CUSTOMERS:4, SUPPLIERS:8, EXPENSES:16,
@@ -71,7 +71,7 @@
     return body;
   }
 
-  // ✅ crucial fix: load me from server when missing
+  // âœ… crucial fix: load me from server when missing
   async function getMe(){
     const cached = getMeSync();
     if(cached) return cached;
@@ -101,7 +101,7 @@
     }
 
     if(permissionBit && !hasPerm(permissionBit)){
-      alert('🚫 لا تملك صلاحية الدخول لهذه الشاشة');
+      alert('ًںڑ« ظ„ط§ طھظ…ظ„ظƒ طµظ„ط§ط­ظٹط© ط§ظ„ط¯ط®ظˆظ„ ظ„ظ‡ط°ظ‡ ط§ظ„ط´ط§ط´ط©');
       location.href = '/index.html';
       return null;
     }
@@ -140,3 +140,4 @@
   window.NaderAuth.logout = logout;
   window.NaderAuth.setToken = setToken;
 })();
+
