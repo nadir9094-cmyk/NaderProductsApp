@@ -1,0 +1,29 @@
+﻿# Build outputs
+bin/
+obj/
+
+# Backups
+*.bak*
+*.OFF
+*_bak*
+*.broken*
+*.rar
+*.zip
+
+# Logs
+*.log
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+
+# Databases / publish / installers
+*.db
+publish/
+SetupBuild/
+installer/
+setup_payload/
+*.exe
+
+# Backups inside wwwroot
+wwwroot/backups/
