@@ -183,10 +183,10 @@ app.MapPost("/api/cashier/invoices", async ([FromServices] AppDbContext db, Cash
         PaymentMethod = pm,
         CustomerId = req.CustomerId,
         Notes = string.IsNullOrWhiteSpace(req.Notes) ? null : req.Notes,
-        SubTotal = Math.Round(req.SubTotal, 2),
-        VatTotal = Math.Round(req.VatTotal, 2),
-        DiscountTotal = Math.Round(req.DiscountTotal, 2),
-        GrandTotal = Math.Round(req.GrandTotal, 2),
+        SubTotal = Math.Round(Convert.ToDecimal(req.SubTotal), 2),
+        VatTotal = Math.Round(Convert.ToDecimal(req.VatTotal), 2),
+        DiscountTotal = Math.Round(Convert.ToDecimal(req.DiscountTotal), 2),
+        GrandTotal = Math.Round(Convert.ToDecimal(req.GrandTotal), 2),
         IsSuspended = false
     };
 
@@ -205,9 +205,9 @@ app.MapPost("/api/cashier/invoices", async ([FromServices] AppDbContext db, Cash
             ProductId = it.ProductId > 0 ? it.ProductId : null,
             Barcode = it.Barcode,
             ProductName = (it.ProductName ?? "").Trim(),
-            Quantity = it.Quantity,
-            UnitPrice = it.UnitPrice,
-            Discount = it.Discount,
+            Quantity = Convert.ToDecimal(it.Quantity),
+            UnitPrice = Convert.ToDecimal(it.UnitPrice),
+            Discount = Convert.ToDecimal(it.Discount),
             TaxIncluded = it.TaxIncluded,
             HasOffer = it.HasOffer,
             OfferName = it.OfferName
@@ -224,7 +224,7 @@ app.MapPost("/api/cashier/invoices", async ([FromServices] AppDbContext db, Cash
         var ledger = new CustomerInvoice
         {
             CustomerId = inv.CustomerId.Value,
-            Amount = inv.GrandTotal,
+            Amount = (double)inv.GrandTotal,
             Description = "فاتورة كاشير رقم " + inv.Id,
             Date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")
         };
@@ -282,8 +282,8 @@ app.MapGet("/api/cashier/invoices/report", async ([FromServices] AppDbContext db
     if (st == "suspended") q = q.Where(x => x.IsSuspended);
 
     var rf = (returnFilter ?? "").Trim().ToLowerInvariant();
-    if (rf == "with") q = q.Where(x => x.ReturnAmount > 0.0001);
-    if (rf == "without") q = q.Where(x => x.ReturnAmount <= 0.0001);
+    if (rf == "with") q = q.Where(x => x.ReturnAmount > 0.0001m);
+    if (rf == "without") q = q.Where(x => x.ReturnAmount <= 0.0001m);
 
     var list = await q.OrderByDescending(x => x.Id)
         .Select(x => new {
@@ -310,40 +310,39 @@ app.MapPost("/api/cashier/invoices/{id:int}/return", async ([FromServices] AppDb
     var inv = await db.CashierInvoices.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id);
     if (inv is null) return Results.NotFound();
 
-    double retSum = 0;
+    decimal retSum = 0m;
 
     foreach (var r in req.Items)
     {
         var item = inv.Items.FirstOrDefault(x => x.Id == r.ItemId);
         if (item is null) return Results.BadRequest("ITEM_NOT_FOUND:" + r.ItemId);
-        if (r.ReturnQuantity <= 0) return Results.BadRequest("INVALID_RETURN_QTY");
-        if (r.ReturnQuantity > item.Quantity) return Results.BadRequest("RETURN_EXCEEDS_ORIGINAL");
-
-        // ✅ ثبت المرتجع على نفس سطر الفاتورة (عشان شاشة العملاء/عرض المواد تكون صحيحة)
-        item.Quantity = Math.Max(0, item.Quantity - r.ReturnQuantity);
+        var rq = Convert.ToDecimal(r.ReturnQuantity);
+if (rq <= 0m) return Results.BadRequest("INVALID_RETURN_QTY");
+if (rq > item.Quantity) return Results.BadRequest("RETURN_EXCEEDS_ORIGINAL");// ✅ ثبت المرتجع على نفس سطر الفاتورة (عشان شاشة العملاء/عرض المواد تكون صحيحة)
+        item.Quantity = Math.Max(0m, item.Quantity - rq);
 if (item.ProductId.HasValue && item.ProductId.Value > 0)
         {
             var pr = await db.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId.Value);
             if (pr != null)
             {
-                var qret = (int)Math.Ceiling(r.ReturnQuantity);
+                var qret = (int)Math.Ceiling((double)rq);
                 pr.Quantity += qret;
                 pr.SoldQuantity = Math.Max(0, pr.SoldQuantity - qret);
             }
         }
 
-        retSum += (item.UnitPrice * r.ReturnQuantity);
+        retSum += (item.UnitPrice * rq);
     }
 
     inv.ReturnAmount = Math.Round(inv.ReturnAmount + retSum, 2);
 
 // ✅ SYNC_RETURN_TO_CUSTOMER_LEDGER (للمؤجل فقط)
-if (inv.PaymentMethod == "deferred" && inv.CustomerId.HasValue && inv.CustomerId.Value > 0 && retSum > 0.0001)
+if (inv.PaymentMethod == "deferred" && inv.CustomerId.HasValue && inv.CustomerId.Value > 0 && retSum > 0.0001m)
 {
     db.CustomerInvoices.Add(new CustomerInvoice
     {
         CustomerId = inv.CustomerId.Value,
-        Amount = -Math.Round(retSum, 2),
+        Amount = -(double)Math.Round(retSum, 2),
         Description = "مرتجع فاتورة كاشير رقم " + inv.Id,
         Date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")
     });
@@ -529,6 +528,8 @@ var __bindPort = Environment.GetEnvironmentVariable("PORT") ?? "5050";
 app.Urls.Clear();
 app.Urls.Add($"http://0.0.0.0:{__bindPort}");
 app.Run();
+
+
 
 
 

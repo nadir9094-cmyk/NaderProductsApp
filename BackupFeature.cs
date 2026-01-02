@@ -1,17 +1,12 @@
-﻿// BackupFeature.cs (clean)
-// Replace your existing file at: C:\sami\BackupFeature.cs
-// NOTE: BackupSettings / BackupRunner / DailyBackupService must exist ONLY ONCE (in Program.Types.cs).
-
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 
 public static class BackupFeature
 {
-    // Optional helper. If you don't call it, it's still safe to keep this file.
+    // Safe no-op: يمنع أخطاء Docker build إذا BackupSettings/DailyBackupService غير موجودة
     public static IServiceCollection AddNaderBackup(this IServiceCollection services, IConfiguration cfg)
     {
-        services.Configure<BackupSettings>(cfg.GetSection("BackupSettings"));
-        services.AddHostedService<DailyBackupService>();
+        // intentionally disabled
         return services;
     }
 }
