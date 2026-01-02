@@ -42,6 +42,7 @@ builder.Services.AddDbContext<AppDbContext>(o =>
 });
 
 var app = builder.Build();
+AuthApiV1.MapAuthApi(app);
 
 using (var scope = app.Services.CreateScope())
 {
@@ -528,6 +529,8 @@ var __bindPort = Environment.GetEnvironmentVariable("PORT") ?? "5050";
 app.Urls.Clear();
 app.Urls.Add($"http://0.0.0.0:{__bindPort}");
 app.Run();
+
+
 
 
 
