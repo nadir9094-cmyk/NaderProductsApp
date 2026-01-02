@@ -27,3 +27,13 @@ setup_payload/
 
 # Backups inside wwwroot
 wwwroot/backups/
+bin/
+obj/
+**/*.bak
+**/*.backup.*
+**/*.OFF
+wwwroot.bak_*/
+setup_payload/
+backups/
+*.mdf
+*.ldf
