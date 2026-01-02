@@ -135,7 +135,9 @@
       const r = await NaderAuth.apiFetch("/api/auth/login", { method:"POST", body: JSON.stringify({ username, password }) });
       NaderAuth.setToken(r.token);
 
-      if($("remember").checked){
+      
+      try{ await NaderAuth.getMe(); }catch(e){ /* ignore */ }
+if($("remember").checked){
         localStorage.setItem("emp_remember","1");
       }else{
         localStorage.removeItem("emp_remember");

@@ -4,6 +4,11 @@ namespace NaderProductsApp.Models.ControlPanel;
 
 public class CpTenant
 {
+    public decimal AmountDue { get; set; } = 0m;
+    public decimal AmountPaid { get; set; } = 0m;
+
+    public decimal Amount { get; set; } = 0m;
+    public bool IsPaid { get; set; } = false;
     public int Id { get; set; }
 
     [Required] public string TenantCode { get; set; } = ""; // unique short code
@@ -22,3 +27,6 @@ public class CpTenant
     // Usage (we'll update later automatically)
     public long CurrentDbBytes { get; set; } = 0;
 }
+
+
+

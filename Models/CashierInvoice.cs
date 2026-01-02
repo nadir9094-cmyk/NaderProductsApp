@@ -23,5 +23,8 @@ public class CashierInvoice
     public decimal ReturnAmount { get; set; } = 0m;
 
     public List<CashierInvoiceItem> Items { get; set; } = new();
+    public int? CashierId { get; set; }
+    public string? CashierName { get; set; }
 }
+
 

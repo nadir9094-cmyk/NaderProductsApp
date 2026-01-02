@@ -154,8 +154,13 @@ modelBuilder.Entity<Customer>()
              .HasForeignKey(x => x.EmployeeId)
              .OnDelete(DeleteBehavior.Cascade);
         });
+
 }
+
+    public DbSet<Shift> Shifts { get; set; }
 }
+
+
 
 
 

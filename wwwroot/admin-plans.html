@@ -1,0 +1,229 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <title>إدارة الباقات والعروض</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root{--bg:#f4f6fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--border:#e5e7eb;--primary:#2563eb;--danger:#dc2626;--success:#16a34a;--shadow:0 10px 25px rgba(0,0,0,.08);--r:18px;}
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+    body{margin:0;background:var(--bg);color:var(--text)}
+    .page{max-width:1280px;margin:28px auto;padding:16px}
+    .card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:18px}
+    h1{margin:0 0 6px;font-size:22px}
+    .sub{color:var(--muted);margin:0 0 16px;line-height:1.7}
+    .top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+    input,select{padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;min-width:200px}
+    button{border:0;border-radius:12px;padding:10px 14px;cursor:pointer}
+    .b1{background:var(--primary);color:#fff}
+    .b2{background:#fff;border:1px solid var(--border)}
+    .danger{background:var(--danger);color:#fff}
+    .success{background:var(--success);color:#fff}
+    table{width:100%;border-collapse:separate;border-spacing:0 10px}
+    th{font-size:12px;color:var(--muted);text-align:right;padding:0 10px;white-space:nowrap}
+    td{background:#fff;border:1px solid var(--border);padding:10px;vertical-align:top}
+    tr td:first-child{border-top-right-radius:14px;border-bottom-right-radius:14px}
+    tr td:last-child{border-top-left-radius:14px;border-bottom-left-radius:14px}
+    .mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;background:#f8fafc;border:1px solid var(--border);font-size:12px;white-space:nowrap}
+    .line{text-decoration:line-through;color:var(--muted)}
+    .small{padding:8px 12px;border-radius:12px}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="top">
+        <button class="b2" onclick="location.href='/admin-nader.html'">⬅️ العودة للرئيسية</button>
+        <h1 style="margin:0">إدارة الباقات والعروض</h1>
+        <span style="flex:1"></span>
+        <button class="b1" onclick="load()">تحديث</button>
+      </div>
+      <p class="sub">تقدر تضيف باقات، توقف/تفعل، وتحط عروض بنسبة أو مبلغ، وتظهر للعميل كسعر قديم مشطوب + عبارة عرض حصري.</p>
+
+      <div class="top" style="align-items:flex-end">
+        <div>
+          <div class="mono">اسم الباقة</div>
+          <input id="name" placeholder="مثال: شهر"/>
+        </div>
+        <div>
+          <div class="mono">المدة (أيام)</div>
+          <input id="days" type="number" min="1" value="30"/>
+        </div>
+        <div>
+          <div class="mono">السعر</div>
+          <input id="price" type="number" min="0" step="0.01" value="49"/>
+        </div>
+        <div>
+          <div class="mono">الحالة</div>
+          <select id="isActive"><option value="1">مفعلة</option><option value="0">موقوفة</option></select>
+        </div>
+
+        <div style="min-width:260px">
+          <div class="mono">عنوان العرض (اختياري)</div>
+          <input id="offerTitle" placeholder="مثال: عرض رمضان / عرض خاص"/>
+        </div>
+        <div>
+          <div class="mono">نوع العرض</div>
+          <select id="offerType">
+            <option value="">بدون</option>
+            <option value="percent">نسبة %</option>
+            <option value="amount">مبلغ</option>
+          </select>
+        </div>
+        <div>
+          <div class="mono">قيمة العرض</div>
+          <input id="offerValue" type="number" min="0" step="0.01" placeholder="مثال: 10"/>
+        </div>
+        <div>
+          <div class="mono">بداية (UTC)</div>
+          <input id="offerStart" type="datetime-local"/>
+        </div>
+        <div>
+          <div class="mono">نهاية (UTC)</div>
+          <input id="offerEnd" type="datetime-local"/>
+        </div>
+
+        <button class="success" onclick="create()">➕ إضافة</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>الباقة</th><th>الأيام</th><th>السعر</th><th>العرض</th><th>السعر للعميل</th><th>الحالة</th><th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+const ADMIN_KEY = "NADER-ADMIN-123";
+try{ localStorage.setItem("ADMIN_KEY", ADMIN_KEY); }catch(e){}
+
+async function api(url, options={}){
+  options.headers = options.headers || {};
+  options.headers["X-ADMIN-KEY"] = ADMIN_KEY;
+  if(!options.headers["Content-Type"] && options.method && options.method.toUpperCase()!=="GET") options.headers["Content-Type"]="application/json";
+  const r = await fetch(url, options);
+  const txt = await r.text();
+  let data=null; try{ data = txt?JSON.parse(txt):null; }catch{ data={raw:txt}; }
+  if(!r.ok) throw new Error((r.status+" "+(data?.detail||data?.message||data?.error||data?.raw||txt||"")).trim());
+  return data;
+}
+
+function dtLocalToIso(v){
+  if(!v) return null;
+  // datetime-local => "YYYY-MM-DDTHH:mm"
+  return new Date(v).toISOString();
+}
+
+function isoToLocalInput(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  const pad=n=>String(n).padStart(2,"0");
+  return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes());
+}
+
+function row(plan){
+  const hasOffer = !!plan.hasOffer;
+  const offerTxt = plan.offerType ? `${plan.offerTitle?("("+plan.offerTitle+") "):""}${plan.offerType==="percent"?"خصم %":"خصم مبلغ"} ${plan.offerValue??""}` : "—";
+  const priceHtml = hasOffer
+    ? `<span class="line">${plan.price.toFixed(2)}</span> <b>${plan.finalPrice.toFixed(2)}</b><div class="mono" style="font-size:11px;color:#2563eb">عرض حصري</div>`
+    : `<b>${plan.price.toFixed(2)}</b>`;
+  const st = plan.isActive ? '<span class="pill">✅ مفعلة</span>' : '<span class="pill">⛔ موقوفة</span>';
+
+  return `
+  <tr>
+    <td class="mono">${plan.id}</td>
+    <td><input data-k="name" value="${escapeHtml(plan.name)}" style="min-width:160px"/></td>
+    <td><input data-k="days" type="number" min="1" value="${plan.days}" style="width:110px"/></td>
+    <td><input data-k="price" type="number" step="0.01" value="${plan.price}" style="width:120px"/></td>
+    <td>
+      <input data-k="offerTitle" placeholder="عنوان العرض" value="${escapeHtml(plan.offerTitle||"")}" style="min-width:170px;margin-bottom:6px"/><br/>
+      <select data-k="offerType">
+        <option value="" ${!plan.offerType?"selected":""}>بدون</option>
+        <option value="percent" ${plan.offerType==="percent"?"selected":""}>نسبة %</option>
+        <option value="amount" ${plan.offerType==="amount"?"selected":""}>مبلغ</option>
+      </select>
+      <input data-k="offerValue" type="number" step="0.01" value="${plan.offerValue??""}" style="width:110px"/>
+      <div class="mono" style="margin-top:6px;font-size:11px;color:#6b7280">
+        من <input data-k="offerStart" type="datetime-local" value="${isoToLocalInput(plan.offerStart)}" style="width:190px"/>
+        إلى <input data-k="offerEnd" type="datetime-local" value="${isoToLocalInput(plan.offerEnd)}" style="width:190px"/>
+      </div>
+    </td>
+    <td>${priceHtml}</td>
+    <td>${st}</td>
+    <td style="white-space:nowrap">
+      <button class="b1 small" onclick="save(${plan.id}, this)">💾 حفظ</button>
+      <button class="b2 small" onclick="toggle(${plan.id}, ${plan.isActive})">🔁 تفعيل/إيقاف</button>
+      <button class="danger small" onclick="delPlan(${plan.id})">🗑️ حذف</button>
+    </td>
+  </tr>`;
+}
+
+function escapeHtml(s){ return (s??"").replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
+
+async function load(){
+  const data = await api("/api/admin/plans");
+  const plans = data.plans || [];
+  document.getElementById("tb").innerHTML = plans.map(row).join("");
+}
+
+async function create(){
+  const body = {
+    name: document.getElementById("name").value.trim(),
+    days: +document.getElementById("days").value,
+    price: +document.getElementById("price").value,
+    isActive: document.getElementById("isActive").value==="1",
+    offerTitle: document.getElementById("offerTitle").value.trim() || null,
+    offerType: document.getElementById("offerType").value || null,
+    offerValue: document.getElementById("offerValue").value ? +document.getElementById("offerValue").value : null,
+    offerStart: dtLocalToIso(document.getElementById("offerStart").value),
+    offerEnd: dtLocalToIso(document.getElementById("offerEnd").value),
+  };
+  await api("/api/admin/plans", { method:"POST", body: JSON.stringify(body) });
+  await load();
+}
+
+function getRowInputs(btn){
+  const tr = btn.closest("tr");
+  const g = k => tr.querySelector(`[data-k="${k}"]`)?.value ?? "";
+  return {
+    name: g("name").trim(),
+    days: +g("days"),
+    price: +g("price"),
+    offerTitle: g("offerTitle").trim() || null,
+    offerType: g("offerType") || null,
+    offerValue: g("offerValue") ? +g("offerValue") : null,
+    offerStart: dtLocalToIso(g("offerStart")),
+    offerEnd: dtLocalToIso(g("offerEnd")),
+  };
+}
+
+async function save(id, btn){
+  const body = getRowInputs(btn);
+  // isActive ما نغيره هنا (يتغير بزر toggle)
+  body.isActive = true; // السيرفر يتطلب قيمة - نقرأها من الجدول الحالي لاحقاً
+  const current = btn.closest("tr").querySelector("td:nth-last-child(2) .pill")?.textContent.includes("مفعلة");
+  body.isActive = !!current;
+  await api(`/api/admin/plans/${id}`, { method:"PUT", body: JSON.stringify(body) });
+  await load();
+}
+
+async function toggle(id, isActive){
+  await api(`/api/admin/plans/${id}/${isActive ? "disable":"enable"}`, { method:"POST" });
+  await load();
+}
+
+async function delPlan(id){
+  if(!confirm("حذف الباقة؟")) return;
+  await api(`/api/admin/plans/${id}`, { method:"DELETE" });
+  await load();
+}
+
+window.addEventListener("DOMContentLoaded", ()=>{ load().catch(e=>alert(e.message)); });
+</script>
+</body>
+</html>

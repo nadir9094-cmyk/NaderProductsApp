@@ -1,0 +1,1093 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>شاشة الكاشير • Cashier Pro</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --border:rgba(2,6,23,.10);
+      --shadow:0 12px 30px rgba(2,6,23,.10);
+
+      --brand1:#1f6feb;
+      --brand2:#22c7ff;
+
+      --ok:#16a34a;
+      --bad:#b91c1c;
+      --warn:#f59e0b;
+
+      --r:16px;
+      --gap:12px;
+
+      --headerH:64px;
+      --topbarH:60px;
+      --footerH:40px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: Tahoma, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(1200px 520px at 12% -10%, rgba(34,199,255,.18), transparent 55%),
+        radial-gradient(980px 460px at 92% 0%, rgba(31,111,235,.14), transparent 55%),
+        var(--bg);
+      color:var(--text);
+    }
+
+    /* ===== Header ===== */
+    header.hdr{
+      position:sticky;
+      top:0;
+      z-index:50;
+      height:var(--headerH);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:10px 16px;
+      background: linear-gradient(135deg, rgba(31,111,235,.95), rgba(34,199,255,.55));
+      box-shadow: 0 12px 28px rgba(2,6,23,.20);
+      border-bottom:1px solid rgba(255,255,255,.14);
+    }
+    .hdr-left{ display:flex; align-items:center; gap:12px; min-width: 240px; }
+    .brand-logo{
+      width:40px;height:40px;border-radius:14px;
+      background:#fff;
+      box-shadow: 0 12px 24px rgba(2,6,23,.18);
+      object-fit:cover;
+    }
+    .logo-fallback{
+      width:40px;height:40px;border-radius:14px;
+      background:#fff;
+      box-shadow: 0 12px 24px rgba(2,6,23,.18);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:900;color:var(--brand1);
+      user-select:none;
+    }
+    .hdr-title h1{ margin:0; font-size:16px; font-weight:900; color:#fff; line-height:1.1; }
+    .hdr-title .sub{ margin-top:3px; font-size:11px; font-weight:700; color:rgba(255,255,255,.88); }
+    .hdr-right{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      background: rgba(255,255,255,.14);
+      border:1px solid rgba(255,255,255,.16);
+      color:#fff;
+      font-size:12px;
+      font-weight:800;
+      box-shadow: 0 10px 22px rgba(2,6,23,.14);
+      white-space:nowrap;
+    }
+    .pill .k{ opacity:.9; font-weight:700; }
+    .btn-icon{
+      width:42px;height:38px;border-radius:14px;
+      border:1px solid rgba(255,255,255,.18);
+      background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+      color:#fff;
+      cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center;
+      box-shadow: 0 14px 26px rgba(2,6,23,.18);
+      transition: transform .12s ease, filter .12s ease;
+      text-decoration:none;
+    }
+    .btn-icon:hover{ transform: translateY(-2px); filter: brightness(1.08); }
+    .btn-icon svg{ width:20px;height:20px; fill: currentColor; }
+
+    /* ===== Topbar (Search + Manual) ===== */
+    .topbar{
+      height:var(--topbarH);
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 16px;
+    }
+    .search{
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:8px 10px;
+      background: rgba(255,255,255,.92);
+      border:1px solid rgba(31,111,235,.18);
+      box-shadow: 0 10px 24px rgba(2,6,23,.08);
+      border-radius: 999px;
+      position:relative;
+    }
+    .search input{
+      flex:1;
+      border:none;
+      outline:none;
+      background:transparent;
+      font-size:15px;
+      padding:8px 6px;
+    }
+    .kbd{
+      font-size:11px;
+      font-weight:900;
+      color:var(--muted);
+      background: rgba(2,6,23,.05);
+      border:1px solid rgba(2,6,23,.08);
+      border-radius:10px;
+      padding:6px 10px;
+      white-space:nowrap;
+    }
+    .btn-plus{
+      width:44px;height:44px;border-radius:16px;
+      border:none;
+      cursor:pointer;
+      color:#fff;
+      font-size:22px;
+      font-weight:900;
+      background: linear-gradient(135deg, var(--brand1), var(--brand2));
+      box-shadow: 0 12px 22px rgba(2,6,23,.14);
+    }
+
+    /* ===== Main Layout ===== */
+    .wrap{ padding: 0 16px 10px; }
+    .grid{
+      display:grid;
+      grid-template-columns: 280px 1fr 320px;
+      gap: var(--gap);
+      height: calc(100vh - var(--headerH) - var(--topbarH) - var(--footerH) - 14px);
+      min-height: 520px;
+    }
+    @media (max-width: 1100px){ .grid{ grid-template-columns: 260px 1fr 300px; } }
+    @media (max-width: 980px){ .grid{ grid-template-columns: 1fr; height:auto; } }
+
+    .card{
+      background: rgba(255,255,255,.92);
+      border:1px solid var(--border);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-height: 380px;
+    }
+    .card::before{
+      content:"";
+      height:4px;
+      background: linear-gradient(90deg, rgba(31,111,235,.98), rgba(34,199,255,.90), rgba(245,158,11,.92));
+    }
+    .card-h{
+      padding:12px 12px 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border-bottom:1px solid rgba(2,6,23,.06);
+    }
+    .card-h .t{ font-size:13px; font-weight:900; color: rgba(11,18,32,.92); }
+    .card-h .s{ font-size:11px; font-weight:800; color: var(--muted); white-space:nowrap; }
+    .card-b{ padding:12px; flex:1; overflow:auto; }
+
+    /* ===== Left: Invoice Info ===== */
+    .kv{ display:grid; grid-template-columns:1fr; gap:10px; }
+    .kv .row{ display:flex; justify-content:space-between; align-items:center; gap:10px;
+      padding:10px 10px; border:1px solid rgba(2,6,23,.06); border-radius:14px; background: rgba(255,255,255,.95); }
+    .kv .k{ color: var(--muted); font-size:12px; font-weight:800; }
+    .kv .v{ color: var(--text); font-size:12px; font-weight:900; }
+
+    .badge{
+      display:inline-flex; align-items:center;
+      padding:6px 10px; border-radius:999px;
+      font-size:11px; font-weight:900;
+      border:1px solid rgba(255,255,255,.18); color:#fff; white-space:nowrap;
+    }
+    .b-draft{ background: linear-gradient(135deg, #ff9a2f, #ff7a18); }
+    .b-paid{ background: linear-gradient(135deg, #16a34a, #22c55e); }
+    .b-deferred{ background: linear-gradient(135deg, #0f766e, #14b8a6); }
+
+    .field{ margin-top:10px; }
+    .field label{ display:block; font-size:12px; font-weight:900; color: rgba(11,18,32,.78); margin-bottom:6px; }
+    .field input, .field textarea{
+      width:100%;
+      border:1px solid rgba(31,111,235,.18);
+      border-radius:14px;
+      padding:10px 12px;
+      outline:none;
+      background: rgba(255,255,255,.96);
+      box-shadow: 0 10px 18px rgba(2,6,23,.06);
+      font-size:13px;
+    }
+    .field textarea{ min-height: 86px; resize: vertical; }
+
+    /* ===== Center: Basket ===== */
+    .basket-meta{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:10px 12px; border-bottom:1px solid rgba(2,6,23,.06);
+      background: rgba(2,6,23,.015); font-size:12px; font-weight:900;
+    }
+    .basket-meta .mut{ color: var(--muted); font-weight:900; }
+    .tbl-wrap{ flex:1; overflow:auto; }
+    table{ width:100%; border-collapse:separate; border-spacing:0; font-size:13px; }
+    thead th{
+      position:sticky; top:0; z-index:2;
+      text-align:right; padding:10px 10px;
+      background: linear-gradient(135deg, rgba(31,111,235,.14), rgba(34,199,255,.08));
+      border-bottom:1px solid rgba(2,6,23,.06);
+      font-weight:900; white-space:nowrap;
+    }
+    tbody td{ padding:10px 10px; border-bottom:1px solid rgba(2,6,23,.06); vertical-align:middle; }
+    tbody tr:nth-child(even){ background: rgba(2,6,23,.02); }
+
+    /* ensure inputs in basket still match JS classes */
+    .cell-input, .small-input{
+      border:1px solid rgba(31,111,235,.18);
+      border-radius:12px;
+      padding:8px 8px;
+      outline:none;
+      font-size:13px;
+      font-weight:900;
+      text-align:center;
+      background: rgba(255,255,255,.96);
+      box-shadow: 0 10px 18px rgba(2,6,23,.06);
+    }
+    .small-input{ width:110px; }
+    .cell-input{ width:72px; }
+
+    .cell-actions button{
+      width:40px;height:36px;border-radius:12px;
+      border:1px solid rgba(255,255,255,.18);
+      cursor:pointer;
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      color:#fff;
+      display:inline-flex;align-items:center;justify-content:center;
+      box-shadow: 0 10px 18px rgba(2,6,23,.12);
+      font-size:16px;
+    }
+
+    .basket-actions{
+      padding:12px;
+      border-top:1px solid rgba(2,6,23,.06);
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap:10px;
+      background: rgba(255,255,255,.92);
+    }
+    @media (max-width: 980px){ .basket-actions{ grid-template-columns:1fr; } }
+    .btn{
+      border:none; cursor:pointer;
+      border-radius:14px;
+      padding:11px 12px;
+      font-weight:900;
+      font-size:13px;
+    }
+    .btn-primary{
+      color:#fff;
+      background: linear-gradient(135deg, var(--brand1), var(--brand2));
+      box-shadow: 0 12px 22px rgba(2,6,23,.14);
+    }
+    .btn-ghost{
+      background: rgba(255,255,255,.96);
+      border:1px solid rgba(31,111,235,.18);
+      box-shadow: 0 10px 18px rgba(2,6,23,.06);
+      color: rgba(11,18,32,.88);
+    }
+    .hint{ grid-column:1 / -1; font-size:11px; font-weight:800; color: var(--muted); padding:2px 4px 0; }
+
+    /* ===== Right: Payment ===== */
+    .total{
+      padding:14px 12px;
+      border-radius:16px;
+      background: linear-gradient(135deg, rgba(31,111,235,.98), rgba(34,199,255,.88));
+      color:#fff;
+      box-shadow: 0 14px 30px rgba(2,6,23,.18);
+      margin-bottom:12px;
+    }
+    .total .lab{ font-size:11px; font-weight:800; opacity:.95; }
+    .total .val{ margin-top:6px; font-size:26px; font-weight:1000; }
+    .sec{ margin-top:12px; }
+    .sec h3{ margin:0 0 8px; font-size:12px; font-weight:1000; color: rgba(11,18,32,.86); }
+
+    .row2{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:10px 10px; border:1px solid rgba(2,6,23,.06);
+      border-radius:14px; background: rgba(255,255,255,.95);
+      font-size:12px; font-weight:900; color: rgba(11,18,32,.86);
+    }
+    .select, textarea, .inp{
+      width:100%;
+      border:1px solid rgba(31,111,235,.18);
+      border-radius:14px;
+      padding:10px 12px;
+      outline:none;
+      background: rgba(255,255,255,.96);
+      box-shadow: 0 10px 18px rgba(2,6,23,.06);
+      font-size:13px;
+      font-weight:900;
+    }
+
+    /* Print pills */
+    .print-row{ display:flex; gap:10px; margin-top:10px; }
+    .chip{
+      flex:1;
+      border:1px solid rgba(31,111,235,.18);
+      background: rgba(255,255,255,.96);
+      border-radius:14px;
+      padding:10px 12px;
+      font-weight:1000;
+      cursor:pointer;
+      box-shadow: 0 10px 18px rgba(2,6,23,.06);
+    }
+    .chip.active{
+      border-color: rgba(34,199,255,.85);
+      box-shadow: 0 0 0 4px rgba(34,199,255,.14), 0 12px 22px rgba(2,6,23,.10);
+    }
+
+    /* ===== Search results dropdown (compatible with your JS) ===== */
+    .search-wrapper{ position:relative; width:100%; }
+    .search-results{
+      position:absolute;
+      top: 100%;
+      right: 0;
+      left: 0;
+      z-index: 9999;
+      margin-top:8px;
+      background:#fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 18px 40px rgba(2,6,23,.16);
+    }
+    .search-results .item{
+      display:flex; justify-content:space-between; gap:10px;
+      padding:10px 12px; cursor:pointer;
+      border-bottom:1px solid #f3f4f6; align-items:center;
+    }
+    .search-results .item:last-child{ border-bottom:none; }
+    .search-results .item:hover{ background: rgba(34,199,255,.08); }
+    .search-results .name{ font-weight:900; color:#111827; font-size:13px; }
+    .search-results .sub{ color:#6b7280; font-size:12px; margin-top:2px; }
+    .search-results .price{ text-align:left; white-space:nowrap; font-size:13px; font-weight:1000; color:#111827; }
+    .search-results .old{ text-decoration: line-through; color:#9ca3af; font-weight:800; margin-left:6px; }
+    .search-results .offer{ color:#16a34a; font-weight:1000; }
+    .search-results .left{ display:flex; flex-direction:column; }
+    .search-results .right{ display:flex; flex-direction:column; align-items:flex-end; }
+    .search-results .badge{
+      display:inline-block; margin-top:4px; font-size:11px;
+      padding:2px 8px; border-radius:999px;
+      background:#ecfdf5; color:#166534; border:1px solid #bbf7d0;
+    }
+
+    /* ===== Notifications + Modals (from your file, styled) ===== */
+    .notification{
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.45);
+      display: none;
+      z-index: 9999;
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(6px);
+    }
+    .notification.show{ display:inline-flex; align-items:center; gap:6px; }
+    .notification.success{ background:var(--ok); color:#ecfdf5; }
+    .notification.error{ background:var(--bad); color:#fef2f2; }
+
+    .parked-modal-backdrop, .manual-modal-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(15,23,42,0.45);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:1000;
+    }
+    .parked-modal, .manual-modal{
+      background:white;
+      border-radius:16px;
+      padding:12px;
+      width:100%;
+      max-width:460px;
+      max-height:80vh;
+      overflow:auto;
+      box-shadow:0 10px 30px rgba(15,23,42,0.35);
+      border:1px solid rgba(2,6,23,.10);
+    }
+    .parked-item{
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      padding:10px;
+      margin-bottom:10px;
+      background:#f9fafb;
+      font-size:12px;
+      font-weight:800;
+    }
+    .parked-item button{
+      margin-top:8px;
+      padding:8px 10px;
+      font-size:12px;
+      border-radius:999px;
+      border:none;
+      background: linear-gradient(135deg, var(--brand1), var(--brand2));
+      color:white;
+      cursor:pointer;
+      font-weight:900;
+    }
+    .manual-body label{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px; font-size:12px; font-weight:900; }
+    .manual-inline{ display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:12px; font-weight:900; }
+    .manual-footer{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:8px; }
+    .muted{ font-size:11px; color: var(--muted); font-weight:800; }
+
+    footer.ftr{
+      height:var(--footerH);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:8px 16px;
+      color: rgba(11,18,32,.75);
+      font-weight:800;
+      font-size:12px;
+    }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+  </style>
+</head>
+
+<body>
+  <header class="hdr">
+    <div class="hdr-left">
+      <img class="brand-logo" src="naderpos-logo.jpg" alt="NADER POS" onerror="this.remove(); document.getElementById('logoFallback').style.display='flex';">
+      <div id="logoFallback" class="logo-fallback" style="display:none;">N</div>
+      <div class="hdr-title">
+        <h1>شاشة الكاشير</h1>
+        <div class="sub">NADER POS • البيع السريع وإدارة الفواتير</div>
+      </div>
+    </div>
+
+    <div class="hdr-right">
+      <div class="pill"><span class="k">فاتورة:</span> <span id="invoiceNumber" class="mono">مسودة</span></div>
+      <div class="pill"><span class="k">الوقت:</span> <span id="invoiceDate" class="mono">--/--/----  --:--</span></div>
+      <div class="pill"><span class="k">الحالة:</span> <span id="invoiceStatus" class="badge b-draft">مسودة</span></div>
+
+      <a class="btn-icon" href="index.html" title="الرئيسية" aria-label="الرئيسية">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3.1 2.6 11.2a1 1 0 0 0 .6 1.8H5v7a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-7h1.8a1 1 0 0 0 .6-1.8L12 3.1z"/>
+        </svg>
+      </a>
+    </div>
+  </header>
+
+  <div class="topbar">
+    <div class="search">
+      <div class="search-wrapper" style="flex:1;">
+        <input id="searchInput" type="text" placeholder="البحث بالباركود أو الاسم ثم Enter لإضافة المنتج للسلة..." />
+        <div id="searchResults" class="search-results" style="display:none"></div>
+      </div>
+      <span class="kbd">Enter</span>
+    </div>
+    <button class="btn-plus" type="button" onclick="openManualModal()" title="إضافة منتج غير مسجّل">+</button>
+  </div>
+
+  <div class="wrap">
+    <div class="grid">
+
+      <!-- Left -->
+      <section class="card" aria-label="معلومات الفاتورة">
+        <div class="card-h">
+          <div class="t">معلومات الفاتورة</div>
+          <div class="s">ثابت • لا ينهار</div>
+        </div>
+        <div class="card-b">
+          <div class="kv">
+            <div class="row"><div class="k">رقم الفاتورة</div><div class="v mono" id="invNoMini">مسودة</div></div>
+            <div class="row"><div class="k">التاريخ/الوقت</div><div class="v mono" id="invDtMini">--/--/----  --:--</div></div>
+            <div class="row"><div class="k">حالة الفاتورة</div><div class="v"><span class="badge b-draft" id="invStMini">مسودة</span></div></div>
+          </div>
+
+          <div class="field" id="customerNameBox" style="margin-top:12px;">
+            <label for="customerName">اسم العميل (اختياري)</label>
+            <input id="customerName" type="text" placeholder="مثال: أبو محمد" />
+            <div class="muted">سيظهر الاسم في الفاتورة المطبوعة. في حالة (مؤجل) يتم تعبئته تلقائيًا من العميل المحدد.</div>
+          </div>
+
+          <div class="field" style="margin-top:12px;">
+            <label for="invoiceNotes">ملاحظات الفاتورة</label>
+            <textarea id="invoiceNotes" placeholder="اكتب أي ملاحظات على هذه الفاتورة..."></textarea>
+          </div>
+        </div>
+      </section>
+
+      <!-- Center -->
+      <section class="card" aria-label="السلة">
+        <div class="card-h">
+          <div class="t">السلة</div>
+          <div class="s"><span id="basketCount">0</span> منتج • إجمالي: <span id="basketTotalSmall" class="mono">0.00</span> ر.س</div>
+        </div>
+
+        <div class="basket-meta">
+          <div><span class="mut">إضافة سريعة:</span> امسح الباركود ثم Enter</div>
+          <div><strong id="basketTotalTop" class="mono">0.00</strong> <span class="mut">ر.س</span></div>
+        </div>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:42%;">المنتج / العرض</th>
+                <th style="width:12%;">الكمية</th>
+                <th style="width:12%;">الخصم</th>
+                <th style="width:14%;">قيمة الضريبة</th>
+                <th style="width:16%;">الإجمالي شامل الضريبة</th>
+                <th style="width:4%;">حذف</th>
+              </tr>
+            </thead>
+            <tbody id="basketBody"></tbody>
+          </table>
+        </div>
+
+        <div class="basket-actions">
+          <button class="btn btn-primary" onclick="saveInvoice()">حفظ الفاتورة</button>
+          <button class="btn btn-ghost" onclick="parkInvoice()">تعليق</button>
+          <button class="btn btn-ghost" id="btnShowParked" onclick="showParkedInvoices()">الفواتير المعلقة (0)</button>
+          <div class="hint">التمرير داخل السلة فقط — التصميم ما ينزل تحت الشاشة ✅</div>
+        </div>
+      </section>
+
+      <!-- Right -->
+      <section class="card" aria-label="الدفع والطباعة">
+        <div class="card-h">
+          <div class="t">الدفع والطباعة</div>
+          <div class="s">سريع • واضح</div>
+        </div>
+
+        <div class="card-b">
+          <div class="total">
+            <div class="lab">مبلغ الفاتورة الإجمالي (شامل الضريبة)</div>
+            <div class="val"><span id="invoiceTotal" class="mono">0.00</span> ر.س</div>
+          </div>
+
+          <div class="sec">
+            <h3>الضريبة</h3>
+            <div class="row2">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="taxEnabled" checked />
+                تفعيل الضريبة
+              </label>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="color:var(--muted);">النسبة</span>
+                <input type="number" id="vatPercent" class="small-input mono" min="0" max="100" step="0.01" />
+              </div>
+            </div>
+            <div class="muted">عند تغيير النسبة يتم حفظها تلقائيًا واستخدامها في كل الفواتير القادمة.</div>
+          </div>
+
+          <div class="sec">
+            <h3>طريقة الدفع</h3>
+            <select id="paymentMethod" class="select">
+              <option value="card" selected>شبكة</option>
+              <option value="cash">نقدي</option>
+              <option value="deferred">مؤجل</option>
+              <option value="split">تجزئة</option>
+            </select>
+
+            <div class="sec" id="providerRow">
+              <h3>مزود/نوع الشبكة</h3>
+              <select id="paymentProvider" class="select" aria-label="مزود/نوع الشبكة">
+                <option value="pos" selected>شبكة (POS)</option>
+                <option value="tabby">تابي</option>
+                <option value="tamara">تمارا</option>
+                <option value="madafu">مدفوع</option>
+                <option value="mispay">ميس باي</option>
+              </select>
+              <div class="muted">اختر مزود الشبكة عند الدفع الإلكتروني. (الكاش/المؤجل لا يحتاج)</div>
+            </div>
+
+            <div id="splitFields" class="sec" style="display:none;">
+              <h3>تجزئة</h3>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">المدفوع نقدًا</div>
+                  <input type="number" id="splitCash" class="inp mono" min="0" step="0.01" value="0" />
+                </div>
+                <div>
+                  <div class="muted" style="margin-bottom:6px;">المدفوع شبكة</div>
+                  <input type="number" id="splitCard" class="inp mono" min="0" step="0.01" value="0" />
+                </div>
+              </div>
+            </div>
+
+            <div id="deferredBox" class="sec" style="display:none;">
+              <h3>عميل الدفع المؤجل</h3>
+              <input type="text" id="customerSearch" class="inp" placeholder="ابحث باسم العميل أو رقم الهاتف..." />
+              <button class="btn btn-ghost" style="margin-top:10px;width:100%;" onclick="searchDeferredCustomer()">بحث عن عميل</button>
+              <div id="customerResults" style="margin-top:10px;"></div>
+              <div id="selectedCustomerInfo" class="muted" style="margin-top:8px;"></div>
+            </div>
+          </div>
+
+          <div class="sec">
+            <h3>الطباعة</h3>
+            <div class="row2">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="printInvoice" checked />
+                تفعيل طباعة الفاتورة
+              </label>
+              <span class="muted">80mm / A4</span>
+            </div>
+
+            <div class="print-row">
+              <button class="chip active" type="button" id="btn80">80</button>
+              <button class="chip" type="button" id="btnA4">A4</button>
+            </div>
+
+            <div id="cashCustomerBox" style="margin-top:10px;">
+              <div class="muted" style="margin-bottom:6px;">اسم العميل (اختياري للنقدي/الشبكة)</div>
+              <input type="text" id="cashCustomerName" class="inp" placeholder="مثال: أبو محمد" />
+            </div>
+
+            <div style="margin-top:10px;">
+              <button class="btn btn-primary" style="width:100%;" onclick="printCurrentInvoice?.()">طباعة</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <footer class="ftr">
+    <div>الاختصارات: <span class="mono">F1</span> حفظ شبكة — <span class="mono">F2</span> حفظ نقدي</div>
+    <div class="mono">NADER POS</div>
+  </footer>
+
+  <div id="notification" class="notification error">
+    <span id="notificationText">المنتج غير موجود</span>
+  <div id="parkedBackdrop" class="parked-modal-backdrop">
+    <div class="parked-modal">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="font-weight:bold;font-size:13px;">الفواتير المعلقة</div>
+  <div id="manualBackdrop" class="manual-modal-backdrop">
+    <div class="manual-modal">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="font-weight:bold;font-size:14px;">إضافة منتج غير مسجّل</div>
+
+  <script>
+  // --- Sync mini header boxes with main header elements (optional) ---
+  (function(){
+    function sync(){
+      try{
+        const no = document.getElementById('invoiceNumber')?.textContent || 'مسودة';
+        const dt = document.getElementById('invoiceDate')?.textContent || '--/--/---- --:--';
+        const st = document.getElementById('invoiceStatus');
+
+        const no2 = document.getElementById('invNoMini'); if(no2) no2.textContent = no;
+        const dt2 = document.getElementById('invDtMini'); if(dt2) dt2.textContent = dt;
+
+        const st2 = document.getElementById('invStMini');
+        if(st && st2){
+          st2.textContent = st.textContent;
+          // map original status-pill classes to new badge classes
+          const cls = st.className || '';
+          st2.className = 'badge ' + (cls.includes('deferred') ? 'b-deferred' : (cls.includes('paid') ? 'b-paid' : 'b-draft'));
+          st.className = 'badge ' + (cls.includes('deferred') ? 'b-deferred' : (cls.includes('paid') ? 'b-paid' : 'b-draft'));
+        }
+      }catch{}
+    }
+    // run often but cheap
+    setInterval(sync, 400);
+  })();
+  </script>
+
+  <script>
+
+/* ===== NADER FINAL PRINT HOOK (NO POPUP) ===== */
+function _nader_getPrintEnabled(){
+  const el = document.getElementById("printInvoice");
+  return !!(el && el.checked);
+}
+
+function _nader_getCustomerName(paymentMethod){
+  try{
+    if(paymentMethod === "deferred"){
+      if(window.selectedCustomer && window.selectedCustomer.name) return String(window.selectedCustomer.name);
+      const sc = document.getElementById("selectedCustomerInfo");
+      if(sc && sc.innerText) return sc.innerText.trim();
+      return "";
+    }
+  }catch{}
+  const el = document.getElementById("cashCustomerName");
+  return el ? (el.value || "").trim() : "";
+}
+
+function _nader_waitImages(doc, timeoutMs){
+  return new Promise((resolve)=>{
+    try{
+      const imgs = Array.from(doc.images || []);
+      if(imgs.length === 0) return resolve();
+      let left = imgs.length;
+      const done = ()=>{ left--; if(left<=0) resolve(); };
+      imgs.forEach(img=>{
+        if (img.complete) return done();
+        img.onload = done;
+        img.onerror = done;
+      });
+      setTimeout(resolve, timeoutMs || 2000);
+    } catch { resolve(); }
+  });
+}
+
+/* ===== ZATCA TLV Base64 ===== */
+function _nader_tlv(tag, value){
+  const enc = new TextEncoder();
+  const v = enc.encode(String(value ?? ""));
+  const out = new Uint8Array(2 + v.length);
+  out[0] = tag & 0xFF;
+  out[1] = v.length & 0xFF;
+  out.set(v, 2);
+  return out;
+}
+function _nader_concat(arrs){
+  let n=0; for(const a of arrs) n += a.length;
+  const out = new Uint8Array(n);
+  let o=0; for(const a of arrs){ out.set(a,o); o+=a.length; }
+  return out;
+}
+function _nader_b64(u8){
+  let s=""; for(let i=0;i<u8.length;i++) s += String.fromCharCode(u8[i]);
+  return btoa(s);
+}
+function _nader_buildZatcaQrBase64(settings, isoTs, totalIncVat, vatAmount){
+  const seller = settings.storeName || "";
+  const vatNo  = settings.vatNumber || "";
+  const t      = isoTs || new Date().toISOString();
+  const total  = Number(totalIncVat || 0).toFixed(2);
+  const vat    = Number(vatAmount || 0).toFixed(2);
+
+  const fields = [
+    _nader_tlv(1, seller),
+    _nader_tlv(2, vatNo),
+    _nader_tlv(3, t),
+    _nader_tlv(4, total),
+    _nader_tlv(5, vat),
+  ];
+
+  const phase = Number(settings.zatcaPhase || 1);
+  if(phase === 2){
+    if(settings.phase2InvoiceHash) fields.push(_nader_tlv(6, settings.phase2InvoiceHash));
+    if(settings.phase2Signature) fields.push(_nader_tlv(7, settings.phase2Signature));
+    if(settings.phase2PublicKey) fields.push(_nader_tlv(8, settings.phase2PublicKey));
+    if(settings.phase2CertificateSignature) fields.push(_nader_tlv(9, settings.phase2CertificateSignature));
+  }
+
+  return _nader_b64(_nader_concat(fields));
+}
+
+/* ===== Build print HTML ===== */
+function _nader_buildPrintHtml(settings, inv){
+  const isA4 = settings.invoicePaper === "A4";
+  const w = isA4 ? "210mm" : ((settings.cashierPaperWidthMm || 80) + "mm");
+  const pad = isA4 ? "12mm" : "8mm";
+
+  const logoRaw = (settings.storeLogoBase64 || "");
+  const logoClean = String(logoRaw).replace(/\s+/g,'').trim();
+  const logoSrc = logoClean ? (logoClean.startsWith("data:") ? logoClean : ("data:image/png;base64," + logoClean)) : "";
+
+  const rows = (inv.items||[]).map(it=>{
+    const name = it.name || it.productName || it.product || it.title || "منتج";
+    const qty = Number(it.qty ?? it.quantity ?? it.count ?? 1);
+    const price = Number(it.unitPrice ?? it.price ?? it.unit ?? 0);
+    const line = qty * price;
+    return `<tr>
+      <td>${name}</td>
+      <td>${qty}</td>
+      <td>${price.toFixed(2)}</td>
+      <td>${line.toFixed(2)}</td>
+    </tr>`;
+  }).join("");
+
+  const qrB64 = _nader_buildZatcaQrBase64(settings, inv.dateIso, inv.total, inv.vat);
+  const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(qrB64);
+
+  return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+  <style>
+    body{font-family:Tahoma,Arial;margin:0}
+    .box{margin:0 auto;display:block;
+width:${w};padding:${pad}}
+    .center{text-align:center}
+    table{width:100%;border-collapse:collapse;font-size:${isA4 ? "13px" : "12px"}}
+    th,td{padding:4px;text-align:center;border-bottom:${isA4 ? "1px solid #ddd" : "1px dashed #999"}}
+    hr{border:none;border-top:1px solid #ddd;margin:8px 0}
+    @page{ size:${isA4 ? "A4" : ((settings.cashierPaperWidthMm||80)+"mm 2000mm")}
+html,body{
+  margin:0 !important;
+  padding:0 !important;
+  display:flex;
+  justify-content:center;
+}
+.paper,.box{
+  margin:0 auto !important;
+  display:block;
+}
+; margin:${isA4 ? "10mm" : "0"}; }
+  
+.search-results{
+  position: relative;
+  margin-top: 8px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0,0,0,.08);
+}
+.search-results .item{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  cursor:pointer;
+  border-bottom:1px solid #f3f4f6;
+  align-items:center;
+}
+.search-results .item:last-child{ border-bottom:none; }
+.search-results .item:hover{ background:#f9fafb; }
+.search-results .name{ font-weight:700; color:#111827; font-size:13px; }
+.search-results .sub{ color:#6b7280; font-size:12px; margin-top:2px; }
+.search-results .price{ text-align:left; white-space:nowrap; font-size:13px; font-weight:800; color:#111827; }
+.search-results .old{ text-decoration: line-through; color:#9ca3af; font-weight:600; margin-left:6px; }
+.search-results .offer{ color:#16a34a; font-weight:900; }
+.search-results .left{ display:flex; flex-direction:column; }
+.search-results .right{ display:flex; flex-direction:column; align-items:flex-end; }
+.search-results .badge{
+  display:inline-block;
+  margin-top:4px;
+  font-size:11px;
+  padding:2px 8px;
+  border-radius:999px;
+  background:#ecfdf5;
+  color:#166534;
+  border:1px solid #bbf7d0;
+}
+
+.search-wrapper{
+  position: relative;
+}
+.search-results{
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 9999;
+}
+/* === Fix side panel height & scrolling === */
+.side-panel{
+    height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding-bottom: 20px;
+}
+</style></head><body>
+  <div class="box">
+    ${logoSrc ? `<div class="center"><img id="logoImg" src="${logoSrc}" style="max-width:90px;margin-bottom:6px"></div>` : ""}
+    <div class="center"><b>${settings.storeName||""}</b></div>
+    <div class="center">${settings.storeAddress||""}</div>
+    <div class="center">هاتف: ${settings.storePhone||""}</div>
+    <div class="center">الرقم الضريبي: ${settings.vatNumber||""}</div>
+    <hr>
+    <div>رقم الفاتورة: ${inv.number||""}</div>
+    <div>التاريخ: ${inv.dateDisplay||""}</div>
+<div>طريقة الدفع: ${inv.paymentMethodText||""}</div>
+    ${inv.customerName ? `<div>العميل: ${inv.customerName}</div>` : ""}
+    <hr>
+    <table>
+      <tr><th>الصنف</th><th>ك</th><th>سعر</th><th>إجمالي</th></tr>
+      ${rows}
+    </table>
+    <hr>
+    <div>الإجمالي قبل الضريبة: ${Number(inv.subTotal||0).toFixed(2)}</div>
+    <div>إجمالي الخصم: ${Number(inv.discount||0).toFixed(2)}</div>
+    <div>قيمة الضريبة (15%): ${Number(inv.vat||0).toFixed(2)}</div>
+    <div><b>المبلغ شامل الضريبة: ${Number(inv.total||0).toFixed(2)}</b></div>
+
+    <!-- ✅ نزلنا الباركود لتحت -->
+    <div class="center" style="margin-top:14px">
+      <img id="qrImg" src="${qrUrl}" style="width:150px;height:150px">
+    </div>
+
+    ${inv.invoiceNotes ? `<hr><div style="font-size:12px"><b>ملاحظات:</b><br>${String(inv.invoiceNotes).replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>")}</div>` : ""}
+<div class="center" style="margin-top:8px">${settings.invoiceFooterNotes||""}</div>
+  </div>
+  </body></html>`;
+}
+
+/* ===== Print via iframe (no popup) ===== */
+async function _nader_printInvoice(inv){
+  const rs = await fetch("/api/settings");
+  const settings = rs.ok ? await rs.json() : {};
+  const html = _nader_buildPrintHtml(settings, inv);
+
+  let frame = document.getElementById("printFrame");
+  if(!frame){
+    frame = document.createElement("iframe");
+    frame.id = "printFrame";
+    frame.style.position="fixed";
+    frame.style.right="0";
+    frame.style.bottom="0";
+    frame.style.width="0";
+    frame.style.height="0";
+    frame.style.border="0";
+    frame.style.opacity="0";
+    frame.style.pointerEvents="none";
+    document.body.appendChild(frame);
+  }
+
+  const doc = frame.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
+
+  await _nader_waitImages(doc, 2200);
+
+      // ✅ قصّ طول ورق الكاشير على قد الفاتورة + توسيط دائم
+      try{
+        const d = frame.contentWindow.document;
+
+        // استهدف عنصر الفاتورة نفسها (paper/box) بدل كامل الصفحة
+        const root = d.querySelector(".paper") || d.querySelector(".box") || d.body || d.documentElement;
+
+        const px = Math.max(
+          root ? root.scrollHeight : 0,
+          root ? root.offsetHeight : 0
+        );
+
+        // px -> mm (96dpi)
+        const hMm = Math.max(60, Math.ceil(px * 0.264583) + 4);
+
+        // استخرج عرض الورق من settings
+        const wMm = Math.max(58, Math.min(140, Number(settings?.cashierPaperWidthMm || 80)));
+
+        const st = d.querySelector("style");
+        if(st && st.textContent){
+          // استبدل 2000mm بالطول الحقيقي
+          st.textContent = st.textContent.replace(/mm\s+2000mm/g, "mm " + hMm + "mm");
+
+          // ثبّت عرض الصفحة وتوسيط الورقة مهما تغيّر المقاس
+          st.textContent += ` html,body{width:${wMm}mm;margin:0;padding:0;} .paper,.box{margin:0 auto;display:block;text-align:center;} `;
+        } else {
+          // لو ما فيه style (احتياط)
+          const s2 = d.createElement("style");
+          s2.textContent = `@page{size:${wMm}
+html,body{
+  margin:0 !important;
+  padding:0 !important;
+  display:flex;
+  justify-content:center;
+}
+.paper,.box{
+  margin:0 auto !important;
+  display:block;
+}
+mm ${hMm}mm;margin:3mm;} html,body{width:${wMm}mm;margin:0;padding:0;} .paper,.box{margin:0 auto;text-align:center;}`;
+          d.head.appendChild(s2);
+        }
+      }catch(e){}
+frame.contentWindow.focus();
+frame.contentWindow
+.print();
+
+  setTimeout(()=>{ try{ frame.remove(); }catch{} }, 1500);
+}
+
+/* ===== Hook fetch to print after successful save (WITH REAL ITEMS FROM REQUEST BODY) ===== */
+(function(){
+  if(window.__naderHooked) return;
+  window.__naderHooked = true;
+
+  const origFetch = window.fetch;
+  window.fetch = async function(input, init){
+    const url = (typeof input === "string") ? input : (input && input.url ? input.url : "");
+    const method = (init && init.method) ? String(init.method).toUpperCase() : "GET";
+
+    // ✅ التقط Body المرسل للفاتورة قبل الإرسال
+    let sentBody = null;
+    try{
+      if(url.includes("/api/cashier/invoices") && method === "POST" && init && init.body && typeof init.body === "string"){
+        sentBody = JSON.parse(init.body);
+      }
+    }catch{}
+
+    const res = await origFetch(input, init);
+
+    try{
+      if(url.includes("/api/cashier/invoices") && method === "POST"){
+        if(!_nader_getPrintEnabled()) return res;
+
+        const clone = res.clone();
+        let data = null;
+        try{ data = await clone.json(); }catch{}
+
+        // اجلب items من body الحقيقي (هذا هو الحل النهائي لعدم ظهور المنتجات)
+        const items = (sentBody && Array.isArray(sentBody.items)) ? sentBody.items : [];
+
+        // اجلب المجاميع من body إذا موجودة، وإلا احسبها
+        let subTotal = Number(sentBody?.subTotal ?? 0);
+        let discount = Number(sentBody?.discountTotal ?? sentBody?.discount ?? 0);
+        let vat = Number(sentBody?.vatTotal ?? sentBody?.vat ?? 0);
+        let total = Number(sentBody?.grandTotal ?? sentBody?.total ?? 0);
+
+        if((!subTotal && items.length) || (!total && items.length)){
+          subTotal = items.reduce((a,it)=>{
+            const q = Number(it.qty ?? it.quantity ?? 1);
+            const p = Number(it.unitPrice ?? it.price ?? 0);
+            return a + (q*p);
+          },0);
+          const taxable = subTotal - discount;
+          vat = vat || (taxable * 0.15);
+          total = total || (taxable + vat);
+        }
+
+        const pmEl = document.getElementById("paymentMethod");
+        const paymentMethod = pmEl ? pmEl.value : (sentBody?.paymentMethod || "");
+        const paymentMethodText = (function(v){
+          switch(String(v||"")){
+            case "card": return "شبكة";
+            case "cash": return "نقدي";
+            case "deferred": return "مؤجل";
+            case "split": return "تجزئة";
+            default: return String(v||"");
+          }
+        })(paymentMethod);
+        const customerName = _nader_getCustomerName(paymentMethod) || (sentBody?.customerName ? String(sentBody.customerName) : "");
+        const invoiceNotesEl = document.getElementById("invoiceNotes");
+        const invoiceNotes = invoiceNotesEl ? (invoiceNotesEl.value || "").trim() : "";
+
+        const now = new Date();
+        const inv = {
+          number: (data && (data.invoiceNumber || data.number || data.id)) ? (data.invoiceNumber || data.number || data.id) : (sentBody?.invoiceNumber || sentBody?.number || ("INV-" + Date.now())),
+          dateIso: (data && (data.createdAt || data.dateIso)) ? (data.createdAt || data.dateIso) : (sentBody?.dateIso || now.toISOString()),
+          dateDisplay: now.toLocaleString("ar-SA"),
+          customerName,
+          items,
+          paymentMethodText,
+          invoiceNotes,
+          subTotal,
+          discount,
+          vat,
+          total
+        };
+
+        if(res.ok){
+          await _nader_printInvoice(inv);
+        }
+      }
+    }catch(e){
+      console.error("Print hook error:", e);
+    }
+
+    return res;
+  };
+})();
+
+  </script>
+</body>
+</html>

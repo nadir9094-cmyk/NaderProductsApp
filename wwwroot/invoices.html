@@ -5,7 +5,7 @@
     <title>تقرير فواتير الكاشير</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-        * {
+* {
             box-sizing: border-box;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
@@ -337,36 +337,225 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
-    </style>
-<style>
-    .btn-back-home {
-        position: fixed;
-        top: 1rem;
-        left: 1rem;
-        padding: 0.45rem 1.1rem;
-        border-radius: 999px;
-        background: #eef2ff;
-        color: #111827;
-        text-decoration: none;
-        font-size: 0.9rem;
-        font-weight: 500;
-        box-shadow: 0 2px 6px rgba(15,23,42,0.18);
-        border: 1px solid #e5e7eb;
-        z-index: 50;
-    }
+
+
+/* ===================== NADER POS Invoices Theme ===================== */
+:root{
+  --np-blue:#1f6feb;
+  --np-cyan:#22c7ff;
+  --np-orange:#ff9a2f;
+  --np-deep:#0f2747;
+  --np-bg:#f5f7fb;
+  --np-card:#ffffff;
+  --np-line: rgba(2,6,23,.10);
+  --np-shadow: 0 14px 34px rgba(2,6,23,.12);
+  --np-shadow-soft: 0 10px 28px rgba(2,6,23,.10);
+  --np-radius: 18px;
+  --font: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, "Noto Kufi Arabic", "Noto Sans Arabic", sans-serif;
+}
+*{font-family:var(--font) !important;}
+body{
+  background:
+    radial-gradient(1100px 520px at 12% -10%, rgba(34,199,255,.18), transparent 55%),
+    radial-gradient(980px 460px at 92% 0%, rgba(255,154,47,.14), transparent 55%),
+    var(--np-bg);
+}
+.page{max-width:1480px !important; padding: 16px !important;}
+
+.card{
+  border: 1px solid rgba(2,6,23,.08);
+  border-radius: 22px;
+  box-shadow: var(--np-shadow);
+  position: relative;
+  overflow: hidden;
+}
+.card::before{
+  content:"";
+  position:absolute;
+  top:0; left:0; right:0;
+  height:3px;
+  background: linear-gradient(90deg, rgba(31,111,235,.98), rgba(34,199,255,.90), rgba(255,154,47,.92));
+}
+.card-header{
+  background: linear-gradient(90deg, rgba(31,111,235,.98), rgba(34,199,255,.92));
+  margin: -20px -24px 16px;
+  padding: 16px 18px;
+  border-radius: 22px 22px 18px 18px;
+  box-shadow: 0 12px 26px rgba(2,6,23,.16);
+}
+.brandBlock{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.brandLogo{
+  width:44px; height:44px;
+  border-radius: 14px;
+  object-fit: cover;
+  background:#0b1220;
+  box-shadow: 0 10px 22px rgba(2,6,23,.22);
+  border: 1px solid rgba(255,255,255,.25);
+}
+.brandText h1{
+  color:#fff !important;
+  font-size: 20px !important;
+  margin:0 !important;
+}
+.brandText small{
+  color: rgba(255,255,255,.86) !important;
+}
+
+.btn{
+  border-radius: 14px !important;
+  border: 1px solid rgba(255,255,255,.22);
+  padding: 9px 14px !important;
+  box-shadow: 0 10px 22px rgba(2,6,23,.10);
+}
+.btn .ico{width:18px;height:18px;}
+.btn span{font-weight:700;}
+.btn.btn-primary{
+  background: linear-gradient(135deg, rgba(255,154,47,.98), rgba(31,111,235,.96)) !important;
+  border-color: rgba(255,255,255,.22) !important;
+  box-shadow: 0 12px 26px rgba(2,6,23,.14);
+}
+.btn.btn-outline{
+  background: rgba(255,255,255,.85) !important;
+  border-color: rgba(31,111,235,.16) !important;
+  color: #0b1220 !important;
+}
+.btn.btn-danger{
+  background: linear-gradient(135deg, rgba(220,38,38,.98), rgba(239,68,68,.92)) !important;
+  border-color: rgba(255,255,255,.22) !important;
+}
+.btn:hover{transform: translateY(-1px);}
+.btn:active{transform: translateY(0);}
+
+.btn-primary, .btn-primary *{ color:#fff !important; fill:#fff !important;}
+.btn-danger, .btn-danger *{ color:#fff !important; fill:#fff !important;}
+.btn-outline .ico{ color: var(--np-blue) !important;}
+.btn-outline:hover{ background: rgba(34,199,255,.10) !important;}
+
+.filters-grid .filter-group input,
+.filters-grid .filter-group select{
+  border-radius: 14px !important;
+  border-color: rgba(31,111,235,.16) !important;
+  background: rgba(255,255,255,.92) !important;
+  padding: 9px 12px !important;
+}
+.filters-grid .filter-group input:focus,
+.filters-grid .filter-group select:focus{
+  border-color: rgba(34,199,255,.70) !important;
+  box-shadow: 0 0 0 4px rgba(34,199,255,.14);
+  background: #fff !important;
+}
+
+.stats-grid .stat-card{
+  border-radius: 18px !important;
+  border: 1px solid rgba(2,6,23,.08) !important;
+  box-shadow: var(--np-shadow-soft);
+  position: relative;
+  overflow: hidden;
+}
+.stats-grid .stat-card::before{
+  content:"";
+  position:absolute;
+  top:0; left:0; right:0;
+  height:3px;
+  background: linear-gradient(90deg, rgba(34,199,255,.90), rgba(31,111,235,.92), rgba(255,154,47,.90));
+}
+.stat-title{color:#6b7a93 !important;}
+.stat-value{color:#0b1220 !important;}
+
+.table-wrapper{
+  border-radius: 18px !important;
+  border-color: rgba(2,6,23,.08) !important;
+  box-shadow: var(--np-shadow-soft);
+}
+thead{background: rgba(34,199,255,.10) !important;}
+tbody tr:hover{background: rgba(31,111,235,.05) !important;}
+
+.btn-sm{
+  padding: 6px 10px !important;
+  border-radius: 12px !important;
+}
+.btn-sm .ico{width:16px;height:16px;}
+.sr{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;}
+
+/* Modal */
+.modal-header{
+  background: linear-gradient(90deg, rgba(31,111,235,.98), rgba(34,199,255,.92)) !important;
+  color:#fff !important;
+  border-bottom-color: rgba(255,255,255,.18) !important;
+}
+.modal-close{ color:#fff !important; }
+.modal{ border: 1px solid rgba(2,6,23,.10) !important; border-radius: 20px !important; }
+
+.homeFab{
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 999;
+  width: 44px;
+  height: 44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(31,111,235,.92), rgba(34,199,255,.86));
+  border: 1px solid rgba(255,255,255,.24);
+  box-shadow: 0 12px 26px rgba(2,10,32,.18);
+}
+.homeFab, .homeFab *{ color:#fff !important; fill:#fff !important; }
+.homeFab:hover{ filter: saturate(1.08); transform: translateY(-1px); }
+.homeFab:active{ transform: translateY(0); }
+
+@media print{
+  .noPrint{display:none !important;}
+  body{background:#fff !important;}
+  .card-header{background:#fff !important; color:#111 !important;}
+  .brandText h1, .brandText small{color:#111 !important;}
+}
+
+
+/* ===== Button icon layout (professional) ===== */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  justify-content:center;
+}
+.btn-sm{gap:8px;}
+.ico{flex:0 0 auto;}
+
+
+
+.col-cashier,.col-cashier-val{white-space:nowrap}
 </style>
 </head>
 <body>
+
+<a class="homeFab noPrint" href="index.html" title="العودة للرئيسية" aria-label="العودة للرئيسية">
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M3 10.5L12 3l9 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M5 10v10h14V10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M9 20v-6h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</a>
+
 <div class="page">
     <div class="card">
         <div class="card-header">
-            <div>
+            <div class="brandBlock">
+              <img class="brandLogo" src="naderpos-logo.jpg" alt="NADER POS">
+              <div class="brandText">
                 <h1>تقرير فواتير الكاشير</h1>
                 <small>استعلام عن فواتير الكاشير مع المرتجعات وطباعة التقرير</small>
+              </div>
             </div>
-            <button type="button" class="btn btn-outline" onclick="window.location.reload()">
-                تحديث الصفحة
-            </button>
+            <button type="button" class="btn btn-outline" onclick="window.location.reload()"><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M20 12a8 8 0 1 1-2.3-5.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M20 4v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg><span>تحديث الصفحة</span></button>
         </div>
 
         <!-- Filters -->
@@ -392,6 +581,14 @@
                     <option value="deferred">مؤجل</option>
                 </select>
             </div>
+
+            <div class="filter-group">
+                <label for="filterCashier">الكاشير</label>
+                <select id="filterCashier">
+                    <option value="">الكل</option>
+                </select>
+            </div>
+
             <div class="filter-group">
                 <label for="filterStatus">حالة الفاتورة</label>
                 <select id="filterStatus">
@@ -411,15 +608,21 @@
         </div>
 
         <div class="actions-row">
-            <button type="button" class="btn btn-primary" onclick="loadInvoices()">
-                تحديث النتائج
-            </button>
-            <button type="button" class="btn btn-outline" onclick="resetFilters()">
-                مسح الفلاتر
-            </button>
-            <button type="button" class="btn btn-outline" onclick="printReport()">
-                🖨 طباعة التقرير
-            </button>
+            <button type="button" class="btn btn-primary" onclick="loadInvoices()"><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="2"/>
+  <path d="M16.8 16.8 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg><span>تحديث النتائج</span></button>
+            <button type="button" class="btn btn-outline" onclick="resetFilters()"><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M4 4v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M20 20v-6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M20 9a8 8 0 0 0-14.6-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M4 15a8 8 0 0 0 14.6 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg><span>مسح الفلاتر</span></button>
+            <button type="button" class="btn btn-outline" onclick="printReport()"><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M7 8V4h10v4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M7 17h10v3H7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M6 16H5a3 3 0 0 1-3-3V11a3 3 0 0 1 3-3h14a3 3 0 0 1 3 3v2a3 3 0 0 1-3 3h-1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg><span>طباعة التقرير</span></button>
         </div>
 
         <!-- Stats -->
@@ -458,6 +661,7 @@
                     <th>#</th>
                     <th>رقم الفاتورة</th>
                     <th>التاريخ / الوقت</th>
+                    <th>الكاشير</th>
                     <th>اسم العميل</th>
                     <th>الهاتف</th>
                     <th>طريقة الدفع</th>
@@ -472,7 +676,7 @@
                 </thead>
                 <tbody id="invoiceTableBody">
                 <tr>
-                    <td colspan="13" style="padding: 14px; text-align: center; color: #6b7280;">
+                    <td colspan="14" style="padding: 14px; text-align: center; color: #6b7280;">
                         لا توجد بيانات – اختر فترة ثم اضغط "تحديث النتائج"
                     </td>
                 </tr>
@@ -487,7 +691,7 @@
     <div class="modal">
         <div class="modal-header">
             <h2>مرتجع فاتورة الكاشير</h2>
-            <button class="modal-close" onclick="closeReturnModal()">×</button>
+            <button class="modal-close" onclick="closeReturnModal()"><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="sr">إغلاق</span>
         </div>
         <div class="modal-body">
             <div class="return-info-row">
@@ -542,7 +746,21 @@
 </div>
 
 <script>
-    const apiBase = "";
+function normalizeReport(data){
+  try{
+    if(Array.isArray(data)) return data;
+    if(!data) return [];
+    if(Array.isArray(data.value)) return data.value;
+    if(Array.isArray(data.Value)) return data.Value;
+    if(Array.isArray(data.items)) return data.items;
+    if(Array.isArray(data.Items)) return data.Items;
+    if(Array.isArray(data.data)) return data.data;
+    if(Array.isArray(data.Data)) return data.Data;
+    return [];
+  }catch(e){ return []; }
+}
+;
+const apiBase = "";
     let lastInvoices = [];
     let currentReturnInvoiceId = null;
     let currentReturnItems = [];
@@ -561,14 +779,82 @@
         return isSuspended ? "معلّقة" : "عادية";
     }
 
-    function formatDateTime(value) {
-        if (!value) return "";
-        const d = new Date(value);
-        if (isNaN(d.getTime())) return value;
-        const date = d.toLocaleDateString("ar-SA");
-        const time = d.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
-        return date + " " + time;
+    
+    // ===== KSA Date helpers (Guaranteed) =====
+    // API sometimes returns UTC timestamps without "Z", and sometimes returns *UTC time* but named invoiceDateUtc.
+    // We normalize safely and always display in Asia/Riyadh.
+    function _toKsaDisplay(dateObj){
+        try{
+            return dateObj.toLocaleString("ar-SA", { timeZone: "Asia/Riyadh", hour12: false });
+        }catch{
+            const d = dateObj;
+            const pad = (n)=> String(n).padStart(2,"0");
+            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        }
     }
+
+    function parseIsoLike(value){
+        if(value === null || value === undefined) return null;
+
+        if(typeof value === "number"){
+            const d = new Date(value);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        if(value instanceof Date){
+            return isNaN(value.getTime()) ? null : value;
+        }
+
+        let s = String(value).trim();
+        if(!s) return null;
+
+        if(/^\d{4}-\d{2}-\d{2}$/.test(s)){
+            const [y,mo,da] = s.split("-").map(Number);
+            const d = new Date(y, mo-1, da, 0,0,0);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        const hasTz = /([zZ]|[+\-]\d{2}:\d{2})$/.test(s);
+        if(!hasTz) s = s + "Z";
+
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    // Force interpret a timestamp text as UTC *even if it contains an offset* (for fields named *Utc*).
+    function parseForceUtc(value){
+        if(value === null || value === undefined) return null;
+
+        if(typeof value === "number"){
+            const d = new Date(value);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        if(value instanceof Date){
+            return isNaN(value.getTime()) ? null : value;
+        }
+
+        let s = String(value).trim();
+        if(!s) return null;
+
+        s = s.replace(/([zZ]|[+\-]\d{2}:\d{2})$/, "");
+        s = s + "Z";
+
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    function formatInvoiceDate(inv){
+        if(inv && inv.invoiceDateUtc){
+            const d = parseForceUtc(inv.invoiceDateUtc);
+            return d ? _toKsaDisplay(d) : String(inv.invoiceDateUtc);
+        }
+
+        const v = inv?.invoiceDate ?? inv?.invoiceDateKsa ?? inv?.createdAt ?? inv?.date ?? inv?.openedAt ?? inv?.closedAt;
+        const d = parseIsoLike(v);
+        return d ? _toKsaDisplay(d) : (v ? String(v) : "—");
+    }
+
 
     function safeNumber(v) {
         const n = Number(v);
@@ -580,6 +866,7 @@
         const invoiceId = document.getElementById("filterInvoiceId").value.trim();
         const fromDate = document.getElementById("filterFromDate").value;
         const toDate   = document.getElementById("filterToDate").value;
+        const cashierId = (document.getElementById("filterCashier")?.value || "").trim();
         const payment  = document.getElementById("filterPayment").value;
         const status   = document.getElementById("filterStatus").value;
         const ret      = document.getElementById("filterReturn").value;
@@ -588,6 +875,7 @@
         if (invoiceId) params.append("invoiceId", invoiceId);
         if (fromDate) params.append("from", fromDate);
         if (toDate)   params.append("to", toDate);
+        if (cashierId) params.append("cashierId", cashierId);
         if (payment)  params.append("paymentMethod", payment);
         if (status)   params.append("status", status);
         if (ret)      params.append("returnFilter", ret);
@@ -600,17 +888,21 @@
         const url = apiBase + "/api/cashier/invoices/report" + (query ? "?" + query : "");
 
         const tbody = document.getElementById("invoiceTableBody");
-        tbody.innerHTML = '<tr><td colspan="13" style="padding: 14px; text-align:center; color:#6b7280;">جاري تحميل البيانات...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="14" style="padding: 14px; text-align:center; color:#6b7280;">جاري تحميل البيانات...</td></tr>';
 
         try {
             const res = await fetch(url);
             if (!res.ok) throw new Error("server");
             const data = await res.json();
 
-            lastInvoices = Array.isArray(data) ? data : [];
+            
+      
+      const items = normalizeReport(data);
+const list = normalizeReport(data);
+lastInvoices = normalizeReport(data);
 
             if (!lastInvoices.length) {
-                tbody.innerHTML = '<tr><td colspan="13" style="padding: 14px; text-align:center; color:#6b7280;">لا توجد فواتير مطابقة للفلاتر الحالية</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="14" style="padding: 14px; text-align:center; color:#6b7280;">لا توجد فواتير مطابقة للفلاتر الحالية</td></tr>';
                 updateStats([]);
                 return;
             }
@@ -619,7 +911,7 @@
             lastInvoices.forEach((inv, index) => {
                 const disc   = safeNumber(inv.discountTotal);
                 const vat    = safeNumber(inv.vatTotal);
-                const grand  = safeNumber(inv.grandTotal);
+                const grand  = safeNumber(inv.grandTotal );
                 const retAmt = safeNumber(inv.returnAmount);
                 const net    = grand - retAmt;
 
@@ -634,10 +926,11 @@
 <tr>
     <td>${index + 1}</td>
     <td>${inv.id}</td>
-    <td>${formatDateTime(inv.invoiceDate)}</td>
+    <td>${formatInvoiceDate(inv)}</td>
+    <td>${(inv.cashierName ?? inv.cashier ?? "-")}</td>
     <td>${inv.customerName || ""}</td>
     <td>${inv.customerPhone || ""}</td>
-    <td>${formatPaymentMethod(inv.paymentMethod)}</td>
+    <td>${formatPaymentMethod(inv.paymentMethod )}</td>
     <td>
         <span class="badge ${inv.isSuspended ? "badge-suspended" : "badge-normal"}">
             ${formatStatus(inv.isSuspended)}
@@ -649,7 +942,7 @@
     <td>${retAmt.toFixed(2)}<br/>${returnBadge}</td>
     <td>${net.toFixed(2)}</td>
     <td>
-        <button class="btn btn-outline btn-sm" title="طباعة الفاتورة" onclick="printInvoice(${inv.id})">🖨</button>
+        <button class="btn btn-outline btn-sm" title="طباعة الفاتورة" onclick="printInvoice(${inv.id})"><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 11l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 21h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
         <button class="btn btn-outline btn-sm" onclick="openReturnModal(${inv.id})">مرتجع</button>
         <button class="btn btn-danger btn-sm" onclick="confirmDeleteInvoice(${inv.id})">حذف</button>
     </td>
@@ -660,7 +953,7 @@
             updateStats(lastInvoices);
         } catch (e) {
             console.error(e);
-            tbody.innerHTML = '<tr><td colspan="13" style="padding: 14px; text-align:center; color:#b91c1c;">حدث خطأ في الاتصال بالخادم</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="14" style="padding: 14px; text-align:center; color:#b91c1c;">حدث خطأ في الاتصال بالخادم</td></tr>';
             updateStats([]);
         }
     }
@@ -682,7 +975,7 @@
         list.forEach(inv => {
             disc  += safeNumber(inv.discountTotal);
             vat   += safeNumber(inv.vatTotal);
-            grand += safeNumber(inv.grandTotal);
+            grand += safeNumber(inv.grandTotal );
             ret   += safeNumber(inv.returnAmount);
         });
 
@@ -761,15 +1054,17 @@
     const logoClean = logoRaw.replace(/\s+/g, "").trim();
     const logoSrc = logoClean ? (logoClean.startsWith("data:") ? logoClean : ("data:image/png;base64," + logoClean)) : "";
 
-    const total = Number(inv?.grandTotal || 0);
+    const total = Number(inv?.grandTotal  || 0);
     const vat = Number(inv?.vatTotal || 0);
     const discount = Number(inv?.discountTotal || 0);
     const beforeVat = (total - vat);
 
     const invDateIso = inv?.invoiceDate ? String(inv.invoiceDate) : (inv?.createdAt ? String(inv.createdAt) : new Date().toISOString());
     const invDateDisplay = inv?.invoiceDate ? formatDateTime(inv.invoiceDate) : (inv?.createdAt ? formatDateTime(inv.createdAt) : new Date().toLocaleString("ar-SA"));
-    const payText = formatPaymentMethod(inv?.paymentMethod || "");
-    const customerName = inv?.customerName || "";
+    const payText = formatPaymentMethod(inv?.paymentMethod  || "");
+    
+        const cashierText = (inv && inv.cashierName) ? inv.cashierName : "-";
+const customerName = inv?.customerName || "";
 
     const rows = (items || []).map(it => {
         const name = _nader_escapeHtml(it.productName || it.name || "");
@@ -843,7 +1138,9 @@
       th,td{padding:4px;text-align:center;border-bottom:${isA4 ? "1px solid #ddd" : "1px dashed #999"}}
       hr{border:none;border-top:1px solid #ddd;margin:6px 0}
       @page{ size:${isA4 ? "A4" : (wmm + "mm 2000mm")}; margin:${isA4 ? "10mm" : "0"}; }
-    </style></head><body>
+    
+.col-cashier,.col-cashier-val{white-space:nowrap}
+</style></head><body>
     <div class="box">
       ${logoSrc ? `<div class="center"><img src="${logoSrc}" style="max-width:90px;margin-bottom:6px"></div>` : ""}
       <div class="center"><b>${_nader_escapeHtml(settings?.storeName||"")}</b></div>
@@ -854,6 +1151,7 @@
       <div>رقم الفاتورة: ${_nader_escapeHtml(inv?.id ?? "")}</div>
       <div>التاريخ: ${_nader_escapeHtml(invDateDisplay)}</div>
       <div>طريقة الدفع: ${_nader_escapeHtml(payText)}</div>
+      <div>الكاشير: ${_nader_escapeHtml(cashierText)}</div>
       ${customerName ? `<div>العميل: ${_nader_escapeHtml(customerName)}</div>` : ""}
       <hr>
       <table>
@@ -878,7 +1176,7 @@
             let inv = lastInvoices.find(x => x.id === invoiceId);
             if (!inv) { alert("تعذر العثور على بيانات الفاتورة."); return; }
 
-            // ✅ حاول اجلب نفس الفاتورة من السيرفر (لضمان تطابق اسم العميل وباقي البيانات)
+            // <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> حاول اجلب نفس الفاتورة من السيرفر (لضمان تطابق اسم العميل وباقي البيانات)
             try{
                 const resInv = await fetch(apiBase + "/api/cashier/invoices/" + invoiceId);
                 if(resInv.ok){
@@ -979,9 +1277,9 @@
         currentReturnItems = [];
 
         document.getElementById("returnInvoiceId").textContent   = invoice.id;
-        document.getElementById("returnInvoiceDate").textContent = formatDateTime(invoice.invoiceDate);
+        document.getElementById("returnInvoiceDate").textContent = formatInvoiceDate(invoice);
         document.getElementById("returnCustomerName").textContent = invoice.customerName || "";
-        document.getElementById("returnPaymentMethod").textContent = formatPaymentMethod(invoice.paymentMethod);
+        document.getElementById("returnPaymentMethod").textContent = formatPaymentMethod(invoice.paymentMethod );
         document.getElementById("returnNote").value = "";
         document.getElementById("returnTotalAmount").textContent = "0.00";
 
@@ -1132,37 +1430,47 @@
     window.addEventListener("load", () => {
         loadInvoices();
     });
-</script>
-<button onclick="window.location.href='index.html'" style="position:fixed; top:10px; left:10px; padding:8px 14px; background:#007bff; color:#fff; border:none; border-radius:6px; cursor:pointer; z-index:9999;">⬅ الرجوع للرئيسية</button>
-<style>
-.nav-return-btn {
-    position: fixed;
-    top: 12px;
-    left: 12px;
-    padding: 10px 18px;
-    background: linear-gradient(135deg, #4A90E2, #357ABD);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: bold;
-    cursor: pointer;
-    z-index: 9999;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.25);
-    transition: 0.2s ease-in-out;
-}
-.nav-return-btn:hover {
-    background: linear-gradient(135deg, #357ABD, #2F66A8);
-    transform: scale(1.04);
-}
-</style>
 
-<button class="nav-return-btn" onclick="window.location.href='index.html'">⬅ الرجوع للرئيسية</button>
+        // ===== تحميل قائمة الكاشير للفلتر (اختياري) =====
+        async function loadCashiers(){
+            const sel = document.getElementById("filterCashier");
+            if(!sel) return;
+            try{
+                const token = localStorage.getItem("emp_token") || "";
+                const res = await fetch(apiBase + "/api/cashiers", { headers: token ? { "Authorization": "Bearer " + token } : {} });
+                if(!res.ok) return;
+                const arr = await res.json();
+                if(!Array.isArray(arr)) return;
+
+                // clear keep first option
+                const first = sel.querySelector('option[value=""]');
+                sel.innerHTML = "";
+                if(first){ sel.appendChild(first); }
+                else {
+                    const o=document.createElement("option");
+                    o.value="";
+                    o.textContent="الكل";
+                    sel.appendChild(o);
+                }
+
+                arr.forEach(e=>{
+                    const id = e.id ?? e.employeeId ?? e.empId;
+                    const name = e.name ?? e.fullName ?? e.username ?? e.userName ?? e.displayName;
+                    if(id==null) return;
+                    const opt=document.createElement("option");
+                    opt.value=String(id);
+                    opt.textContent=name? String(name) : ("موظف #" + id);
+                    sel.appendChild(opt);
+                });
+            }catch{}
+        }
+
+
+        // تحميل قائمة الكاشير عند فتح الصفحة
+        loadCashiers();
+</script>
 </body>
 </html>
-
-
-
 
 
 

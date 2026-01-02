@@ -1,0 +1,179 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>لوحة التحكم</title>
+  <link rel="stylesheet" href="/cp.css">
+  <style>
+    .cp-shell{display:grid; grid-template-columns: 260px 1fr; gap:16px; min-height:100vh; padding:16px}
+    @media(max-width:980px){ .cp-shell{grid-template-columns:1fr} .cp-side{order:2} }
+    .cp-side{
+      border-radius:18px; padding:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      box-shadow:0 18px 60px rgba(0,0,0,.35);
+      position:sticky; top:16px; height:fit-content
+    }
+    .cp-main{
+      border-radius:18px; padding:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      box-shadow:0 18px 60px rgba(0,0,0,.35);
+    }
+    .cp-brand{display:flex; align-items:center; gap:10px; margin-bottom:10px}
+    .cp-brand .cp-logo{width:40px;height:40px;border-radius:14px}
+    .cp-userbox{
+      margin-top:10px; padding:10px 12px; border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(0,0,0,.18)
+    }
+    .cp-nav{margin-top:12px; display:grid; gap:8px}
+    .cp-nav a{
+      display:flex; align-items:center; justify-content:space-between;
+      text-decoration:none; color:var(--text);
+      padding:10px 12px; border-radius:14px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.04);
+    }
+    .cp-nav a:hover{background:rgba(255,255,255,.07)}
+    .cp-nav small{color:var(--muted)}
+    .cp-top{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px}
+    .cp-actions{display:flex; gap:8px; flex-wrap:wrap}
+    .cp-btn2{
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.18);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:700;
+    }
+    .cp-btn2:hover{background:rgba(255,255,255,.06)}
+    .cp-grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:12px}
+    @media(max-width:980px){ .cp-grid{grid-template-columns:1fr} }
+    .cp-tile{
+      border-radius:18px; padding:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(0,0,0,.16);
+    }
+    .cp-tile h3{margin:0 0 8px; font-size:15px}
+    .cp-kpi{font-size:28px; font-weight:900; letter-spacing:.5px}
+    .cp-kpi-sub{color:var(--muted); font-size:12px; margin-top:2px}
+    .cp-row{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .cp-muted{color:var(--muted)}
+    .cp-table{width:100%; border-collapse:separate; border-spacing:0 10px; margin-top:8px}
+    .cp-table td, .cp-table th{padding:10px 12px; text-align:right}
+    .cp-table thead th{color:var(--muted); font-size:12px; font-weight:700}
+    .cp-table tbody tr{
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .cp-table tbody tr td:first-child{border-radius:14px 0 0 14px}
+    .cp-table tbody tr td:last-child{border-radius:0 14px 14px 0}
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.04);
+      font-size:12px; color:var(--muted)
+    }
+  </style>
+</head>
+<body>
+  <div class="cp-shell">
+    <aside class="cp-side">
+      <div class="cp-brand">
+        <div class="cp-logo">CP</div>
+        <div>
+          <div class="cp-title">لوحة التحكم</div>
+          <div class="cp-sub">Dashboard</div>
+        </div>
+      </div>
+
+      <div class="cp-userbox">
+        <div class="cp-row">
+          <div>
+            <div style="font-weight:800" id="who">-</div>
+            <div class="cp-muted" style="font-size:12px" id="hint">-</div>
+          </div>
+          <span class="pill" id="envPill">LOCAL</span>
+        </div>
+      </div>
+
+      <nav class="cp-nav">
+        <a href="/controlpanel.html"><span>الرئيسية</span><small>KPIs</small></a>
+        <a href="#" id="goTenants"><span>المستأجرين</span><small>Tenants</small></a>
+        <a href="#" id="goAdmins"><span>مدراء اللوحة</span><small>Admins</small></a>
+        <a href="#" id="goEmployees"><span>الموظفين والصلاحيات</span><small>Employees</small></a>
+        <a href="#" id="goBackups"><span>النسخ الاحتياطي</span><small>Backups</small></a>
+        <a href="/" target="_blank"><span>فتح النظام</span><small>Main App</small></a>
+      </nav>
+
+      <div style="margin-top:12px; display:grid; gap:8px">
+        <button class="cp-btn2" id="refresh">تحديث البيانات</button>
+        <button class="cp-btn2" id="logout" style="border-color:rgba(255,77,90,.35)">تسجيل خروج</button>
+      </div>
+    </aside>
+
+    <main class="cp-main">
+      <div class="cp-top">
+        <div>
+          <div class="cp-title">الرئيسية</div>
+          <div class="cp-sub">نظرة عامة سريعة</div>
+        </div>
+        <div class="cp-actions">
+          <span class="pill" id="dbName">DB: -</span>
+          <span class="pill" id="apiState">API: -</span>
+        </div>
+      </div>
+
+      <div class="cp-alert" id="alert" hidden></div>
+
+      <section class="cp-grid">
+        <div class="cp-tile">
+          <h3>عدد المنتجات</h3>
+          <div class="cp-kpi" id="kpiProducts">-</div>
+          <div class="cp-kpi-sub">من قاعدة البيانات الحالية</div>
+        </div>
+        <div class="cp-tile">
+          <h3>عدد العملاء</h3>
+          <div class="cp-kpi" id="kpiCustomers">-</div>
+          <div class="cp-kpi-sub">عملاء الدفع المؤجل</div>
+        </div>
+        <div class="cp-tile">
+          <h3>فواتير اليوم</h3>
+          <div class="cp-kpi" id="kpiInvoices">-</div>
+          <div class="cp-kpi-sub">حسب تاريخ اليوم في النظام</div>
+        </div>
+      </section>
+
+      <section style="margin-top:14px" class="cp-tile">
+        <div class="cp-row">
+          <h3 style="margin:0">آخر عمليات (مختصر)</h3>
+          <span class="cp-muted" style="font-size:12px" id="lastSync">-</span>
+        </div>
+        <table class="cp-table" aria-label="Recent activity">
+          <thead>
+            <tr>
+              <th>النوع</th>
+              <th>الوصف</th>
+              <th>الوقت</th>
+            </tr>
+          </thead>
+          <tbody id="activityBody">
+            <tr>
+              <td colspan="3" class="cp-muted">لا توجد بيانات بعد…</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="/cp-common.js?v=20251224_140704"></script>
+  <script src="/cp-dashboard.js?v=20251224_140704"></script>
+</body>
+</html>
+

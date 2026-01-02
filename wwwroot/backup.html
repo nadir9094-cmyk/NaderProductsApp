@@ -1,14 +1,22 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>النسخ الاحتياطي</title>
   <style>
-    :root{
-      --bg:#f6f7fb; --card:#fff; --line:#e7e8f3; --txt:#0f172a; --muted:#64748b;
-      --brand:#2563eb; --danger:#dc2626; --ok:#16a34a; --shadow:0 10px 25px rgba(15,23,42,.06);
-      --r:14px;
+:root{
+      --np-blue:#1f6feb;
+      --np-cyan:#22c7ff;
+      --np-orange:#ff9a2f;
+      --bg:#f5f7fb; --card:#ffffff; --line:rgba(2,6,23,.10);
+      --txt:#0b1220; --muted:#5b6b84;
+      --brand:var(--np-blue);
+      --danger:#dc2626; --ok:#16a34a;
+      --shadow:0 14px 34px rgba(2,6,23,.12);
+      --shadowSoft:0 10px 28px rgba(2,6,23,.10);
+      --r:18px;
+      --font: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, "Noto Kufi Arabic", "Noto Sans Arabic", sans-serif;
     }
     *{box-sizing:border-box}
     body{margin:0; background:var(--bg); color:var(--txt); font-family:system-ui,Segoe UI,Tahoma,Arial}
@@ -49,21 +57,184 @@
     .right{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
     .hint{margin-top:8px; color:var(--muted); font-size:12px; line-height:1.7}
     .kbd{border:1px solid var(--line); background:#fff; padding:1px 6px; border-radius:6px}
-  </style>
+
+
+/* ===================== NADER POS Theme: Backup ===================== */
+body{
+  font-family:var(--font);
+  background:
+    radial-gradient(1100px 520px at 12% -10%, rgba(34,199,255,.18), transparent 55%),
+    radial-gradient(980px 460px at 92% 0%, rgba(255,154,47,.14), transparent 55%),
+    var(--bg);
+}
+.wrap{max-width:1200px;}
+.topbar{
+  border-radius:20px;
+  background: linear-gradient(90deg, rgba(31,111,235,.98), rgba(34,199,255,.92));
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 10px;
+  z-index: 60;
+  backdrop-filter: blur(10px);
+}
+.title h1{color:#fff; font-size:18px;}
+.title .sub{color: rgba(255,255,255,.85); font-weight:700;}
+.brand{display:flex; flex-direction:row; align-items:center; gap:12px;}
+.brandLogo{
+  width:44px;height:44px;border-radius:14px;object-fit:cover;
+  background:#0b1220;
+  border:1px solid rgba(255,255,255,.25);
+  box-shadow: 0 10px 22px rgba(2,6,23,.22);
+}
+.actions button{
+  border:1px solid rgba(255,255,255,.22);
+  box-shadow:none;
+  padding:10px 14px;
+}
+.actions button.brand{
+  background: linear-gradient(135deg, rgba(255,154,47,.98), rgba(31,111,235,.96));
+  color:#fff;
+}
+.actions button:not(.brand){
+  background: rgba(255,255,255,.14);
+  color:#fff;
+}
+.btnIcon{
+  display:inline-flex; align-items:center; gap:10px; justify-content:center;
+  font-weight:900;
+}
+.btnIcon .ico{width:18px;height:18px;}
+.actions button, .actions button *{ color:#fff !important; fill:#fff !important; }
+
+.grid{margin-top:14px;}
+.card{
+  border-radius:22px;
+  background: rgba(255,255,255,.86);
+  border:1px solid rgba(2,6,23,.08);
+  box-shadow: var(--shadowSoft);
+  position:relative;
+  overflow:hidden;
+}
+.card::before{
+  content:"";
+  position:absolute; top:0; left:0; right:0; height:3px;
+  background: linear-gradient(90deg, rgba(31,111,235,.98), rgba(34,199,255,.90), rgba(255,154,47,.92));
+}
+.card > *{position:relative; z-index:1;}
+
+.pill{
+  border: 1px dashed rgba(2,6,23,.14);
+  background: rgba(255,255,255,.72);
+}
+.status{border-radius:14px; padding:10px 12px; border:1px solid rgba(2,6,23,.10); background:rgba(255,255,255,.70);}
+.status.ok{border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.08);}
+.status.bad{border-color: rgba(220,38,38,.35); background: rgba(220,38,38,.08);}
+
+table{
+  border-radius:18px;
+  overflow:hidden;
+  box-shadow: var(--shadowSoft);
+}
+th{background: rgba(34,199,255,.10);}
+tr:hover td{background: rgba(31,111,235,.05)}
+
+/* Table link styling (download) */
+a.btnlink{
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid rgba(31,111,235,.16);
+  background: rgba(255,255,255,.92);
+  color: var(--txt);
+}
+a.btnlink::before{
+  content:"";
+  display:inline-block;
+  width:18px; height:18px;
+  margin-left:6px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'><path d='M12 3v10' stroke='%23000' stroke-width='2' stroke-linecap='round'/><path d='M8 10l4 4 4-4' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/><path d='M4 21h16' stroke='%23000' stroke-width='2' stroke-linecap='round'/></svg>") center / contain no-repeat;
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'><path d='M12 3v10' stroke='%23000' stroke-width='2' stroke-linecap='round'/><path d='M8 10l4 4 4-4' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/><path d='M4 21h16' stroke='%23000' stroke-width='2' stroke-linecap='round'/></svg>") center / contain no-repeat;
+  opacity:.9;
+}
+
+/* Restore button in table */
+td button.danger{
+  background: linear-gradient(135deg, rgba(220,38,38,.98), rgba(239,68,68,.92)) !important;
+  border:1px solid rgba(255,255,255,.22) !important;
+  color:#fff !important;
+}
+td button.danger::before{
+  content:"";
+  display:inline-block;
+  width:18px;height:18px;
+  margin-left:6px;
+  background: #fff;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'><path d='M3 12a9 9 0 1 0 3-6.7' stroke='%23000' stroke-width='2' stroke-linecap='round'/><path d='M3 4v6h6' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>") center / contain no-repeat;
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'><path d='M3 12a9 9 0 1 0 3-6.7' stroke='%23000' stroke-width='2' stroke-linecap='round'/><path d='M3 4v6h6' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>") center / contain no-repeat;
+}
+
+/* Home FAB */
+.homeFab{
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 999;
+  width: 44px;
+  height: 44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(31,111,235,.92), rgba(34,199,255,.86));
+  border: 1px solid rgba(255,255,255,.24);
+  box-shadow: 0 12px 26px rgba(2,10,32,.18);
+}
+.homeFab, .homeFab *{ color:#fff !important; fill:#fff !important; }
+.homeFab:hover{ transform: translateY(-1px); filter:saturate(1.08); }
+.homeFab:active{ transform: translateY(0); }
+
+/* Make monos look nice */
+code{border-radius:10px; border:1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.14); color:#fff;}
+.mono{color:rgba(255,255,255,.92);}
+@media (max-width: 720px){
+  .topbar{flex-direction:column; align-items:stretch;}
+  .actions{justify-content:flex-start;}
+}
+
+
+</style>
 </head>
 <body>
+
+<a class="homeFab" href="index.html" title="العودة للرئيسية" aria-label="العودة للرئيسية">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M3 10.5L12 3l9 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M5 10v10h14V10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M9 20v-6h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+</a>
+
   <div class="wrap">
     <div class="topbar">
-      <div class="title">
-        <h1>النسخ الاحتياطي</h1>
+      <div class="title brand">
+        <img class="brandLogo" src="naderpos-logo.jpg" alt="NADER POS">
+        <div>
+          <h1>النسخ الاحتياطي</h1>
+          <div class="sub">إدارة النسخ والاستعادة بأمان • NADER POS</div>
+        </div>
         <div class="sub">
           API: <code class="mono">/api/backup/list</code> • <code class="mono">/api/backup/run</code> • <code class="mono">/api/backup/download/{name}</code> • <code class="mono">/api/backup/restore/{name}</code>
         </div>
       </div>
       <div class="actions">
-        <button class="secondary" onclick="goHome()">العودة للرئيسية</button>
-        <button onclick="refreshList()">تحديث</button>
-        <button class="brand" onclick="runNow()">إنشاء نسخة الآن</button>
+        <button class="btnIcon" onclick="refreshList()"><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M20 12a8 8 0 1 1-2.3-5.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <path d="M20 4v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg><span>تحديث</span></button>
+        <button class="brand btnIcon" onclick="runNow()"><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg><span>إنشاء نسخة الآن</span></button>
       </div>
     </div>
 

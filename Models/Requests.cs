@@ -51,11 +51,16 @@ public sealed class CashierInvoiceItemRequest
 
 public sealed class CashierInvoiceRequest
 {
+  public int? CashierId { get; set; }
+  public string? CashierName { get; set; }
+
     public string? InvoiceDate { get; set; }
     public string? PaymentMethod { get; set; }
 
     public int? CustomerId { get; set; }
+    
     public string? CustomerName { get; set; }
+    public string? CustomerPhone { get; set; }
 
     public double SubTotal { get; set; }
     public double VatTotal { get; set; }
@@ -84,3 +89,6 @@ public sealed class ReturnRequest
     public string? Note { get; set; }
     public List<ReturnItemRequest> Items { get; set; } = new();
 }
+
+
+

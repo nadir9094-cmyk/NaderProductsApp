@@ -6,7 +6,7 @@
     <title>شاشة العملاء والدفع المؤجل</title>
 
     <style>
-        :root {
+:root {
             --bg-body:#f5f7fb;
             --bg-card:#ffffff;
             --border:#e1e5f0;
@@ -327,14 +327,199 @@
             .summary-row{grid-template-columns:1fr;}
             .filters-grid{grid-template-columns:1fr;}
         }
-    </style>
+
+
+        /* ===================== NADER POS Theme (Unified) ===================== */
+        :root{
+            --np-blue:#1f6feb;
+            --np-cyan:#22c7ff;
+            --np-orange:#ff9a2f;
+            --np-deep:#0f2747;
+            --np-ink:#0b1220;
+            --np-card:#ffffff;
+            --np-border: rgba(2,6,23,.10);
+            --np-shadow: 0 14px 34px rgba(2,6,23,.12);
+            --np-shadow-soft: 0 10px 28px rgba(2,6,23,.10);
+            --np-radius: 18px;
+        }
+        body{
+            padding: 16px !important;
+            background:
+              radial-gradient(1100px 520px at 12% -10%, rgba(34,199,255,.18), transparent 55%),
+              radial-gradient(980px 460px at 92% 0%, rgba(255,154,47,.14), transparent 55%),
+              #f5f7fb !important;
+        }
+        .page{max-width: 1480px !important;}
+
+        /* Top header bar look */
+        .page-header{
+            background: linear-gradient(90deg, rgba(31,111,235,.98), rgba(34,199,255,.92));
+            border-radius: 20px;
+            padding: 14px 18px;
+            box-shadow: var(--np-shadow);
+            margin-bottom: 14px !important;
+            overflow:hidden;
+        }
+        .page-header::after{
+            content:"";
+            position:absolute;
+            inset:-2px;
+            border-radius: 22px;
+            pointer-events:none;
+            background: linear-gradient(90deg, rgba(255,154,47,.55), rgba(34,199,255,.35), rgba(31,111,235,.45));
+            opacity:.55;
+            filter: blur(16px);
+        }
+        .page-header h1{
+            color:#fff !important;
+            font-size: 22px !important;
+            letter-spacing:.2px;
+            position: relative;
+            z-index:1;
+        }
+
+        /* Brand block (logo + subtitles) */
+        .brand{
+            position:absolute;
+            right: 14px;
+            display:flex;
+            align-items:center;
+            gap:10px;
+            z-index:1;
+        }
+        .brand-logo{
+            width:40px;height:40px;border-radius:12px;
+            box-shadow: 0 10px 22px rgba(2,6,23,.20);
+            background:#0b1220;
+            object-fit: cover;
+        }
+        .brand-text{display:flex;flex-direction:column;line-height:1.1;}
+        .brand-title{color:#fff;font-weight:800;font-size:15px;}
+        .brand-sub{color: rgba(255,255,255,.85);font-size:12px;margin-top:4px;}
+
+        /* User icon -> make it glassy */
+        .user-icon{
+            background: rgba(255,255,255,.16) !important;
+            border: 1px solid rgba(255,255,255,.25);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 12px 26px rgba(2,6,23,.18) !important;
+            z-index: 1;
+        }
+
+        /* Replace old top-bar with spaced layout; keep buttons */
+        .top-bar{
+            background: rgba(255,255,255,.70);
+            border: 1px solid rgba(2,6,23,.08);
+            border-radius: 18px;
+            padding: 10px 12px;
+            box-shadow: var(--np-shadow-soft);
+            position: sticky;
+            top: 10px;
+            z-index: 40;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Unified Home icon (remove old text button) */
+        .home-fab{
+            width:44px;height:44px;
+            border-radius: 14px;
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            text-decoration:none;
+            background: rgba(255,255,255,.20);
+            border: 1px solid rgba(255,255,255,.35);
+            color: #fff;
+            box-shadow: 0 14px 26px rgba(2,6,23,.20);
+            transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+        }
+        .home-fab:hover{transform: translateY(-1px); box-shadow: 0 18px 30px rgba(2,6,23,.24);}
+        .home-fab:active{transform: translateY(0);}
+
+        /* Buttons: modern pills */
+        button, a.button-link{
+            box-shadow: 0 10px 22px rgba(2,6,23,.10);
+            border: 1px solid rgba(2,6,23,.08);
+            transition: transform .10s ease, filter .10s ease;
+        }
+        button:hover, a.button-link:hover{transform: translateY(-1px); filter: saturate(1.05);}
+        button:active, a.button-link:active{transform: translateY(0);}
+
+        .btn-blue{background: linear-gradient(135deg, rgba(31,111,235,.98), rgba(34,199,255,.90)) !important; border-color: rgba(255,255,255,.22) !important;}
+        .btn-green{background: linear-gradient(135deg, rgba(33,163,102,.98), rgba(45,212,191,.88)) !important; border-color: rgba(255,255,255,.20) !important;}
+        .btn-orange{background: linear-gradient(135deg, rgba(255,154,47,.98), rgba(255,122,24,.96)) !important; border-color: rgba(255,255,255,.20) !important;}
+        .btn-gray{background: #eef2ff !important; color: #0f2747 !important; border-color: rgba(31,111,235,.16) !important;}
+        .btn-outline{border-color: rgba(31,111,235,.22) !important;}
+
+        /* Cards: add gradient top line like other screens */
+        .summary-card, .filters-row, .customers-toolbar, .table-card{
+            border: 1px solid rgba(2,6,23,.08) !important;
+            box-shadow: var(--np-shadow-soft) !important;
+            border-radius: 18px !important;
+            position: relative;
+        }
+        .summary-card::before,
+        .filters-row::before,
+        .customers-toolbar::before,
+        .table-card::before{
+            content:"";
+            position:absolute;
+            top:0; left:0; right:0;
+            height:3px;
+            background: linear-gradient(90deg, rgba(31,111,235,.98), rgba(34,199,255,.90), rgba(255,154,47,.92));
+        }
+        .summary-title{color:#6b7a93 !important;}
+        .summary-value{color:#0b1220 !important;}
+
+        /* Inputs */
+        .input-pill, select{
+            border-color: rgba(31,111,235,.18) !important;
+            box-shadow: inset 0 0 0 1px rgba(2,6,23,.03);
+            padding: 10px 14px !important;
+        }
+        .input-pill:focus, select:focus, input:focus, textarea:focus{
+            outline: none;
+            border-color: rgba(34,199,255,.65) !important;
+            box-shadow: 0 0 0 4px rgba(34,199,255,.14);
+        }
+
+        /* Table header */
+        thead{background: rgba(34,199,255,.10) !important;}
+        th,td{border-bottom: 1px solid rgba(2,6,23,.08) !important;}
+        tbody tr:hover{background: rgba(31,111,235,.05) !important;}
+
+        /* Badges: more vivid */
+        .badge-ok{background: rgba(33,163,102,.12) !important; color: #0d8a4b !important;}
+        .badge-late{background: rgba(255,154,47,.14) !important; color: #a15a00 !important;}
+        .badge-danger{background: rgba(229,83,83,.14) !important; color: #b42318 !important;}
+        .badge-suspended{background: rgba(107,33,168,.14) !important; color: #6b21a8 !important;}
+
+        /* Modals: match theme */
+        .modal{
+            border: 1px solid rgba(2,6,23,.10);
+            box-shadow: 0 18px 40px rgba(2,6,23,.18);
+        }
+        .close-btn{
+            background: rgba(31,111,235,.10) !important;
+            border: 1px solid rgba(31,111,235,.18) !important;
+        }
+
+        /* Responsive tweaks */
+        @media(max-width: 900px){
+            .brand{position: static; justify-content:center; margin-bottom: 8px;}
+            .page-header{flex-direction:column; gap:8px; padding-top: 16px;}
+            .user-icon{left: 10px;}
+        }
+
+
+</style>
 </head>
 <body>
 <div class="page">
 
     <!-- الشريط العلوي -->
     <div class="top-bar">
-        <a href="index.html" class="btn-link">⬅ العودة للرئيسية</a>
+        <a href="index.html" class="home-fab" title="الرئيسية" aria-label="الرئيسية">🏠</a>
         <button class="btn-blue" id="btnPrintReport">🖨 طباعة تقرير العملاء (حسب البحث)</button>
         <button class="btn-green" id="btnAddCustomer">+ إضافة عميل جديد</button>
         <button class="btn-orange" id="btnShowAllCustomers">👥 عرض جميع العملاء</button>
@@ -343,7 +528,7 @@
 
     <!-- العنوان -->
     <div class="page-header">
-        <h1>شاشة العملاء والدفع المؤجل</h1>
+        <div class="brand"><img class="brand-logo" src="naderpos-logo.jpg" alt="NADER POS"><div class="brand-text"><div class="brand-title">شاشة العملاء</div><div class="brand-sub">إدارة العملاء والدفع المؤجل • NADER POS</div></div></div><h1>شاشة العملاء والدفع المؤجل</h1>
         <div class="user-icon">👤</div>
     </div>
 
@@ -616,6 +801,24 @@
 </div>
 
 <script>
+
+// ===== KSA Date Fix (treat ISO without TZ as UTC; display in Asia/Riyadh) =====
+function normIsoForParse(iso){
+  if(!iso) return null;
+  const s = String(iso).trim();
+  // keep if already has timezone suffix
+  if(/[zZ]$/.test(s) || /[+\-]\d{2}:\d{2}$/.test(s)) return s;
+  return s + "Z";
+}
+function dtKSA(iso){
+  const s = normIsoForParse(iso);
+  if(!s) return "—";
+  const d = new Date(s);
+  if(isNaN(d.getTime())) return "—";
+  return d.toLocaleString("ar-SA", { hour12:false, timeZone:"Asia/Riyadh" });
+}
+// ===========================================================================
+
 // =================== بيانات عامة من الـ API ===================
 let customersData = [];
 let selectedCustomerId = null;
@@ -1282,20 +1485,45 @@ function renderInvoicesTable(){
 
 // طباعة فواتير العميل بحجم ورقة الكاشير
 function printInvoicesForCustomer(){
+
+
+
+
     if (!currentInvoicesCustomerId) return;
     const c = getCustomerById(currentInvoicesCustomerId);
     const list = getFilteredInvoicesForCurrent();
 
+
+    // حساب إجمالي فواتير العميل في الفترة (كاشير)
+    const invoicesTotal = (list || []).reduce((s,i)=> s + (Number(i?.amount)||0), 0);
+// حساب إجمالي فواتير العميل (مرة واحدة فقط)
+// حساب إجمالي فواتير العميل
+    // إجمالي فواتير العميل في الفترة
     let html = `
     <html lang="ar" dir="rtl">
     <head><meta charset="utf-8"><title>تقرير فواتير العميل</title>
     <style>
-        body{font-family:"Tahoma";width:80mm;margin:0 auto;font-size:12px;}
-        h2,h3{text-align:center;margin:4px 0;}
-        .line{border-top:1px dashed #555;margin:4px 0;}
-        .row{display:flex;justify-content:space-between;font-size:12px;margin:2px 0;}
-        .label{color:#555;}
-    </style>
+
+            @page{ size: auto; margin: 4mm; }
+            body{
+                font-family:"Tahoma","Segoe UI",sans-serif;
+                width:100%;
+                max-width:80mm;
+                margin:0 auto;
+                padding:0;
+                font-size:11px;
+                line-height:1.25;
+                color:#000;
+            }
+            h2,h3{text-align:center;margin:4px 0;}
+            .line{border-top:1px dashed #555;margin:6px 0;}
+            .row{display:flex;justify-content:space-between;gap:8px;font-size:11px;margin:2px 0;}
+            .label{color:#444;white-space:nowrap;}
+            .value{flex:1;text-align:left;direction:ltr;unicode-bidi:plaintext;}
+            @media print{ body{ -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        
+
+        </style>
     </head>
     <body>
         <h2>تقرير فواتير العميل</h2>
@@ -1318,6 +1546,15 @@ function printInvoicesForCustomer(){
             `;
         });
     }
+
+    // سطر الإجمالي بأسفل التقرير
+    html += `
+        <div class="row" style="font-weight:800;font-size:13px;">
+            <span class="label">الإجمالي:</span>
+            <span>${invoicesTotal.toFixed(2)} ر.س</span>
+        </div>
+        <div class="line"></div>
+    `;
 
     html += `<script>window.print();<\/script></body></html>`;
 
@@ -1348,13 +1585,21 @@ async function printInvoiceItemsReportForCustomer(){
             const timeStr = d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
 
             (items || []).forEach(it=>{
+                const num = (v)=> {
+                    const n = (typeof v === "number") ? v : parseFloat(v ?? "0");
+                    return isNaN(n) ? 0 : n;
+                };
+                const qty = (it?.qty ?? it?.quantity ?? it?.Qty ?? it?.Quantity ?? it?.q ?? it?.count);
+                const price = (it?.price ?? it?.unitPrice ?? it?.salePrice ?? it?.SalePrice ?? it?.Price);
+                const discount = (it?.discount ?? it?.disc ?? it?.Discount ?? 0);
+
                 rows.push({
                     invoiceId,
                     date: dateStr+" "+timeStr,
-                    productName: it.productName || "",
-                    qty: (it.qty ?? 0),
-                    price: (it.price ?? 0),
-                    discount: (it.discount ?? 0)
+                    productName: it.productName || it.name || it.product || "",
+                    qty: num(qty),
+                    price: num(price),
+                    discount: num(discount)
                 });
             });
         }catch(e){
@@ -1365,7 +1610,7 @@ async function printInvoiceItemsReportForCustomer(){
     // حساب الإجمالي النهائي لجميع المواد
     let grandTotal = 0;
     rows.forEach(r => {
-        const lineTotal = (r.qty * r.price) - r.discount;
+        const lineTotal = ((r.qty||0) * (r.price||0)) - (r.discount||0);
         grandTotal += lineTotal;
     });
 
@@ -1375,15 +1620,18 @@ async function printInvoiceItemsReportForCustomer(){
     <style>
         body{
             font-family:"Tahoma";
-            width:80mm;
+            max-width:80mm;
             margin:0 auto;
-            padding:10px;
-            font-size:12px;
+            padding:6px;
+            font-size:10px;
         }
-        h2,h3{text-align:center;margin:4px 0;}
-        table{width:100%;border-collapse:collapse;font-size:12px;}
-        th,td{border:1px solid #ccc;padding:4px 6px;text-align:center;}
-        th{background:#f3f4f6;}
+        h2{font-size:12px;margin:4px 0;}
+        h3{font-size:11px;margin:2px 0;}
+        p{font-size:9px;margin:2px 0;}
+        table{width:100%;border-collapse:collapse;font-size:9px;}
+        th,td{border:1px solid #ccc;padding:3px 4px;text-align:center;white-space:nowrap;}
+        th{background:#f3f4f6;font-weight:700;}
+        .total-row{font-size:11px;font-weight:700;margin-top:6px;text-align:center;}
     </style>
     </head>
     <body>
@@ -1399,13 +1647,14 @@ async function printInvoiceItemsReportForCustomer(){
                     <th>الكمية</th>
                     <th>السعر شامل الضريبة</th>
                     <th>الخصم</th>
+                    <th>إجمالي السطر</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
     if (!rows.length){
-        html += `<tr><td colspan="6">لا توجد مواد لفواتير العميل في الفترة المحددة.</td></tr>`;
+        html += `<tr><td colspan="7">لا توجد مواد لفواتير العميل في الفترة المحددة.</td></tr>`;
     }else{
         rows.forEach(r=>{
             html += `
@@ -1416,6 +1665,7 @@ async function printInvoiceItemsReportForCustomer(){
                     <td>${r.qty.toFixed(2)}</td>
                     <td>${r.price.toFixed(2)}</td>
                     <td>${r.discount.toFixed(2)}</td>
+                    <td>${(((r.qty||0)*(r.price||0))-(r.discount||0)).toFixed(2)}</td>
                 </tr>
             `;
         });
@@ -1473,15 +1723,27 @@ async function openInvoiceItemsModal(invoiceId, invoiceDateText, invoiceNumberTe
                 tr.appendChild(tdName);
 
                 const tdQty = document.createElement("td");
-                tdQty.textContent = (it.qty ?? 0).toFixed(2);
+                {
+                const q = (it?.qty ?? it?.quantity ?? it?.Qty ?? it?.Quantity ?? it?.q ?? it?.count);
+                const n = (typeof q === "number") ? q : parseFloat(q ?? "0");
+                tdQty.textContent = (isNaN(n) ? 0 : n).toFixed(2);
+            }
                 tr.appendChild(tdQty);
 
                 const tdPrice = document.createElement("td");
-                tdPrice.textContent = (it.price ?? 0).toFixed(2);
+                {
+                const p = (it?.price ?? it?.unitPrice ?? it?.salePrice ?? it?.SalePrice ?? it?.Price);
+                const n = (typeof p === "number") ? p : parseFloat(p ?? "0");
+                tdPrice.textContent = (isNaN(n) ? 0 : n).toFixed(2);
+            }
                 tr.appendChild(tdPrice);
 
                 const tdDisc = document.createElement("td");
-                tdDisc.textContent = (it.discount ?? 0).toFixed(2);
+                {
+                const d = (it?.discount ?? it?.disc ?? it?.Discount ?? 0);
+                const n = (typeof d === "number") ? d : parseFloat(d ?? "0");
+                tdDisc.textContent = (isNaN(n) ? 0 : n).toFixed(2);
+            }
                 tr.appendChild(tdDisc);
 
                 tbody.appendChild(tr);
@@ -1679,11 +1941,26 @@ function printPaymentReceipt(id){
         <html lang="ar" dir="rtl">
         <head><meta charset="utf-8"><title>إيصال دفع</title>
         <style>
-            body{font-family:"Tahoma";width:80mm;margin:0 auto;padding:10px;font-size:12px;}
-            h2{text-align:center;margin:4px 0;}
-            .row{margin-bottom:4px;font-size:12px;}
-            .label{color:#6b7280;}
+
+            @page{ size: auto; margin: 4mm; }
+            body{
+                font-family:"Tahoma","Segoe UI",sans-serif;
+                width:100%;
+                max-width:80mm;
+                margin:0 auto;
+                padding:0;
+                font-size:11px;
+                line-height:1.25;
+                color:#000;
+            }
+            h2,h3{text-align:center;margin:4px 0;}
             .line{border-top:1px dashed #555;margin:6px 0;}
+            .row{display:flex;justify-content:space-between;gap:8px;font-size:11px;margin:2px 0;}
+            .label{color:#444;white-space:nowrap;}
+            .value{flex:1;text-align:left;direction:ltr;unicode-bidi:plaintext;}
+            @media print{ body{ -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        
+
         </style>
         </head>
         <body>
@@ -1709,15 +1986,32 @@ function printPaymentsReport(){
     const c = getCustomerById(currentPaymentsCustomerId);
     const list = getFilteredPaymentsForCurrent();
 
-    let html = `
+    
+    const total = (list || []).reduce((s,p)=>s + (p && typeof p.amount==='number' ? p.amount : (parseFloat(p?.amount)||0)), 0);
+let html = `
         <html lang="ar" dir="rtl">
         <head><meta charset="utf-8"><title>تقرير الدفعات</title>
         <style>
-            body{font-family:"Tahoma";width:80mm;margin:0 auto;padding:10px;font-size:12px;}
+
+            @page{ size: auto; margin: 4mm; }
+            body{
+                font-family:"Tahoma","Segoe UI",sans-serif;
+                width:100%;
+                max-width:80mm;
+                margin:0 auto;
+                padding:0;
+                font-size:11px;
+                line-height:1.25;
+                color:#000;
+            }
             h2,h3{text-align:center;margin:4px 0;}
-            .line{border-top:1px dashed #555;margin:4px 0;}
-            .row{display:flex;justify-content:space-between;font-size:12px;margin:2px 0;}
-            .label{color:#555;}
+            .line{border-top:1px dashed #555;margin:6px 0;}
+            .row{display:flex;justify-content:space-between;gap:8px;font-size:11px;margin:2px 0;}
+            .label{color:#444;white-space:nowrap;}
+            .value{flex:1;text-align:left;direction:ltr;unicode-bidi:plaintext;}
+            @media print{ body{ -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        
+
         </style>
         </head>
         <body>
@@ -1751,15 +2045,39 @@ function printPaymentsReport(){
 // =================== طباعة تقرير العملاء حسب البحث ===================
 function printCurrentReport(){
     const filtered = applyFilters(false);
-    let html = `
+    
+    // إجماليات التقرير حسب البحث
+    const reportTotals = (filtered || []).reduce((acc,c)=>{
+        const t = getCustomerTotals(c);
+        acc.inv += (t.invoicesTotal||0);
+        acc.paid += (t.paymentsTotal||0);
+        acc.rem += (t.remaining||0);
+        return acc;
+    }, {inv:0, paid:0, rem:0});
+let html = `
         <html lang="ar" dir="rtl">
         <head><meta charset="utf-8"><title>تقرير العملاء والدفع المؤجل</title>
         <style>
-            body{font-family:"Tahoma";width:80mm;margin:0 auto;font-size:12px;}
-            h2{text-align:center;margin:4px 0;}
-            .line{border-top:1px dashed #555;margin:4px 0;}
-            .row{display:flex;justify-content:space-between;font-size:12px;margin:2px 0;}
-            .label{color:#555;}
+
+            @page{ size: auto; margin: 4mm; }
+            body{
+                font-family:"Tahoma","Segoe UI",sans-serif;
+                width:100%;
+                max-width:80mm;
+                margin:0 auto;
+                padding:0;
+                font-size:11px;
+                line-height:1.25;
+                color:#000;
+            }
+            h2,h3{text-align:center;margin:4px 0;}
+            .line{border-top:1px dashed #555;margin:6px 0;}
+            .row{display:flex;justify-content:space-between;gap:8px;font-size:11px;margin:2px 0;}
+            .label{color:#444;white-space:nowrap;}
+            .value{flex:1;text-align:left;direction:ltr;unicode-bidi:plaintext;}
+            @media print{ body{ -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        
+
         </style>
         </head>
         <body>
@@ -1777,6 +2095,14 @@ function printCurrentReport(){
             <div class="line"></div>
         `;
     });
+    html += `
+        <div class="line"></div>
+        <div style="font-weight:800;text-align:center;margin:6px 0 2px;font-size:12px;">إجماليات التقرير</div>
+        <div class="row"><span class="label">إجمالي الفواتير:</span><span>${formatAmount(reportTotals.inv)} ر.س</span></div>
+        <div class="row"><span class="label">إجمالي المدفوع:</span><span>${formatAmount(reportTotals.paid)} ر.س</span></div>
+        <div class="row"><span class="label">إجمالي المتبقي:</span><span>${formatAmount(reportTotals.rem)} ر.س</span></div>
+        <div class="line"></div>
+    `;
     html += `<script>window.print();<\/script></body></html>`;
     const w=window.open("","_blank","width=400,height=600");
     w.document.write(html);
@@ -1849,6 +2175,14 @@ document.addEventListener("DOMContentLoaded",function(){
     // تحميل البيانات من الـ API عند البداية
     loadCustomersFromApi();
 });
+</script>
+
+
+<script src="/js/auth.js"></script>
+<script>
+(async ()=>{
+  await window.NaderAuth?.requireAuth({ permissionBit: 4, redirect:"/login.html" });
+})();
 </script>
 </body>
 </html>

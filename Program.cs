@@ -1,33 +1,59 @@
-﻿using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
-using System.Diagnostics;
+﻿using Npgsql;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using NaderProductsApp.Data;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using NaderProductsApp.Models;
-// SQLite removed
+
 var builder = WebApplication.CreateBuilder(args);
 
+// --- PORT binding (Railway/Render) ---
+var __envPort = Environment.GetEnvironmentVariable("PORT");
+var __listenPort = 0;
+if (!int.TryParse(__envPort, out __listenPort) || __listenPort <= 0) __listenPort = 8080;
+var __urlsEnv = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+Console.WriteLine($"[BOOT] PORT='{__envPort}' ASPNETCORE_URLS='{__urlsEnv}' -> ListenAnyIP({__listenPort})");
+builder.WebHost.ConfigureKestrel(o => o.ListenAnyIP(__listenPort));
+// ------------------------------------
+builder.Services.AddDbContext<AppDbContext>(o =>
+{
+    // Render يرسل DATABASE_URL مثل: postgresql://user:pass@host:5432/db
+    var url = Environment.GetEnvironmentVariable("DATABASE_URL");
 
-builder.Services.Configure<BackupSettings>(builder.Configuration.GetSection("BackupSettings"));
-builder.Services.AddHostedService<DailyBackupService>();
-builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+    if (!string.IsNullOrWhiteSpace(url))
+    {
+        var uri = new Uri(url);
+        var userInfo = uri.UserInfo.Split(':', 2);
+
+        var csb = new NpgsqlConnectionStringBuilder
+        {
+            Host = uri.Host,
+            Port = uri.Port > 0 ? uri.Port : 5432,
+            Username = userInfo[0],
+            Password = userInfo.Length > 1 ? userInfo[1] : "",
+            Database = uri.AbsolutePath.Trim('/')};
+
+        o.UseNpgsql(csb.ConnectionString);
+    }
+    else
+    {
+        // محلي
+        o.UseSqlite("Data Source=naderpos.db");
+    }
+});
 
 var app = builder.Build();
 
-
-AuthApiV1.MapAuthApi(app);
-EmployeesApiV1.MapEmployeesApi(app);
-
-// Ensure default admin user exists: admin / admin123
-AuthApiV1.EnsureDefaultAdmin(app.Services);
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+    // Try migrations first; if none exist, create schema
+    try { db.Database.Migrate(); }
+    catch { db.Database.EnsureCreated(); }
 
-    db.Database.Migrate();
+    // Safety: if schema still missing (no migrations), create tables
+    try { db.Database.ExecuteSqlRaw("SELECT 1 FROM Products LIMIT 1;"); }
+    catch { db.Database.EnsureCreated(); }
 }
 
 app.UseDefaultFiles();
@@ -132,15 +158,13 @@ app.MapDelete("/api/products/{id:int}", async ([FromServices] AppDbContext db, i
 });
 
 // ======================= CASHIER =======================
-app.MapPost("/api/cashier/invoices", async (HttpRequest http, [FromServices] AppDbContext db, CashierInvoiceRequest req) =>
+app.MapPost("/api/cashier/invoices", async ([FromServices] AppDbContext db, CashierInvoiceRequest req) =>
 {
     if (req.Items is null || req.Items.Count == 0) return Results.BadRequest("EMPTY_ITEMS");
 
     var pm = NormPm(req.PaymentMethod);
-        var allowOutOfStock = http.Query["allowOutOfStock"] == "1";
-        var warnings = new List<string>();
 
-// تحقق المخزون أولاً
+    // تحقق المخزون أولاً
     foreach (var it in req.Items)
     {
         if (it.Quantity <= 0) return Results.BadRequest("INVALID_QTY");
@@ -149,20 +173,20 @@ app.MapPost("/api/cashier/invoices", async (HttpRequest http, [FromServices] App
             var pr = await db.Products.FirstOrDefaultAsync(p => p.Id == it.ProductId);
             if (pr is null) return Results.BadRequest("PRODUCT_NOT_FOUND:" + it.ProductId);
             var qNeed = (int)Math.Ceiling(it.Quantity);
-            if (pr.Quantity < qNeed) { if (!allowOutOfStock) return Results.BadRequest("OUT_OF_STOCK:" + pr.Barcode); warnings.Add("OUT_OF_STOCK:" + pr.Barcode); }
-}
+            if (pr.Quantity < qNeed) return Results.BadRequest("OUT_OF_STOCK:" + pr.Barcode);
+        }
     }
 
     var inv = new CashierInvoice
     {
-        InvoiceDate = DateTime.UtcNow,
+        InvoiceDate = DateTime.Now,
         PaymentMethod = pm,
         CustomerId = req.CustomerId,
         Notes = string.IsNullOrWhiteSpace(req.Notes) ? null : req.Notes,
-        SubTotal = (decimal)Math.Round(req.SubTotal, 2),
-        VatTotal = (decimal)Math.Round(req.VatTotal, 2),
-        DiscountTotal = (decimal)Math.Round(req.DiscountTotal, 2),
-        GrandTotal = (decimal)Math.Round(req.GrandTotal, 2),
+        SubTotal = Math.Round(req.SubTotal, 2),
+        VatTotal = Math.Round(req.VatTotal, 2),
+        DiscountTotal = Math.Round(req.DiscountTotal, 2),
+        GrandTotal = Math.Round(req.GrandTotal, 2),
         IsSuspended = false
     };
 
@@ -172,7 +196,7 @@ app.MapPost("/api/cashier/invoices", async (HttpRequest http, [FromServices] App
         {
             var pr = await db.Products.FirstAsync(p => p.Id == it.ProductId);
             var q = (int)Math.Ceiling(it.Quantity);
-            if (allowOutOfStock) { pr.Quantity = Math.Max(0, pr.Quantity - q); } else { pr.Quantity -= q; }
+            pr.Quantity -= q;
             pr.SoldQuantity += q;
         }
 
@@ -181,9 +205,9 @@ app.MapPost("/api/cashier/invoices", async (HttpRequest http, [FromServices] App
             ProductId = it.ProductId > 0 ? it.ProductId : null,
             Barcode = it.Barcode,
             ProductName = (it.ProductName ?? "").Trim(),
-            Quantity = (decimal)it.Quantity,
-            UnitPrice = (decimal)it.UnitPrice,
-            Discount = (decimal)it.Discount,
+            Quantity = it.Quantity,
+            UnitPrice = it.UnitPrice,
+            Discount = it.Discount,
             TaxIncluded = it.TaxIncluded,
             HasOffer = it.HasOffer,
             OfferName = it.OfferName
@@ -200,33 +224,14 @@ app.MapPost("/api/cashier/invoices", async (HttpRequest http, [FromServices] App
         var ledger = new CustomerInvoice
         {
             CustomerId = inv.CustomerId.Value,
-            Amount = (double)inv.GrandTotal,
+            Amount = inv.GrandTotal,
             Description = "فاتورة كاشير رقم " + inv.Id,
             Date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")
         };
         db.CustomerInvoices.Add(ledger);
         await db.SaveChangesAsync();
     }
-    return Results.Ok(new { id = inv.Id, warnings = warnings });
-});
-
-app.MapGet("/api/cashier/invoices/{id:int}", async ([FromServices] AppDbContext db, int id) =>
-{
-    var inv = await db.CashierInvoices.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-    if (inv is null) return Results.NotFound();
-
-    return Results.Ok(new {
-        id = inv.Id,
-        invoiceDate = inv.InvoiceDate,
-        customerName = inv.CustomerName,
-        customerPhone = inv.CustomerPhone,
-        paymentMethod = inv.PaymentMethod,
-        isSuspended = inv.IsSuspended,
-        discountTotal = inv.DiscountTotal,
-        vatTotal = inv.VatTotal,
-        grandTotal = inv.GrandTotal,
-        returnAmount = inv.ReturnAmount
-    });
+    return Results.Ok(new { id = inv.Id });
 });
 
 app.MapGet("/api/cashier/invoices/{id:int}/items", async ([FromServices] AppDbContext db, int id) =>
@@ -264,10 +269,10 @@ app.MapGet("/api/cashier/invoices/report", async ([FromServices] AppDbContext db
     if (invoiceId.HasValue) q = q.Where(x => x.Id == invoiceId.Value);
 
     if (!string.IsNullOrWhiteSpace(from) && DateTime.TryParse(from, out var df))
-        q = q.Where(x => x.InvoiceDate >= df.Date);
+        q = q.Where(x => x.InvoiceDate.Date >= df.Date);
 
     if (!string.IsNullOrWhiteSpace(to) && DateTime.TryParse(to, out var dt))
-        q = q.Where(x => x.InvoiceDate <= dt.Date);
+        q = q.Where(x => x.InvoiceDate.Date <= dt.Date);
 
     var pm = (paymentMethod ?? "").Trim().ToLowerInvariant();
     if (pm is "cash" or "card" or "deferred") q = q.Where(x => x.PaymentMethod == pm);
@@ -277,8 +282,8 @@ app.MapGet("/api/cashier/invoices/report", async ([FromServices] AppDbContext db
     if (st == "suspended") q = q.Where(x => x.IsSuspended);
 
     var rf = (returnFilter ?? "").Trim().ToLowerInvariant();
-    if (rf == "with") q = q.Where(x => x.ReturnAmount > 0.0001m);
-    if (rf == "without") q = q.Where(x => x.ReturnAmount <= 0.0001m);
+    if (rf == "with") q = q.Where(x => x.ReturnAmount > 0.0001);
+    if (rf == "without") q = q.Where(x => x.ReturnAmount <= 0.0001);
 
     var list = await q.OrderByDescending(x => x.Id)
         .Select(x => new {
@@ -305,17 +310,17 @@ app.MapPost("/api/cashier/invoices/{id:int}/return", async ([FromServices] AppDb
     var inv = await db.CashierInvoices.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id);
     if (inv is null) return Results.NotFound();
 
-    decimal retSum = 0m;
+    double retSum = 0;
 
     foreach (var r in req.Items)
     {
         var item = inv.Items.FirstOrDefault(x => x.Id == r.ItemId);
         if (item is null) return Results.BadRequest("ITEM_NOT_FOUND:" + r.ItemId);
         if (r.ReturnQuantity <= 0) return Results.BadRequest("INVALID_RETURN_QTY");
-        if ((decimal)r.ReturnQuantity > item.Quantity) return Results.BadRequest("RETURN_EXCEEDS_ORIGINAL");
+        if (r.ReturnQuantity > item.Quantity) return Results.BadRequest("RETURN_EXCEEDS_ORIGINAL");
 
         // ✅ ثبت المرتجع على نفس سطر الفاتورة (عشان شاشة العملاء/عرض المواد تكون صحيحة)
-        item.Quantity = Math.Max(0m, item.Quantity - (decimal)r.ReturnQuantity);
+        item.Quantity = Math.Max(0, item.Quantity - r.ReturnQuantity);
 if (item.ProductId.HasValue && item.ProductId.Value > 0)
         {
             var pr = await db.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId.Value);
@@ -327,18 +332,18 @@ if (item.ProductId.HasValue && item.ProductId.Value > 0)
             }
         }
 
-        retSum += (item.UnitPrice * (decimal)r.ReturnQuantity);
+        retSum += (item.UnitPrice * r.ReturnQuantity);
     }
 
     inv.ReturnAmount = Math.Round(inv.ReturnAmount + retSum, 2);
 
 // ✅ SYNC_RETURN_TO_CUSTOMER_LEDGER (للمؤجل فقط)
-if (inv.PaymentMethod == "deferred" && inv.CustomerId.HasValue && inv.CustomerId.Value > 0 && retSum > 0.0001m)
+if (inv.PaymentMethod == "deferred" && inv.CustomerId.HasValue && inv.CustomerId.Value > 0 && retSum > 0.0001)
 {
     db.CustomerInvoices.Add(new CustomerInvoice
     {
         CustomerId = inv.CustomerId.Value,
-        Amount = -(double)Math.Round(retSum, 2),
+        Amount = -Math.Round(retSum, 2),
         Description = "مرتجع فاتورة كاشير رقم " + inv.Id,
         Date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")
     });
@@ -519,370 +524,16 @@ app.MapPost("/api/customers/{id:int}/payments", async ([FromServices] AppDbConte
 });
 // END_CUSTOMER_LEDGER_API
 
-
-//
-// EXPENSES_API_V1
-//
-app.MapGet("/api/expenses", async (AppDbContext db,
-    string? q,
-    DateTime? fromDate,
-    DateTime? toDate,
-    decimal? minAmount,
-    decimal? maxAmount
-) =>
-{
-    var query = db.Expenses.AsQueryable();
-
-    if (fromDate.HasValue) query = query.Where(x => x.CreatedAt >= fromDate.Value.Date);
-    if (toDate.HasValue)   query = query.Where(x => x.CreatedAt <= toDate.Value.Date);
-
-    if (minAmount.HasValue) query = query.Where(x => x.Amount >= minAmount.Value);
-    if (maxAmount.HasValue) query = query.Where(x => x.Amount <= maxAmount.Value);
-
-    if (!string.IsNullOrWhiteSpace(q))
-    {
-        q = q.Trim();
-        query = query.Where(x => (x.Statement ?? "").Contains(q));
-    }
-
-    var rows = await query
-        .OrderByDescending(x => x.Date)
-        .ThenByDescending(x => x.Id)
-        .ToListAsync();
-
-    var total = rows.Sum(x => x.Amount);
-    return Results.Ok(new { total, rows });
-});
-
-app.MapPost("/api/expenses", async (AppDbContext db, NaderProductsApp.Models.Expense body) =>
-{
-    if (string.IsNullOrWhiteSpace(body.Statement))
-        return Results.BadRequest("البيان مطلوب");
-
-    if (body.Amount <= 0)
-        return Results.BadRequest("المبلغ يجب أن يكون أكبر من صفر");
-
-    var e = new NaderProductsApp.Models.Expense
-    {
-        Date = body.CreatedAt.Date,
-        Statement = body.Statement.Trim(),
-        Amount = body.Amount,
-        CreatedAt = DateTime.UtcNow
-    };
-
-    db.Expenses.Add(e);
-    await db.SaveChangesAsync();
-    return Results.Ok(e);
-});
-
-app.MapPut("/api/expenses/{id:int}", async (AppDbContext db, int id, NaderProductsApp.Models.Expense body) =>
-{
-    var e = await db.Expenses.FindAsync(id);
-    if (e is null) return Results.NotFound();
-
-    if (string.IsNullOrWhiteSpace(body.Statement))
-        return Results.BadRequest("البيان مطلوب");
-
-    if (body.Amount <= 0)
-        return Results.BadRequest("المبلغ يجب أن يكون أكبر من صفر");
-
-    e.Date = body.CreatedAt.Date;
-    e.Statement = body.Statement.Trim();
-    e.Amount = body.Amount;
-    e.UpdatedAt = DateTime.UtcNow;
-
-    await db.SaveChangesAsync();
-    return Results.Ok(e);
-});
-
-app.MapDelete("/api/expenses/{id:int}", async (AppDbContext db, int id) =>
-{
-    var e = await db.Expenses.FindAsync(id);
-    if (e is null) return Results.NotFound();
-
-    db.Expenses.Remove(e);
-    await db.SaveChangesAsync();
-    return Results.Ok(new { ok = true });
-});
+app.Urls.Clear();
+var __bindPort = Environment.GetEnvironmentVariable("PORT") ?? "5050";
+app.Urls.Clear();
+app.Urls.Add($"http://0.0.0.0:{__bindPort}");
+app.Run();
 
 
 
-//
-// ===================== BACKUP_FEATURE_V2 =====================
-// UI: /backup.html
-// Endpoints:
-//   GET  /api/backup/list
-//   POST /api/backup/run
-//   POST /api/backup/restore/{name}   (FULL DB restore)
-//   GET  /api/backup/download/{name}
-// =====================
-app.MapGet("/api/backup/list", (IOptions<BackupSettings> opt, IHostEnvironment env) =>
-{
-    var s = opt.Value ?? new BackupSettings();
-    var dir = Path.Combine(env.ContentRootPath, s.OutputDir ?? "wwwroot/backups");
-    Directory.CreateDirectory(dir);
-
-    var files = new DirectoryInfo(dir).GetFiles("*.sql")
-        .OrderByDescending(f => f.LastWriteTimeUtc)
-        .Select(f => new {
-            name = f.Name,
-            size = f.Length,
-            modifiedLocal = f.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
-        })
-        .ToList();
-
-    return Results.Json(new {
-        settings = new { enabled = s.Enabled, timeLocal = s.TimeLocal, retainDays = s.RetainDays, outputDir = s.OutputDir ?? "wwwroot/backups" },
-        files
-    });
-});
-
-app.MapGet("/api/backup/download/{name}", (string name, IOptions<BackupSettings> opt, IHostEnvironment env) =>
-{
-    var s = opt.Value ?? new BackupSettings();
-    var dir = Path.Combine(env.ContentRootPath, s.OutputDir ?? "wwwroot/backups");
-    var safe = Path.GetFileName(name);
-    var path = Path.Combine(dir, safe);
-    if (!System.IO.File.Exists(path)) return Results.NotFound("File not found");
-    return Results.File(System.IO.File.ReadAllBytes(path), "application/sql", safe);
-});
-
-app.MapPost("/api/backup/run", async (IConfiguration cfg, IOptions<BackupSettings> opt, IHostEnvironment env) =>
-{
-    var s = opt.Value ?? new BackupSettings();
-    if (!s.Enabled) return Results.Problem("Backup disabled in settings.");
-
-    var cs = cfg.GetConnectionString("Default");
-    if (string.IsNullOrWhiteSpace(cs)) return Results.Problem("Missing connection string: Default");
-
-    var b = new Npgsql.NpgsqlConnectionStringBuilder(cs);
-
-    var dir = Path.Combine(env.ContentRootPath, s.OutputDir ?? "wwwroot/backups");
-    Directory.CreateDirectory(dir);
-
-    var file = "backup_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".sql";
-    var path = Path.Combine(dir, file);
-
-    // Requires: pg_dump available in PATH (PostgreSQL client tools)
-    var psi = new System.Diagnostics.ProcessStartInfo
-    {
-        FileName = "pg_dump",
-        Arguments = $"-h {b.Host} -p {b.Port} -U {b.Username} -d {b.Database} -F p -f \"{path}\"",
-        RedirectStandardOutput = true,
-        RedirectStandardError = true,
-        UseShellExecute = false
-    };
-    if (!string.IsNullOrWhiteSpace(b.Password))
-        psi.Environment["PGPASSWORD"] = b.Password;
-
-    try
-    {
-        var p = System.Diagnostics.Process.Start(psi);
-        if (p == null) return Results.Problem("Failed to start pg_dump");
-        await p.WaitForExitAsync();
-        if (p.ExitCode != 0)
-        {
-            var err = await p.StandardError.ReadToEndAsync();
-            return Results.Problem("pg_dump failed: " + err);
-        }
-    }
-    catch (System.ComponentModel.Win32Exception)
-    {
-        return Results.Problem("pg_dump not found. Install PostgreSQL client tools or add pg_dump to PATH.");
-    }
-
-    return Results.Ok(new { file });
-});
-
-app.MapPost("/api/backup/restore/{name}", async (string name, IConfiguration cfg, IOptions<BackupSettings> opt, IHostEnvironment env) =>
-{
-    var s = opt.Value ?? new BackupSettings();
-    var cs = cfg.GetConnectionString("Default");
-    if (string.IsNullOrWhiteSpace(cs)) return Results.Problem("Missing connection string: Default");
-
-    var b = new Npgsql.NpgsqlConnectionStringBuilder(cs);
-
-    var dir = Path.Combine(env.ContentRootPath, s.OutputDir ?? "wwwroot/backups");
-    var safe = Path.GetFileName(name);
-    var path = Path.Combine(dir, safe);
-    if (!System.IO.File.Exists(path)) return Results.NotFound("File not found");
-
-    // FULL DB restore from SQL file (drops/creates/overwrites depend on the SQL content)
-    var psi = new System.Diagnostics.ProcessStartInfo
-    {
-        FileName = "psql",
-        Arguments = $"-h {b.Host} -p {b.Port} -U {b.Username} -d {b.Database} -v ON_ERROR_STOP=1 -f \"{path}\"",
-        RedirectStandardOutput = true,
-        RedirectStandardError = true,
-        UseShellExecute = false
-    };
-    if (!string.IsNullOrWhiteSpace(b.Password))
-        psi.Environment["PGPASSWORD"] = b.Password;
-
-    try
-    {
-        var p = System.Diagnostics.Process.Start(psi);
-        if (p == null) return Results.Problem("Failed to start psql");
-        await p.WaitForExitAsync();
-        if (p.ExitCode != 0)
-        {
-            var err = await p.StandardError.ReadToEndAsync();
-            return Results.Problem("Restore failed: " + err);
-        }
-    }
-    catch (System.ComponentModel.Win32Exception)
-    {
-        return Results.Problem("psql not found. Install PostgreSQL client tools or add psql to PATH.");
-    }
-
-    return Results.Ok(new { ok = true, restored = safe });
-});
-#region POSTGRES_ONLY_SETTINGS_SUPPLIERS
-const string DefaultSuppliersJson = @"{""suppliers"":[],""invoices"":[],""payments"":[]}";
-static async Task<NaderProductsApp.Models.AppSetting> EnsureSettingsRow(AppDbContext db)
-{
-    var row = await db.AppSettings.FirstOrDefaultAsync(x => x.Id == 1);
-    if (row is null)
-    {
-        row = new NaderProductsApp.Models.AppSetting
-        {
-            Id = 1,
-            InvoicePaper = "Cashier",
-            CashierPaperWidthMm = 80,
-            BarcodeType = "QR",
-            ZatcaPhase = 1
-        };
-        db.AppSettings.Add(row);
-        await db.SaveChangesAsync();
-    }
-    return row;
-}
-
-static async Task<NaderProductsApp.Models.SuppliersStoreRow> EnsureSuppliersStoreRow(AppDbContext db)
-{
-    var row = await db.SuppliersStore.FirstOrDefaultAsync(x => x.Id == 1);
-    if (row is null)
-    {
-        row = new NaderProductsApp.Models.SuppliersStoreRow { Id = 1, Json = DefaultSuppliersJson };
-        db.SuppliersStore.Add(row);
-        await db.SaveChangesAsync();
-    }
-    if (string.IsNullOrWhiteSpace(row.Json)) row.Json = DefaultSuppliersJson;
-    return row;
-}
-
-app.MapGet("/api/settings", async (AppDbContext db) =>
-{
-    var row = await EnsureSettingsRow(db);
-    return Results.Ok(new
-    {
-        storeName = row.StoreName ?? "",
-        commercialRegister = row.CommercialRegister ?? "",
-        vatNumber = row.VatNumber ?? "",
-        storeAddress = row.StoreAddress ?? "",
-        storePhone = row.StorePhone ?? "",
-        invoicePaper = string.IsNullOrWhiteSpace(row.InvoicePaper) ? "Cashier" : row.InvoicePaper,
-        cashierPaperWidthMm = row.CashierPaperWidthMm ?? 80,
-        storeLogoBase64 = row.StoreLogoBase64 ?? "",
-        invoiceFooterNotes = row.InvoiceFooterNotes ?? "",
-        barcodeType = string.IsNullOrWhiteSpace(row.BarcodeType) ? "QR" : row.BarcodeType,
-        zatcaPhase = row.ZatcaPhase ?? 1,
-        phase2InvoiceHash = row.Phase2InvoiceHash ?? "",
-        phase2Signature = row.Phase2Signature ?? "",
-        phase2PublicKey = row.Phase2PublicKey ?? "",
-        phase2CertificateSignature = row.Phase2CertificateSignature ?? ""
-    });
-});
-
-app.MapPut("/api/settings", async (AppDbContext db, HttpRequest request) =>
-{
-    var dto = await request.ReadFromJsonAsync<NaderProductsApp.Models.SettingsDto>();
-    if (dto is null) return Results.BadRequest("INVALID_BODY");
-
-    var row = await EnsureSettingsRow(db);
-
-    var invoicePaper = (dto.InvoicePaper ?? "Cashier").Trim();
-    if (invoicePaper != "A4" && invoicePaper != "Cashier") invoicePaper = "Cashier";
-
-    var barcodeType = (dto.BarcodeType ?? "QR").Trim().ToUpperInvariant();
-    if (barcodeType != "QR") barcodeType = "QR";
-    var phase = dto.ZatcaPhase == 2 ? 2 : 1;
-    var width = dto.CashierPaperWidthMm <= 0 ? 80 : dto.CashierPaperWidthMm;
-    if (width < 58) width = 58;
-    if (width > 120) width = 120;
-
-    var logo = (dto.StoreLogoBase64 ?? "").Trim();
-    if (logo.Length > 2_000_000) return Results.BadRequest("LOGO_TOO_LARGE");
-
-    row.StoreName = (dto.StoreName ?? "").Trim();
-    row.CommercialRegister = (dto.CommercialRegister ?? "").Trim();
-    row.VatNumber = (dto.VatNumber ?? "").Trim();
-    row.StoreAddress = (dto.StoreAddress ?? "").Trim();
-    row.StorePhone = (dto.StorePhone ?? "").Trim();
-
-    row.InvoicePaper = invoicePaper;
-    row.CashierPaperWidthMm = width;
-    row.StoreLogoBase64 = logo;
-    row.InvoiceFooterNotes = (dto.InvoiceFooterNotes ?? "").Trim();
-
-    row.BarcodeType = barcodeType;
-    row.ZatcaPhase = phase;
-
-    row.Phase2InvoiceHash = phase == 2 ? (dto.Phase2InvoiceHash ?? "").Trim() : "";
-    row.Phase2Signature = phase == 2 ? (dto.Phase2Signature ?? "").Trim() : "";
-    row.Phase2PublicKey = phase == 2 ? (dto.Phase2PublicKey ?? "").Trim() : "";
-    row.Phase2CertificateSignature = phase == 2 ? (dto.Phase2CertificateSignature ?? "").Trim() : "";
-
-    await db.SaveChangesAsync();
-    return Results.Ok(new { ok = true });
-});
-
-app.MapGet("/api/suppliers-store", async (AppDbContext db) =>
-{
-    var row = await EnsureSuppliersStoreRow(db);
-    return Results.Text(row.Json ?? DefaultSuppliersJson, "application/json; charset=utf-8");
-});
-
-app.MapPut("/api/suppliers-store", async (AppDbContext db, HttpRequest request) =>
-{
-    using var sr = new StreamReader(request.Body);
-    var raw = await sr.ReadToEndAsync();
-    if (string.IsNullOrWhiteSpace(raw)) return Results.BadRequest("EMPTY_BODY");
-
-    var row = await EnsureSuppliersStoreRow(db);
-    row.Json = raw;
-    await db.SaveChangesAsync();
-    return Results.Ok(new { ok = true });
-});
-
-#endregion
 
 
-app.Run("http://127.0.0.1:5050");
-
-ControlPanelApiV1.MapControlPanelApiV1(app);
-
-record SettingsDto(
-    string? StoreName,
-    string? CommercialRegister,
-    string? VatNumber,
-    string? StoreAddress,
-    string? StorePhone,
-
-    string? InvoicePaper,
-    int CashierPaperWidthMm,
-    string? StoreLogoBase64,
-    string? InvoiceFooterNotes,
-
-    string? BarcodeType,
-    int ZatcaPhase,
-
-    string? Phase2InvoiceHash,
-    string? Phase2Signature,
-    string? Phase2PublicKey,
-    string? Phase2CertificateSignature
-);
-//
 
 
 

@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
     <style>
-        body {
+body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background-color: #f4f6f8;
             margin: 0;
@@ -287,13 +287,259 @@
                 gap: 6px;
             }
         }
-    </style>
+
+/* ===== NADER POS Theme (style only) ===== */
+
+        :root{
+            --bg:#f4f6f8;
+            --card:#ffffff;
+            --text:#0f172a;
+            --muted:#64748b;
+
+            /* Brand (from NADER POS logo) */
+            --brand-blue:#1f6feb;
+            --brand-cyan:#22c7ff;
+            --brand-orange:#ff9a2f;
+            --brand-orange-deep:#ff7a18;
+
+            --header:#0b1220;
+            --header2:#121a2b;
+            --border:#e5e7eb;
+            --shadow: 0 10px 30px rgba(2, 6, 23, .10);
+            --shadow-soft: 0 1px 4px rgba(15, 23, 42, 0.12);
+            --radius:12px;
+        }
+
+        body{
+            background:
+              radial-gradient(1200px 500px at 10% -10%, rgba(34,199,255,.18), transparent 55%),
+              radial-gradient(900px 420px at 90% 0%, rgba(255,154,47,.16), transparent 55%),
+              var(--bg);
+            color:var(--text);
+        }
+
+        header{
+            background:
+              linear-gradient(135deg, rgba(31,111,235,.95), rgba(34,199,255,.55)),
+              linear-gradient(180deg, var(--header), var(--header2));
+            border-bottom: 1px solid rgba(255,255,255,.10);
+            box-shadow: 0 12px 28px rgba(2,6,23,.22);
+            padding: 12px 18px;
+            border-radius: 0 0 18px 18px;
+        }
+
+        .header-left{
+            display:flex;
+            align-items:center;
+            gap:10px;
+            min-width: 200px;
+        }
+        .brand-logo{
+            width:38px;height:38px;
+            border-radius: 12px;
+            box-shadow: 0 8px 18px rgba(2,6,23,.25);
+            background:#fff;
+            object-fit: cover;
+        }
+        header h1{
+            letter-spacing:.2px;
+            font-size: 18px;
+            line-height: 1.2;
+        }
+        .header-sub{
+            font-size: 11px;
+            color: rgba(255,255,255,.85);
+            margin-top: 2px;
+        }
+
+        /* Buttons: keep sizes, just upgrade look + icons */
+        button, .btn{
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,.18);
+            transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+            box-shadow: 0 10px 18px rgba(2,6,23,.12);
+        }
+        button:hover, .btn:hover{
+            transform: translateY(-1px);
+            filter: brightness(1.03);
+        }
+        button:active, .btn:active{
+            transform: translateY(0px);
+            box-shadow: 0 6px 12px rgba(2,6,23,.14);
+        }
+
+        .btn-primary{ background: linear-gradient(135deg, var(--brand-blue), var(--brand-cyan)); color:#fff; border-color: rgba(255,255,255,.22); }
+        .btn-secondary{ background: rgba(15,23,42,.78); color:#fff; border-color: rgba(255,255,255,.14); }
+        .btn-danger{ background: linear-gradient(135deg, #ef4444, #b91c1c); color:#fff; border-color: rgba(255,255,255,.16); }
+        .btn-outline{
+            background: rgba(255,255,255,.88);
+            border: 1px solid rgba(2,6,23,.12);
+            color: #0f172a;
+            box-shadow: 0 8px 16px rgba(2,6,23,.08);
+        }
+        .btn-outline:hover{ background: rgba(255,255,255,.96); }
+
+        /* Icon button (home) */
+        .icon-btn{
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            gap:6px;
+            width:38px;
+            height:34px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,.18);
+            background: rgba(15,23,42,.35);
+            color:#fff;
+            cursor:pointer;
+            text-decoration:none;
+            box-shadow: 0 10px 18px rgba(2,6,23,.14);
+        }
+        .icon-btn:hover{ filter: brightness(1.08); transform: translateY(-1px); }
+        .icon-btn svg{ width:18px;height:18px; fill: currentColor; }
+
+        main{ padding-top: 14px; }
+
+        .toolbar input[type="text"],
+        .toolbar input[type="number"],
+        .toolbar select{
+            border-radius: 10px;
+            border: 1px solid rgba(2,6,23,.12);
+            background: rgba(255,255,255,.92);
+            box-shadow: 0 8px 16px rgba(2,6,23,.06);
+        }
+
+        .card{
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(2,6,23,.08);
+        }
+
+        thead{
+            background: linear-gradient(180deg, rgba(34,199,255,.18), rgba(31,111,235,.10));
+        }
+
+        tbody tr:nth-child(even){ background-color: rgba(2,6,23,.02); }
+
+        .badge{ border: 1px solid rgba(2,6,23,.06); }
+        .badge-blue{ background-color: rgba(34,199,255,.20); color: #0b4a60; }
+        .badge-green{ background-color: rgba(34,197,94,.16); color: #14532d; }
+        .badge-yellow{ background-color: rgba(245,158,11,.18); color: #7c2d12; }
+        .badge-red{ background-color: rgba(239,68,68,.16); color: #7f1d1d; }
+
+        .modal{
+            border: 1px solid rgba(2,6,23,.10);
+            box-shadow: var(--shadow);
+        }
+
+        /* Make action buttons in table smaller and icon-friendly */
+        td .btn{ border-radius: 9px; }
+
+        /* ===== Frames / inputs / panels (match brand theme) ===== */
+        /* Generic containers that look like frames */
+        .panel, .box, .section, .card, .table-wrap, .toolbar, .filters, .content, .container, .form-card{
+            border-color: rgba(31,111,235,.20) !important;
+        }
+
+        /* If the old design uses fieldset/legend */
+        fieldset{
+            border: 1px solid rgba(31,111,235,.22) !important;
+            border-radius: 14px !important;
+            background: rgba(255,255,255,.78) !important;
+            box-shadow: 0 10px 24px rgba(2,6,23,.08) !important;
+        }
+        legend{
+            padding: 6px 10px !important;
+            border-radius: 999px !important;
+            border: 1px solid rgba(34,199,255,.26) !important;
+            background: linear-gradient(135deg, rgba(31,111,235,.12), rgba(34,199,255,.10)) !important;
+            color: #0b4a60 !important;
+            font-weight: 700 !important;
+        }
+
+        /* Inputs / selects / textareas (frames) */
+        input[type="text"], input[type="number"], input[type="date"], input[type="datetime-local"],
+        input[type="email"], input[type="tel"], input[type="search"], select, textarea{
+            border: 1px solid rgba(31,111,235,.22) !important;
+            background: rgba(255,255,255,.92) !important;
+            box-shadow: 0 8px 18px rgba(2,6,23,.06) !important;
+        }
+        input::placeholder, textarea::placeholder{ color: rgba(100,116,139,.85) !important; }
+
+        input:focus, select:focus, textarea:focus{
+            outline: none !important;
+            border-color: rgba(34,199,255,.85) !important;
+            box-shadow: 0 0 0 4px rgba(34,199,255,.18), 0 12px 26px rgba(2,6,23,.10) !important;
+        }
+
+        /* Labels and section titles */
+        label{ color: rgba(15,23,42,.92) !important; font-weight: 600 !important; }
+        .section-title, .title, .subtitle{
+            background: linear-gradient(90deg, rgba(31,111,235,.14), rgba(34,199,255,.10), transparent);
+            border-right: 4px solid rgba(255,154,47,.75);
+            padding: 10px 12px;
+            border-radius: 12px;
+        }
+
+        /* Tables: frame + header */
+        table{
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+            border: 1px solid rgba(31,111,235,.18) !important;
+            border-radius: 14px !important;
+            overflow: hidden !important;
+            box-shadow: 0 10px 24px rgba(2,6,23,.08) !important;
+            background: rgba(255,255,255,.92) !important;
+        }
+        th, td{
+            border-bottom: 1px solid rgba(31,111,235,.10) !important;
+        }
+        thead th{
+            color: #0f172a !important;
+            font-weight: 800 !important;
+            background:
+              linear-gradient(135deg, rgba(31,111,235,.16), rgba(34,199,255,.10)) !important;
+        }
+
+        /* Modal frames */
+        .modal, .dialog, .popup{
+            border: 1px solid rgba(31,111,235,.22) !important;
+            border-radius: 16px !important;
+            background: rgba(255,255,255,.96) !important;
+        }
+        .modal header, .dialog header, .popup header{
+            border-radius: 16px 16px 0 0 !important;
+        }
+
+        /* Pills / chips frames */
+        .pill, .chip{
+            border: 1px solid rgba(34,199,255,.22) !important;
+            background: rgba(34,199,255,.10) !important;
+        }
+
+        /* Checkboxes/switches (if any) */
+        input[type="checkbox"], input[type="radio"]{
+            accent-color: var(--brand-blue);
+        }
+
+
+</style>
 </head>
 <body>
 <header>
-    <h1>إدارة المنتجات</h1>
+<div class="header-left">
+        <img class="brand-logo" src="naderpos-logo.jpg" alt="NADER POS" onerror="this.style.display='none'">
+        <div>
+            <h1>إدارة المنتجات</h1>
+            <div class="header-sub">NADER POS • إدارة الأصناف والمخزون</div>
+        </div>
+    </div>
+
     <div class="header-actions">
-        <button class="btn btn-secondary" onclick="goHome()">العودة للرئيسية</button>
+        
+        <a class="icon-btn home-btn" href="index.html" title="الرئيسية" aria-label="الرئيسية">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.1 2.6 11.2a1 1 0 0 0 .6 1.8H5v7a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-7h1.8a1 1 0 0 0 .6-1.8L12 3.1z"/></svg>
+        </a>
         <button class="btn btn-primary" onclick="openNewProductModal()">+ منتج جديد</button>
         <button id="printBtn" class="btn btn-secondary" onclick="printProducts()">🖨 طباعة النتائج</button>
         <button class="btn btn-outline" onclick="exportProducts()">⬇️ تصدير المنتجات</button>
@@ -967,9 +1213,9 @@
                 "<td>" + (isVatIncluded ? "شامل" : "غير شامل") + "</td>" +
                 "<td>" + getOfferStatusBadge(p) + "</td>" +
                 "<td>" +
-                    '<button class="btn btn-outline" onclick="openEditProduct(' + (p.id || p.Id) + ')">تعديل</button> ' +
-                    '<button class="btn btn-danger" onclick="deleteProduct(' + (p.id || p.Id) + ')">حذف</button> ' +
-                    '<button class="btn btn-outline" onclick="printBarcodeForProduct(' + (p.id || p.Id) + ')">باركود</button>' +
+                    '<button class="btn btn-outline" onclick="openEditProduct(' + (p.id || p.Id) + ')">✏️ تعديل</button> ' +
+                    '<button class="btn btn-danger" onclick="deleteProduct(' + (p.id || p.Id) + ')">🗑️ حذف</button> ' +
+                    '<button class="btn btn-outline" onclick="printBarcodeForProduct(' + (p.id || p.Id) + ')">🏷️ باركود</button>' +
                 "</td>";
             tbody.appendChild(tr);
         });
@@ -1453,6 +1699,14 @@
         if (pageSel) pageSel.value = String(pageSize);
         loadProducts();
     });
+</script>
+
+
+<script src="/js/auth.js"></script>
+<script>
+(async ()=>{
+  await window.NaderAuth?.requireAuth({ permissionBit: 1, redirect:"/login.html" });
+})();
 </script>
 </body>
 </html>

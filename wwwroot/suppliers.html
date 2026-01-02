@@ -6,19 +6,20 @@
   <title>شاشة الموردين - مشتريات (v9)</title>
 
   <style>
-    :root{
-      --bg:#f6f7fb;
+:root{
+      --bg:#eef5fb;
       --card:#ffffff;
-      --text:#111827;
-      --muted:#6b7280;
-      --line:#e5e7eb;
-      --primary:#10b981;
-      --primary-2:#0ea5e9;
+      --text:#0b1220;
+      --muted:#5b6b84;
+      --line:rgba(30,85,165,.18);
+      --primary:#ff8a2a;      /* brand orange */
+      --primary-2:#20c3ff;    /* brand cyan */
+      --primary-3:#1e6fe8;    /* brand blue */
       --danger:#ef4444;
       --warning:#f59e0b;
-      --radius:16px;
-      --shadow:0 10px 30px rgba(17,24,39,.06);
-      --shadow2:0 6px 16px rgba(17,24,39,.08);
+      --radius:18px;
+      --shadow:0 14px 40px rgba(2,10,32,.10);
+      --shadow2:0 10px 28px rgba(2,10,32,.14);
       --font: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, "Noto Kufi Arabic", "Noto Sans Arabic", sans-serif;
     }
     *{box-sizing:border-box}
@@ -342,15 +343,174 @@
       .printWrap{ padding:0 !important; margin:0 !important; }
       .printCard{ border:none !important; box-shadow:none !important; }
     }
-  </style>
+
+
+/* ===== NaderPOS Brand layer (no JS/API changes) ===== */
+body{
+  background:
+    radial-gradient(1200px 500px at 15% 0%, rgba(32,195,255,.22), transparent 60%),
+    radial-gradient(1000px 520px at 85% 0%, rgba(30,111,232,.18), transparent 60%),
+    linear-gradient(180deg, rgba(255,138,42,.10), transparent 38%),
+    var(--bg);
+}
+.card{
+  border-color: rgba(30,85,165,.18);
+  box-shadow: var(--shadow);
+}
+.cardHeader{
+  background: linear-gradient(90deg, rgba(30,111,232,.12), rgba(32,195,255,.12));
+}
+.topbar{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(10px);
+  background: linear-gradient(90deg, rgba(30,111,232,.92), rgba(32,195,255,.92));
+  border-bottom: 1px solid rgba(255,255,255,.18);
+  box-shadow: 0 10px 26px rgba(2,10,32,.18);
+  border-radius: 0 0 18px 18px;
+}
+.title{
+  color:#fff;
+  font-size: 18px;
+}
+.toolbar .btn{
+  border-color: rgba(255,255,255,.22);
+  background: rgba(255,255,255,.12);
+  color:#fff;
+  box-shadow: none;
+}
+.toolbar .btn:hover{ background: rgba(255,255,255,.16); }
+.toolbar .pill{
+  border-color: rgba(255,255,255,.22);
+  background: rgba(255,255,255,.10);
+}
+.toolbar .pill button{ color: rgba(255,255,255,.78); }
+.toolbar .pill button.active{
+  background: rgba(255,255,255,.20);
+  color:#fff;
+}
+
+.field{
+  border-color: rgba(30,85,165,.20);
+  background: rgba(255,255,255,.98);
+}
+.field:focus{
+  border-color: rgba(32,195,255,.55);
+  box-shadow: 0 0 0 4px rgba(32,195,255,.18);
+}
+
+/* Buttons inside content */
+.btn{
+  border-color: rgba(30,85,165,.18);
+  background: #fff;
+}
+.btn.primary{
+  background: linear-gradient(135deg, rgba(255,138,42,1), rgba(30,111,232,1));
+  border-color: rgba(255,255,255,.20);
+  color:#fff !important;
+}
+.btn.danger{
+  background: rgba(239,68,68,.10);
+  border-color: rgba(239,68,68,.30);
+  color:#7f1d1d;
+}
+
+/* Icon buttons */
+.iconBtn{
+  border-color: rgba(30,85,165,.18);
+  background: rgba(255,255,255,.95);
+}
+.iconBtn.primary{
+  background: rgba(255,138,42,.14);
+  border-color: rgba(255,138,42,.34);
+}
+.iconBtn.sky{
+  background: rgba(32,195,255,.16);
+  border-color: rgba(32,195,255,.34);
+}
+.iconBtn.danger{
+  background: rgba(239,68,68,.10);
+  border-color: rgba(239,68,68,.28);
+}
+
+/* ===== Icon/Text contrast guardrails ===== */
+.btn.primary, .btn.primary *{
+  color:#fff !important;
+  fill:#fff !important;
+}
+.btn.icon{
+  background: rgba(255,255,255,.14);
+  color:#fff !important;
+}
+.btn.icon *{ color:#fff !important; fill:#fff !important; }
+
+/* Neutral/outline buttons must stay readable */
+.btn:not(.primary):not(.danger), .btn:not(.primary):not(.danger) *{
+  color: var(--text);
+  fill: var(--text);
+}
+
+/* Table action icons inherit currentColor: keep visible */
+.iconBtn, .iconBtn *{
+  color: var(--text);
+  fill: var(--text);
+}
+
+/* Modal header brand */
+.modalHeader{
+  background: linear-gradient(90deg, rgba(30,111,232,.92), rgba(32,195,255,.92));
+  color:#fff;
+  border-bottom-color: rgba(255,255,255,.18);
+}
+.closeX{
+  border-color: rgba(255,255,255,.24);
+  background: rgba(255,255,255,.12);
+  color:#fff;
+}
+.closeX:hover{ background: rgba(255,255,255,.18); }
+
+/* Home floating button (replace old back link) */
+.homeFab{
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 999;
+  width: 44px;
+  height: 44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius: 14px;
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.24);
+  box-shadow: 0 12px 26px rgba(2,10,32,.18);
+  backdrop-filter: blur(10px);
+}
+.homeFab svg{ width: 22px; height: 22px; }
+.homeFab, .homeFab *{ color:#fff !important; fill:#fff !important; }
+.homeFab:hover{ background: rgba(255,255,255,.22); }
+@media (max-width:720px){
+  .homeFab{ top: 10px; left: 10px; }
+}
+
+
+</style>
 </head>
 
 <body>
+  <a class="homeFab noPrint" href="index.html" title="العودة للرئيسية" aria-label="العودة للرئيسية">
+  <svg viewBox="0 0 24 24" fill="none">
+    <path d="M3 10.5L12 3l9 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M5 10v10h14V10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M9 20v-6h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</a>
+
   <div class="topbar noPrint">
     <div class="toolbar">
       
-      <a class="btn" href="index.html" id="btnBackHome" title="العودة للرئيسية">↩ العودة للرئيسية</a>
-<button class="btn primary" id="btnNewInvoice" title="إضافة فاتورة شراء جديدة">
+      <button class="btn primary" id="btnNewInvoice" title="إضافة فاتورة شراء جديدة">
         <span>إضافة جديد</span>
         <span aria-hidden="true">➕</span>
       </button>
@@ -2408,6 +2568,14 @@ function printInvoice(invId){
 
   recomputeAllocations();
   hydrateDbFromApi();
+})();
+</script>
+
+
+<script src="/js/auth.js"></script>
+<script>
+(async ()=>{
+  await window.NaderAuth?.requireAuth({ permissionBit: 8, redirect:"/login.html" });
 })();
 </script>
 </body>

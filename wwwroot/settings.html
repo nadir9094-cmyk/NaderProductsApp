@@ -5,18 +5,26 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>الإعدادات | Nader POS</title>
   <style>
-    :root{
-      --bg:#f6f8fc;
+:root{
+      --np-blue:#1f6feb;
+      --np-cyan:#22c7ff;
+      --np-orange:#ff9a2f;
+
+      --bg:#f5f7fb;
       --card:#ffffff;
-      --text:#0f172a;
-      --muted:#64748b;
-      --border:#e2e8f0;
-      --primary:#2563eb;
-      --primary2:#1d4ed8;
+      --text:#0b1220;
+      --muted:#5b6b84;
+      --border: rgba(2,6,23,.10);
+
+      --primary: var(--np-blue);
+      --primary2: #165bd6;
       --success:#16a34a;
       --danger:#dc2626;
-      --shadow: 0 12px 30px rgba(2,6,23,.08);
+
+      --shadow: 0 14px 34px rgba(2,6,23,.12);
+      --shadow-soft: 0 10px 28px rgba(2,6,23,.10);
       --radius:18px;
+      --font: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, "Noto Kufi Arabic", "Noto Sans Arabic", sans-serif;
     }
     *{box-sizing:border-box}
     body{
@@ -151,22 +159,207 @@
       display:none;
     }
     .phase2.show{display:block}
-  </style>
+
+
+/* ===================== NADER POS Theme: Settings ===================== */
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family: var(--font);
+  background:
+    radial-gradient(1100px 520px at 12% -10%, rgba(34,199,255,.18), transparent 55%),
+    radial-gradient(980px 460px at 92% 0%, rgba(255,154,47,.14), transparent 55%),
+    var(--bg);
+  color:var(--text);
+}
+header{
+  position:sticky; top:10px;
+  background: transparent;
+  border:0;
+  z-index:60;
+}
+.wrap{max-width:1200px; margin:0 auto; padding:18px 16px;}
+.topbar{
+  display:flex; gap:12px; align-items:center; justify-content:space-between;
+  padding:14px 14px;
+  border-radius: 20px;
+  background: linear-gradient(90deg, rgba(31,111,235,.98), rgba(34,199,255,.92));
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+}
+.brand{display:flex; gap:12px; align-items:center;}
+.brandLogo{
+  width:44px;height:44px;border-radius:14px;object-fit:cover;
+  background:#0b1220;
+  border:1px solid rgba(255,255,255,.25);
+  box-shadow: 0 10px 22px rgba(2,6,23,.22);
+}
+h1{font-size:18px; margin:0; color:#fff;}
+.sub{font-size:12px; color: rgba(255,255,255,.85); margin-top:4px; font-weight:700;}
+.actions{display:flex; gap:10px; align-items:center;}
+
+button{
+  border:0; cursor:pointer;
+  padding:10px 14px;
+  border-radius:14px;
+  font-weight:800;
+  transition:.15s transform, .15s filter;
+}
+button:active{transform:translateY(1px)}
+.btn-primary{
+  background: linear-gradient(135deg, rgba(255,154,47,.98), rgba(31,111,235,.96));
+  color:#fff;
+  border:1px solid rgba(255,255,255,.22);
+  box-shadow: 0 12px 26px rgba(2,6,23,.14);
+}
+.btn-primary:hover{filter:brightness(1.05)}
+.btnIcon{display:inline-flex; align-items:center; gap:10px; justify-content:center;}
+.btnIcon .ico{width:18px;height:18px;}
+.btn-primary, .btn-primary *{color:#fff !important; fill:#fff !important;}
+
+main{padding:18px 0 60px}
+.grid{display:grid; grid-template-columns: 1fr; gap:16px;}
+@media(min-width:980px){
+  .grid{grid-template-columns: 1fr 1fr}
+  .span2{grid-column: 1 / -1;}
+}
+
+.card{
+  background: rgba(255,255,255,.86);
+  border:1px solid rgba(2,6,23,.08);
+  border-radius: 22px;
+  box-shadow: var(--shadow-soft);
+  padding:16px;
+  position:relative;
+  overflow:hidden;
+}
+.card::before{
+  content:"";
+  position:absolute;
+  top:0; left:0; right:0;
+  height:3px;
+  background: linear-gradient(90deg, rgba(31,111,235,.98), rgba(34,199,255,.90), rgba(255,154,47,.92));
+}
+.card > *{position:relative; z-index:1;}
+.card h2{
+  margin:0 0 8px;
+  font-size:15px;
+  display:flex; align-items:center; gap:10px;
+}
+.card h2 .ico{width:18px;height:18px; color: var(--np-blue);}
+.hint{color:var(--muted); font-size:12px; margin:0 0 14px; font-weight:600;}
+
+label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px; font-weight:700;}
+input, textarea, select{
+  width:100%;
+  border:1px solid rgba(31,111,235,.16);
+  border-radius:14px;
+  padding:11px 12px;
+  outline:none;
+  background:rgba(255,255,255,.92);
+  color:var(--text);
+}
+textarea{min-height:90px; resize:vertical}
+input:focus, textarea:focus, select:focus{
+  border-color: rgba(34,199,255,.70);
+  box-shadow: 0 0 0 4px rgba(34,199,255,.14);
+  background:#fff;
+}
+.pill{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 10px;
+  border-radius:999px;
+  border:1px solid rgba(2,6,23,.10);
+  background:rgba(255,255,255,.70);
+  font-size:12px;
+  color:var(--muted);
+  font-weight:700;
+}
+.status{
+  margin-top:10px;
+  font-size:12px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(2,6,23,.10);
+  background:rgba(255,255,255,.70);
+  color:var(--muted);
+  display:none;
+}
+.status.ok{display:block; border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.08); color: var(--success);}
+.status.err{display:block; border-color: rgba(220,38,38,.35); background: rgba(220,38,38,.08); color: var(--danger);}
+
+.logoBox{display:flex; gap:12px; align-items:center;}
+.logoPrev{
+  width:76px; height:76px;
+  border-radius:18px;
+  border:1px dashed rgba(2,6,23,.14);
+  background:rgba(255,255,255,.75);
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden;
+}
+.logoPrev img{width:100%; height:100%; object-fit:cover}
+.small{font-size:12px; color:var(--muted); font-weight:700;}
+
+.phase2{
+  margin-top:12px;
+  padding:12px;
+  border-radius:16px;
+  border:1px dashed rgba(2,6,23,.16);
+  background:rgba(255,255,255,.75);
+  display:none;
+}
+.phase2.show{display:block}
+
+/* Home FAB */
+.homeFab{
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 999;
+  width: 44px;
+  height: 44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(31,111,235,.92), rgba(34,199,255,.86));
+  border: 1px solid rgba(255,255,255,.24);
+  box-shadow: 0 12px 26px rgba(2,10,32,.18);
+}
+.homeFab, .homeFab *{ color:#fff !important; fill:#fff !important; }
+.homeFab:hover{ transform: translateY(-1px); filter:saturate(1.08); }
+.homeFab:active{ transform: translateY(0); }
+
+
+</style>
 </head>
 <body>
+
+<a class="homeFab" href="index.html" title="العودة للرئيسية" aria-label="العودة للرئيسية">
+  <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M3 10.5L12 3l9 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M5 10v10h14V10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M9 20v-6h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+</a>
+
 <header>
   <div class="wrap">
     <div class="topbar">
       <div class="brand">
-        <div class="logo"></div>
+        <img class="brandLogo" src="naderpos-logo.jpg" alt="NADER POS">
         <div>
           <h1>شاشة الإعدادات</h1>
           <div class="sub">تهيئة بيانات المتجر، الفاتورة، والـ QR حسب متطلبات هيئة الزكاة والضريبة والجمارك</div>
         </div>
       </div>
       <div class="actions">
-        <button class="btn-ghost" type="button" onclick="location.href='/'">الرئيسية</button>
-        <button id="btnSave" class="btn-primary" type="button">حفظ الإعدادات</button>
+        
+        <button id="btnSave" class="btn-primary btnIcon" type="button"><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M4 7a2 2 0 0 1 2-2h10l4 4v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M8 5v6h8V5" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M8 19h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg><span>حفظ الإعدادات</span></button>
       </div>
     </div>
     <div id="status" class="status"></div>
@@ -177,7 +370,11 @@
   <div class="grid">
     <!-- Store -->
     <section class="card">
-      <h2>🏪 بيانات المتجر</h2>
+      <h2><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M4 7h16l-1.5-4h-13L4 7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M5 7v14h14V7" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M9 21v-7h6v7" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+</svg><span>بيانات المتجر</span></h2>
       <p class="hint">هذه البيانات تُستخدم في الفاتورة والتقارير.</p>
 
       <div class="row two">
@@ -212,7 +409,10 @@
 
     <!-- Invoice -->
     <section class="card">
-      <h2>🧾 إعدادات الفاتورة</h2>
+      <h2><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M7 3h10v18l-2-1-2 1-2-1-2 1-2-1-2 1V3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M9 7h6M9 11h6M9 15h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg><span>إعدادات الفاتورة</span></h2>
       <p class="hint">اختيار حجم الورق + الشعار + ملاحظات أسفل الفاتورة.</p>
 
       <div class="row two">
@@ -258,7 +458,14 @@
 
     <!-- Barcode -->
     <section class="card span2">
-      <h2>🔳 إعدادات الباركود</h2>
+      <h2><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  <path d="M4 4h6v6H4V4Z" stroke="currentColor" stroke-width="2"/>
+  <path d="M14 4h6v6h-6V4Z" stroke="currentColor" stroke-width="2"/>
+  <path d="M4 14h6v6H4v-6Z" stroke="currentColor" stroke-width="2"/>
+  <path d="M14 14h2v2h-2v-2Z" stroke="currentColor" stroke-width="2"/>
+  <path d="M18 14h2v6h-6v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M14 18h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg><span>إعدادات الباركود</span></h2>
       <p class="hint">النوع QR + اختيار المرحلة (1 أو 2). عند اختيار المرحلة الثانية تظهر الحقول المطلوبة للحفظ.</p>
 
       <div class="row three">
@@ -427,15 +634,10 @@
 <script src="/js/auth.js"></script>
 <script>
 (async ()=>{
-  await window.NaderAuth?.requireAuth({ permissionBit: 7, redirect:"/login.html" });
+  await window.NaderAuth?.requireAuth({ permissionBit: 64, redirect:"/login.html" });
 })();
 </script>
 <!-- NADER_AUTH_GUARD -->
-<script>
-(async ()=>{
-  await window.NaderAuth?.requireAuth({ permissionBit: 7, redirect:"/login.html" });
-})();
-</script>
 </body>
 </html>
 

@@ -1,103 +1,142 @@
-﻿/* Nader Auth Guard (V1) */
+// js/auth.js - FULL COMPAT + fixes 415 + fixes login redirect loop by fetching /api/auth/me
 (function(){
-  const API = (p)=> (p.startsWith("http")?p:(location.origin + p));
-
-  function getToken(){ return localStorage.getItem("emp_token") || ""; }
-  function setToken(t){ if(t) localStorage.setItem("emp_token", t); else localStorage.removeItem("emp_token"); }
-
-  async function apiFetch(path, opt={}){
-    const headers = Object.assign({ "Content-Type":"application/json" }, opt.headers||{});
-    const tk = getToken();
-    if(tk) headers["Authorization"] = "Bearer " + tk;
-    const res = await fetch(API(path), Object.assign(opt,{headers}));
-    const txt = await res.text();
-    let data=null; try{ data = txt ? JSON.parse(txt) : null; }catch{ data = txt; }
-    if(!res.ok){
-      const msg = (typeof data==="string" ? data : (data?.detail || data?.title || "ERROR"));
-      const err = new Error(msg);
-      err.status = res.status;
-      throw err;
-    }
-    return data;
-  }
-
-  // صلاحيات (نفس bits اللي عندنا في السيرفر)
-  const PERM = {
-    Products: 0,
-    CustomersDeferred: 1,
-    Suppliers: 2,
-    Expenses: 3,
-    Cashier: 4,
-    SalesInvoices: 5,
-    Employees: 6,
-    Settings: 7,
-    Backup: 8,
-    SubscriptionPlan: 9
+  const PERMS = {
+    PRODUCTS:1, CASHIER:2, CUSTOMERS:4, SUPPLIERS:8, EXPENSES:16,
+    REPORTS:32, SETTINGS:64, BACKUP:128, EMPLOYEES:256, SHIFTS:512
   };
 
-  function hasPerm(permMask, bitIndex){
+  function _lsGet(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } }
+  function _lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(_){} }
+  function _lsDel(k){ try{ localStorage.removeItem(k); }catch(_){} }
+
+  function getToken(){
+    return String(_lsGet('emp_token') || _lsGet('token') || _lsGet('EMP_TOKEN') || '').trim();
+  }
+
+  function getMeSync(){
     try{
-      const m = BigInt(permMask||0);
-      const b = 1n << BigInt(bitIndex);
-      return (m & b) !== 0n;
-    }catch{
-      // fallback numeric
-      return ((Number(permMask||0) >>> 0) & (1 << bitIndex)) !== 0;
-    }
-  }
-
-  async function getMe(){
-    return await apiFetch("/api/auth/me");
-  }
-
-  async function requireAuth(opts={}){
-    const { permissionBit=null, redirect="/login.html" } = opts;
-    const tk = getToken();
-    if(!tk){
-      location.href = redirect;
+      const s = _lsGet('emp_me');
+      return s ? JSON.parse(s) : null;
+    }catch(_){
       return null;
     }
+  }
 
-    try{
-      const me = await getMe();
-      // حفظ بيانات بسيطة للعرض
-      localStorage.setItem("emp_me", JSON.stringify(me));
+  function isAdmin(u){
+    const name = String(u?.username || u?.userName || u?.UserName || '').toLowerCase();
+    return name === 'admin';
+  }
 
-      if(permissionBit !== null){
-        const ok = hasPerm(me.permissions, permissionBit);
-        if(!ok){
-          // منع الدخول بلطف
-          document.body.innerHTML = `
-            <div style="font-family:system-ui;max-width:720px;margin:60px auto;padding:20px">
-              <h2 style="margin:0 0 10px 0">🚫 لا تملك صلاحية دخول هذه الصفحة</h2>
-              <p style="color:#555;margin:0 0 18px 0">تواصل مع مدير النظام لتفعيل الصلاحية.</p>
-              <button id="goHome" style="padding:10px 14px;border:1px solid #ddd;border-radius:10px;background:#fff;cursor:pointer">العودة للرئيسية</button>
-              <button id="logout" style="padding:10px 14px;border:1px solid #dc2626;border-radius:10px;background:#dc2626;color:#fff;cursor:pointer;margin-right:8px">تسجيل خروج</button>
-            </div>`;
-          document.getElementById("goHome").onclick=()=>location.href="/index.html";
-          document.getElementById("logout").onclick=async()=>{
-            try{ await apiFetch("/api/auth/logout",{method:"POST"}); }catch{}
-            setToken("");
-            location.href = redirect;
-          };
-          return null;
-        }
+  function hasPerm(bit){
+    const u = getMeSync();
+    if(!u) return false;
+    if(isAdmin(u)) return true;
+    return (Number(u.permissions||u.Permissions||0) & bit) === bit;
+  }
+
+  async function apiFetch(url, options={}){
+    options = options || {};
+    options.headers = options.headers || {};
+
+    // Auto auth header
+    const t = getToken();
+    if(t && !options.headers.Authorization && !options.headers.authorization){
+      options.headers.Authorization = 'Bearer ' + t;
+    }
+
+    // Fix 415: if sending JSON string and Content-Type missing, add it
+    const hasCT = !!(options.headers['Content-Type'] || options.headers['content-type']);
+    if(!hasCT && typeof options.body === 'string'){
+      const s = options.body.trim();
+      if((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))){
+        options.headers['Content-Type'] = 'application/json';
       }
+    }
 
-      return me;
-    }catch(e){
-      // توكن منتهي/غير صحيح
-      setToken("");
-      location.href = redirect;
+    // avoid caching in auth flows
+    options.cache = options.cache || 'no-store';
+
+    const res = await fetch(url, options);
+    const ct = (res.headers.get('content-type')||'').toLowerCase();
+    const body = ct.includes('application/json') ? await res.json() : await res.text();
+
+    if(!res.ok){
+      const msg = (typeof body === 'string' && body) ? body : (body?.detail || body?.title || ('HTTP ' + res.status));
+      const err = new Error(msg);
+      err.status = res.status;
+      err.body = body;
+      throw err;
+    }
+
+    return body;
+  }
+
+  // ✅ crucial fix: load me from server when missing
+  async function getMe(){
+    const cached = getMeSync();
+    if(cached) return cached;
+
+    const t = getToken();
+    if(!t) throw new Error('NO_TOKEN');
+
+    // Try standard endpoint
+    const me = await apiFetch('/api/auth/me', { method:'GET' });
+    try{ _lsSet('emp_me', JSON.stringify(me || {})); }catch(_){ }
+    return me;
+  }
+
+  async function requireAuth({permissionBit=0, redirect='/login.html'} = {}){
+    const t = getToken();
+    if(!t){ location.href = redirect; return null; }
+
+    let u = getMeSync();
+    if(!u){
+      try{ u = await getMe(); }
+      catch(_){
+        // token invalid or endpoint failed -> clear and go login
+        try{ _lsDel('emp_token'); _lsDel('token'); _lsDel('EMP_TOKEN'); _lsDel('emp_me'); }catch(__){}
+        location.href = redirect;
+        return null;
+      }
+    }
+
+    if(permissionBit && !hasPerm(permissionBit)){
+      alert('🚫 لا تملك صلاحية الدخول لهذه الشاشة');
+      location.href = '/index.html';
       return null;
     }
+
+    return u;
   }
 
-  async function logout(){
-    try{ await apiFetch("/api/auth/logout",{method:"POST"}); }catch{}
-    setToken("");
+  function logout(){
+    _lsDel('emp_token');
+    _lsDel('token');
+    _lsDel('EMP_TOKEN');
+    _lsDel('emp_me');
+    _lsDel('emp_remember');
+    location.href = '/login.html';
   }
 
-  // export
-  window.NaderAuth = { apiFetch, getToken, setToken, getMe, requireAuth, logout, PERM };
+  function setToken(v){
+    v = String(v||'').trim();
+    if(v) _lsSet('emp_token', v);
+    else _lsDel('emp_token');
+    // if token changes, refresh me next time
+    _lsDel('emp_me');
+  }
+
+  // Expose (backward compatible names)
+  window.NaderPerms = PERMS;
+  window.NaderAuth = window.NaderAuth || {};
+  window.NaderAuth.getToken = getToken;
+  window.NaderAuth.token = getToken;
+  window.NaderAuth.getMe = getMe;       // async
+  window.NaderAuth.me = getMeSync;      // sync cached only (for quick UI)
+  window.NaderAuth.getMeSync = getMeSync;
+  window.NaderAuth.hasPerm = hasPerm;
+  window.NaderAuth.apiFetch = apiFetch;
+  window.NaderAuth.requireAuth = requireAuth;
+  window.NaderAuth.logout = logout;
+  window.NaderAuth.setToken = setToken;
 })();

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>لوحة التحكم - المشتركين</title>
+  <link rel="stylesheet" href="/site.css" />
+  <style>
+    body{background:#f6f8fb;font-family:system-ui,Segoe UI,Tahoma,Arial}
+    .wrap{max-width:1100px;margin:20px auto;padding:0 12px}
+    .card{background:#fff;border:1px solid #e7ecf3;border-radius:14px;box-shadow:0 8px 20px rgba(0,0,0,.04)}
+    .hd{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eef2f7}
+    .hd h1{margin:0;font-size:18px}
+    .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    input,select,button{border:1px solid #d7deea;border-radius:10px;padding:9px 10px;background:#fff}
+    button{cursor:pointer}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #f1f5f9;font-size:13px;vertical-align:middle}
+    th{background:#fafcff;text-align:right}
+    .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;border:1px solid}
+    .b-ok{background:#ecfdf5;border-color:#a7f3d0}
+    .b-warn{background:#fffbeb;border-color:#fde68a}
+    .b-bad{background:#fef2f2;border-color:#fecaca}
+    .muted{color:#64748b}
+    .row-actions{display:flex;gap:6px;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="hd">
+        <h1>المشتركين</h1>
+        <div class="tools">
+          <input id="q" placeholder="بحث: كود/مالك/متجر/ضريبة..." />
+          <button id="btnReload">تحديث</button>
+          <button onclick="location.href='/controlpanel.html'">رجوع للوحة</button>
+        </div>
+      </div>
+
+      <div style="padding:12px 16px" class="muted">
+        العدد: <b id="cnt">0</b>
+        <span style="margin-right:10px">—</span>
+        <span id="msg"></span>
+      </div>
+
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>كود</th>
+              <th>اسم المالك</th>
+              <th>اسم المتجر</th>
+              <th>الرقم الضريبي</th>
+              <th>الخطة</th>
+              <th>ينتهي</th>
+              <th>متبقي</th>
+              <th>المطلوب</th>
+              <th>المدفوع</th>
+              <th>الحالة</th>
+              <th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="tb"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="/cp-common.js?v=tenants"></script>
+  <script src="/cp-tenants.js?v=tenants"></script>
+</body>
+</html>

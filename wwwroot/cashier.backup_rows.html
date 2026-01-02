@@ -5,859 +5,274 @@
     <title>شاشة الكاشير</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-* { box-sizing: border-box; }
-        body {
-            margin: 0;
-            font-family: Tahoma, sans-serif;
-            background: #f3f4f6;
-            color: #111827;
-            direction: rtl;
-        }
-        header {
-            background: #1f2937;
-            padding: 10px 16px;
-            color: #f9fafb;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        header .title {
-            font-size: 18px;
-            font-weight: 700;
-        }
-        header button {
-            background: #2563eb;
-            border: none;
-            padding: 6px 14px;
-            border-radius: 6px;
-            color: white;
-            cursor: pointer;
-            font-size: 13px;
-        }
-        .search-bar {
-            margin: 10px 16px 0;
-            display: flex;
-            gap: 8px;
-        }
-        .search-bar input {
-            flex: 1;
-            padding: 10px 12px;
-            border-radius: 999px;
-            border: 1px solid #d1d5db;
-            font-size: 14px;
-        }
-        .search-bar button {
-            width: 46px;
-            height: 46px;
-            font-size: 22px;
-            border-radius: 50%;
-            background: #10b981;
-            border: none;
-            color: white;
-            cursor: pointer;
-        }
-        .container {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 10px;
-            padding: 10px 16px 4px;
-        }
-        @media (max-width: 900px) {
-            .container { grid-template-columns: 1fr; }
-        }
+/* =========================
+   NADER CASHIER PRO THEME
+   (UI only - keeps all JS)
+   ========================= */
 
-        /* غلاف السلة + أزرارها */
-        .basket-wrapper {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
+:root{
+  --bg:#f6f7fb;
+  --card:#ffffff;
+  --text:#0f172a;
+  --muted:#64748b;
+  --border:rgba(2,6,23,.10);
+  --shadow:0 12px 30px rgba(2,6,23,.10);
 
-        .basket {
-            background: white;
-            border-radius: 12px;
-            padding: 10px;
-            height: calc(100vh - 190px);
-            min-height: 320px;
-            overflow-y: auto;
-            box-shadow: 0 4px 10px rgba(15,23,42,0.08);
-        }
-        .basket-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            font-size: 13px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        th, td {
-            border-bottom: 1px solid #e5e7eb;
-            padding: 6px 6px;
-            text-align: right;
-        }
-        th {
-            background: #f9fafb;
-            position: sticky;
-            top: 0;
-            z-index: 1;
-        }
+  --brand1:#1f6feb;
+  --brand2:#22c7ff;
 
-        /* أزرار حفظ/تعليق/الفواتير المعلقة أسفل السلة */
-        .basket-actions {
-            background: white;
-            border-radius: 12px;
-            padding: 6px;
-            box-shadow: 0 4px 10px rgba(15,23,42,0.08);
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            align-items: center;
-        }
-        .basket-actions .payment-btn,
-        .basket-actions .secondary-btn {
-            flex: 1 1 120px;
-            margin-top: 0;
-        }
-        .basket-actions .muted {
-            margin-top: 4px;
-            width: 100%;
-        }
+  --ok:#16a34a;
+  --bad:#b91c1c;
+  --warn:#f59e0b;
 
-        .side-panel {
-            background: white;
-            border-radius: 12px;
-            padding: 10px;
-            height: calc(100vh - 190px);
-            min-height: 320px;
-            box-shadow: 0 4px 10px rgba(15,23,42,0.08);
-            display: flex;
-            flex-direction: column;
-        }
-        .side-top {
-            flex: 1;
-            overflow-y: auto;
-            padding-bottom: 6px;
-        }
-        .side-actions {
-            border-top: 1px solid #e5e7eb;
-            padding-top: 6px;
-            margin-top: 4px;
-        }
-        .invoice-total {
-            font-size: 20px;
-            font-weight: 900;
-            text-align: center;
-            padding: 10px;
-            background: linear-gradient(120deg, #2563eb, #0ea5e9);
-            color: white;
-            border-radius: 12px;
-            margin-bottom: 10px;
-        }
-        .invoice-total span.label {
-            display: block;
-            font-size: 11px;
-            opacity: 0.9;
-        }
-        .section-title {
-            font-size: 13px;
-            font-weight: bold;
-            margin: 6px 0;
-        }
-        .invoice-info {
-            font-size: 12px;
-            display: grid;
-            grid-template-columns: auto 1fr;
-            column-gap: 6px;
-            row-gap: 4px;
-            margin-bottom: 8px;
-        }
-        .invoice-info .label { color: #6b7280; }
-        .invoice-info .value { font-weight: 600; }
-        .status-pill {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 11px;
-            background: #f97316;
-            color: #fff;
-        }
-        .status-pill.draft { background:#f97316; }
-        .status-pill.deferred { background:#0f766e; }
-        .status-pill.paid { background:#16a34a; }
-        .small-input {
-            width: 70px;
-            padding: 3px 6px;
-            font-size: 12px;
-            border-radius: 4px;
-            border: 1px solid #d1d5db;
-            text-align: center;
-        }
-        .cell-input {
-            width: 60px;
-            padding: 3px 4px;
-            font-size: 12px;
-            border-radius: 4px;
-            border: 1px solid #d1d5db;
-            text-align: center;
-        }
-        .cell-actions button {
-            border:none;
-            background:none;
-            cursor:pointer;
-            font-size:15px;
-            color:#b91c1c;
-        }
-        .payment-btn {
-            width: 100%;
-            padding: 8px;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 999px;
-            font-size: 14px;
-            cursor: pointer;
-            margin-top: 6px;
-        }
-        .secondary-btn {
-            width: 100%;
-            padding: 6px;
-            border-radius: 999px;
-            border: 1px solid #d1d5db;
-            background: #f9fafb;
-            cursor:pointer;
-            font-size:13px;
-            margin-top:4px;
-        }
-        .row {
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            gap:6px;
-            font-size:12px;
-        }
-        .row label { cursor:pointer; }
-        .split-row {
-            display:grid;
-            grid-template-columns:1fr 1fr;
-            gap:4px;
-            margin-top:4px;
-            font-size:12px;
-        }
-        .split-row input {
-            width:100%;
-            padding:4px 6px;
-            border-radius:4px;
-            border:1px solid #d1d5db;
-            font-size:12px;
-        }
+  --r:16px;
+  --gap:12px;
 
-        /* إشعارات النظام */
-        .notification {
-            position: fixed;
-            top: 16px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 8px 14px;
-            border-radius: 999px;
-            font-size: 13px;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.45);
-            display: none;
-            z-index: 9999;
-        }
-        .notification.show { display:inline-flex; align-items:center; gap:6px; }
-        .notification.success {
-            background:#16a34a;
-            color:#ecfdf5;
-        }
-        .notification.error {
-            background:#b91c1c;
-            color:#fef2f2;
-        }
-
-        .deferred-box {
-            border:1px solid #e5e7eb;
-            border-radius:8px;
-            padding:6px;
-            margin-top:4px;
-            font-size:12px;
-            background:#f9fafb;
-        }
-        .deferred-box input {
-            width:100%;
-            padding:4px 6px;
-            border-radius:4px;
-            border:1px solid #d1d5db;
-            font-size:12px;
-        }
-        .customer-result {
-            padding:4px 6px;
-            border-radius:6px;
-            border:1px solid #e5e7eb;
-            background:white;
-            cursor:pointer;
-            margin-top:4px;
-        }
-        .customer-result:hover { background:#e5f1ff; }
-        .customer-status {
-            font-size:11px;
-            padding:1px 6px;
-            border-radius:999px;
-            margin-right:4px;
-        }
-        .status-active { background:#dcfce7; color:#166534; }
-        .status-temp { background:#fef9c3; color:#854d0e; }
-        .status-perm { background:#fee2e2; color:#b91c1c; }
-        .muted { font-size:11px; color:#6b7280; }
-        .tag-btn {
-            font-size:11px;
-            padding:2px 8px;
-            border-radius:999px;
-            border:1px solid #d1d5db;
-            background:#f9fafb;
-            cursor:pointer;
-        }
-        .parked-modal-backdrop {
-            position:fixed;
-            inset:0;
-            background:rgba(15,23,42,0.45);
-            display:none;
-            align-items:center;
-            justify-content:center;
-            z-index:999;
-        }
-        .parked-modal {
-            background:white;
-            border-radius:10px;
-            padding:10px;
-            width:100%;
-            max-width:420px;
-            max-height:80vh;
-            overflow:auto;
-            box-shadow:0 10px 30px rgba(15,23,42,0.35);
-            font-size:12px;
-        }
-        .parked-item {
-            border:1px solid #e5e7eb;
-            border-radius:8px;
-            padding:6px;
-            margin-bottom:6px;
-            background:#f9fafb;
-        }
-        .parked-item button {
-            margin-top:4px;
-            padding:4px 8px;
-            font-size:11px;
-            border-radius:999px;
-            border:none;
-            background:#2563eb;
-            color:white;
-            cursor:pointer;
-        }
-        textarea {
-            width: 100%;
-            min-height: 60px;
-            padding: 6px;
-            border-radius: 6px;
-            border: 1px solid #d1d5db;
-            font-size: 12px;
-            resize: vertical;
-        }
-        .manual-modal-backdrop {
-            position:fixed;
-            inset:0;
-            background:rgba(15,23,42,0.45);
-            display:none;
-            align-items:center;
-            justify-content:center;
-            z-index:1000;
-        }
-        .manual-modal {
-            background:white;
-            border-radius:12px;
-            padding:10px;
-            width:100%;
-            max-width:400px;
-            box-shadow:0 10px 30px rgba(15,23,42,0.35);
-            font-size:12px;
-        }
-        .manual-body label {
-            display:flex;
-            flex-direction:column;
-            gap:2px;
-            margin-bottom:6px;
-        }
-        .manual-body input {
-            padding:5px 7px;
-            border-radius:6px;
-            border:1px solid #d1d5db;
-            font-size:12px;
-        }
-        .manual-inline {
-            display:flex;
-            align-items:center;
-            gap:4px;
-            margin-bottom:6px;
-        }
-        .manual-footer {
-            display:flex;
-            flex-direction:column;
-            gap:4px;
-            margin-top:4px;
-        }
-        footer {
-            padding: 4px 16px 8px;
-            font-size: 12px;
-            color: #4b5563;
-        }
-    
-.search-results{
-  position: relative;
-  margin-top: 8px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0,0,0,.08);
-}
-.search-results .item{
-  display:flex;
-  justify-content:space-between;
-  gap:10px;
-  padding:10px 12px;
-  cursor:pointer;
-  border-bottom:1px solid #f3f4f6;
-  align-items:center;
-}
-.search-results .item:last-child{ border-bottom:none; }
-.search-results .item:hover{ background:#f9fafb; }
-.search-results .name{ font-weight:700; color:#111827; font-size:13px; }
-.search-results .sub{ color:#6b7280; font-size:12px; margin-top:2px; }
-.search-results .price{ text-align:left; white-space:nowrap; font-size:13px; font-weight:800; color:#111827; }
-.search-results .old{ text-decoration: line-through; color:#9ca3af; font-weight:600; margin-left:6px; }
-.search-results .offer{ color:#16a34a; font-weight:900; }
-.search-results .left{ display:flex; flex-direction:column; }
-.search-results .right{ display:flex; flex-direction:column; align-items:flex-end; }
-.search-results .badge{
-  display:inline-block;
-  margin-top:4px;
-  font-size:11px;
-  padding:2px 8px;
-  border-radius:999px;
-  background:#ecfdf5;
-  color:#166534;
-  border:1px solid #bbf7d0;
+  --headerH:64px;
 }
 
+html, body{ height:100%; }
+body{
+  margin:0;
+  font-family: Tahoma, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(1200px 520px at 12% -10%, rgba(34,199,255,.18), transparent 55%),
+    radial-gradient(980px 460px at 92% 0%, rgba(31,111,235,.14), transparent 55%),
+    var(--bg) !important;
+}
+
+/* ===== Header ===== */
+header{
+  position:sticky; top:0; z-index:50;
+  height:var(--headerH);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px !important;
+  background: linear-gradient(135deg, rgba(31,111,235,.95), rgba(34,199,255,.55)) !important;
+  border-bottom:1px solid rgba(255,255,255,.14);
+  box-shadow: 0 12px 28px rgba(2,6,23,.20);
+}
+.header-left{ display:flex; align-items:center; gap:12px; }
+.brand-logo{
+  width:40px; height:40px;
+  border-radius:14px;
+  background:#fff;
+  box-shadow: 0 12px 24px rgba(2,6,23,.18);
+  object-fit:cover;
+}
+header h1{ margin:0; font-size:16px !important; font-weight:900; color:#fff !important; line-height:1.1; }
+.header-sub{ margin-top:3px; font-size:11px !important; font-weight:700; color:rgba(255,255,255,.88) !important; }
+.header-actions{ display:flex; align-items:center; gap:10px; }
+.icon-btn, .home-btn{
+  width:42px; height:38px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.18) !important;
+  background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.06)) !important;
+  box-shadow: 0 14px 26px rgba(2,6,23,.18);
+}
+.icon-btn svg{ fill:#fff !important; }
+
+/* ===== Search Bar ===== */
+.search-bar{
+  margin: 10px 16px 0 !important;
+  padding: 10px !important;
+  display:flex; align-items:center; gap:10px;
+  background: rgba(255,255,255,.0) !important;
+}
 .search-wrapper{
-  position: relative;
+  flex:1;
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 10px;
+  background: rgba(255,255,255,.92);
+  border:1px solid rgba(31,111,235,.18);
+  box-shadow: 0 10px 24px rgba(2,6,23,.08);
+  border-radius: 999px;
 }
+.search-bar input[type="text"], .search-bar input{
+  flex:1;
+  border:none !important;
+  outline:none !important;
+  background:transparent !important;
+  height:44px !important;
+  font-size:15px !important;
+  padding:8px 6px !important;
+}
+.search-bar button{
+  width:44px !important;
+  height:44px !important;
+  border:none !important;
+  border-radius:16px !important;
+  cursor:pointer;
+  color:#fff !important;
+  font-size:22px !important;
+  font-weight:900 !important;
+  background: linear-gradient(135deg, var(--brand1), var(--brand2)) !important;
+  box-shadow: 0 12px 22px rgba(2,6,23,.14);
+}
+
+/* Dropdown results */
 .search-results{
-  position: absolute;
-  top: 100%;
-  right: 0;
-  left: 0;
-  z-index: 9999;
+  position:absolute;
+  right:0; left:0;
+  top: calc(100% + 8px);
+  background:#fff;
+  border:1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 18px 40px rgba(2,6,23,.16);
+  overflow:hidden;
+  z-index:9999;
 }
-/* === Fix side panel height & scrolling === */
+
+/* ===== Main Layout ===== */
+.container, .main, .content{
+  padding: 10px 16px 10px !important;
+}
+.container{
+  display:grid !important;
+  grid-template-columns: 1fr 360px !important; /* Basket | Side panel */
+  gap: var(--gap) !important;
+  align-items:stretch;
+}
+
+/* If there is an extra wrapper, don't break */
+@media (max-width: 980px){
+  .container{ grid-template-columns: 1fr !important; }
+}
+
+/* ===== Cards ===== */
+.basket, .side-panel, .invoice-total, .basket-actions{
+  background: rgba(255,255,255,.92) !important;
+  border:1px solid var(--border) !important;
+  border-radius: var(--r) !important;
+  box-shadow: var(--shadow) !important;
+}
+.basket::before, .side-panel::before{
+  content:"";
+  display:block;
+  height:4px;
+  background: linear-gradient(90deg, rgba(31,111,235,.98), rgba(34,199,255,.90), rgba(245,158,11,.92));
+}
+
+/* ===== Basket header / totals ===== */
+.invoice-total{
+  padding:14px 16px !important;
+  background: linear-gradient(135deg, rgba(31,111,235,.98), rgba(34,199,255,.88)) !important;
+  color:#fff !important;
+  border:none !important;
+}
+.invoice-total *{ color:#fff !important; }
+.invoice-total .value, .invoice-total .amount{ font-weight:1000 !important; }
+
+/* ===== Table: scroll inside basket only ===== */
+.basket{
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+  min-height: calc(100vh - 220px) !important;
+}
+.basket table{
+  width:100% !important;
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+}
+.basket thead th{
+  position:sticky; top:0; z-index:2;
+  background: linear-gradient(135deg, rgba(31,111,235,.14), rgba(34,199,255,.08)) !important;
+  border-bottom:1px solid rgba(2,6,23,.06) !important;
+  font-weight:900 !important;
+  padding:10px 10px !important;
+}
+.basket tbody{
+  display:block;
+  overflow:auto;
+  max-height: calc(100vh - 420px);
+}
+.basket thead, .basket tbody tr{
+  display:table;
+  width:100%;
+  table-layout:fixed;
+}
+.basket tbody td{
+  padding:10px 10px !important;
+  border-bottom:1px solid rgba(2,6,23,.06) !important;
+}
+.basket tbody tr:nth-child(even){ background: rgba(2,6,23,.02) !important; }
+
+/* Inputs in basket */
+.basket input, .basket select{
+  border:1px solid rgba(31,111,235,.18) !important;
+  border-radius:12px !important;
+  box-shadow: 0 10px 18px rgba(2,6,23,.06) !important;
+  font-weight:900 !important;
+}
+
+/* Delete button -> icon style */
+.basket .delete-btn, .basket .remove-btn, .basket button.delete, .basket button[title*="حذف"], .basket .cell-actions button{
+  width:40px !important;
+  height:36px !important;
+  border-radius:12px !important;
+  border:1px solid rgba(255,255,255,.18) !important;
+  background: linear-gradient(135deg, #ef4444, #b91c1c) !important;
+  color:#fff !important;
+  box-shadow: 0 10px 18px rgba(2,6,23,.12) !important;
+}
+
+/* ===== Side panel ===== */
 .side-panel{
-    height: calc(100vh - 40px);
-    overflow-y: auto;
-    padding-bottom: 20px;
+  overflow:auto !important;
+  min-height: calc(100vh - 220px) !important;
+}
+.side-panel h3, .side-panel h2{
+  margin: 0 0 8px !important;
+  font-size:12px !important;
+  font-weight:1000 !important;
+  color: rgba(11,18,32,.86) !important;
+}
+.side-panel input, .side-panel select, .side-panel textarea{
+  border-radius:14px !important;
+  border:1px solid rgba(31,111,235,.18) !important;
+  background: rgba(255,255,255,.96) !important;
+  box-shadow: 0 10px 18px rgba(2,6,23,.06) !important;
+  font-weight:900 !important;
 }
 
+/* Buttons */
+button, .btn, .action-btn{
+  border-radius:14px !important;
+}
+.payment-btn, .save-btn, .btn-primary{
+  color:#fff !important;
+  background: linear-gradient(135deg, var(--brand1), var(--brand2)) !important;
+  box-shadow: 0 12px 22px rgba(2,6,23,.14) !important;
+  border:none !important;
+}
+.secondary-btn, .btn-ghost{
+  background: rgba(255,255,255,.96) !important;
+  border:1px solid rgba(31,111,235,.18) !important;
+  box-shadow: 0 10px 18px rgba(2,6,23,.06) !important;
+}
 
-        /* ===== NADER POS Theme (style only) ===== */
-        :root{
-            --bg:#f4f6f8;
-            --card:#ffffff;
-            --text:#0f172a;
-            --muted:#64748b;
+/* Notifications */
+.notification{
+  border: 1px solid rgba(255,255,255,.18) !important;
+  backdrop-filter: blur(6px);
+}
+.notification.success{ background: var(--ok) !important; }
+.notification.error{ background: var(--bad) !important; }
 
-            --brand-blue:#1f6feb;
-            --brand-cyan:#22c7ff;
-            --brand-orange:#ff9a2f;
-            --brand-orange-deep:#ff7a18;
+/* Footer if exists */
+footer, .footer{
+  padding:8px 16px !important;
+  color: rgba(11,18,32,.75) !important;
+  font-weight:800 !important;
+  font-size:12px !important;
+}
 
-            --border:#e5e7eb;
-            --shadow: 0 10px 30px rgba(2, 6, 23, .10);
-            --shadow-soft: 0 1px 4px rgba(15, 23, 42, 0.12);
-            --radius:12px;
-        }
-
-        body{
-            background:
-              radial-gradient(1200px 520px at 12% -10%, rgba(34,199,255,.18), transparent 55%),
-              radial-gradient(980px 460px at 92% 0%, rgba(255,154,47,.16), transparent 55%),
-              var(--bg);
-            color:var(--text);
-        }
-
-        header{
-            background:
-              linear-gradient(135deg, rgba(31,111,235,.96), rgba(34,199,255,.55));
-            border-bottom: 1px solid rgba(255,255,255,.12);
-            box-shadow: 0 12px 28px rgba(2,6,23,.22);
-            padding: 12px 16px;
-            border-radius: 0 0 18px 18px;
-        }
-        header .title{
-            display:flex;
-            align-items:center;
-            gap:10px;
-            font-size: 18px;
-            font-weight: 900;
-            letter-spacing: .2px;
-        }
-        .brand-logo{
-            width:38px;height:38px;
-            border-radius: 12px;
-            object-fit: cover;
-            background:#fff;
-            box-shadow: 0 8px 18px rgba(2,6,23,.25);
-        }
-        .header-sub{
-            font-size: 11px;
-            color: rgba(255,255,255,.88);
-            margin-top: 2px;
-            font-weight: 600;
-        }
-        .header-right{
-            display:flex;
-            align-items:center;
-            gap:8px;
-        }
-
-        /* Home icon button (standard across all screens) */
-        .icon-btn{
-            display:inline-flex;
-            align-items:center;
-            justify-content:center;
-            width:38px;
-            height:34px;
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,.18);
-            background: rgba(15,23,42,.28);
-            color:#fff;
-            cursor:pointer;
-            text-decoration:none;
-            box-shadow: 0 10px 18px rgba(2,6,23,.14);
-            transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
-        }
-        .icon-btn:hover{ filter: brightness(1.10); transform: translateY(-1px); }
-        .icon-btn:active{ transform: translateY(0px); }
-        .icon-btn svg{ width:18px;height:18px; fill: currentColor; }
-
-        /* Search bar + inputs frames */
-        .search-bar input,
-        .small-input,
-        .cell-input,
-        .split-row input,
-        .deferred-box input,
-        textarea,
-        select{
-            border: 1px solid rgba(31,111,235,.22) !important;
-            border-radius: 12px !important;
-            background: rgba(255,255,255,.92) !important;
-            box-shadow: 0 8px 18px rgba(2,6,23,.06) !important;
-        }
-        .search-bar input:focus,
-        .small-input:focus,
-        .cell-input:focus,
-        .split-row input:focus,
-        .deferred-box input:focus,
-        textarea:focus,
-        select:focus{
-            outline:none !important;
-            border-color: rgba(34,199,255,.90) !important;
-            box-shadow: 0 0 0 4px rgba(34,199,255,.18), 0 12px 26px rgba(2,6,23,.10) !important;
-        }
-
-        /* Cards / frames */
-        .basket, .basket-actions, .side-panel, .parked-modal, .manual-modal{
-            border: 1px solid rgba(31,111,235,.18);
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            background: rgba(255,255,255,.94);
-        }
-
-        /* Total card: keep concept but align to brand */
-        .invoice-total{
-            background: linear-gradient(135deg, var(--brand-blue), var(--brand-cyan));
-            box-shadow: 0 14px 30px rgba(2,6,23,.18);
-        }
-
-        /* Table frame */
-        table{
-            border-collapse: separate !important;
-            border-spacing: 0 !important;
-            border: 1px solid rgba(31,111,235,.16) !important;
-            border-radius: 14px !important;
-            overflow: hidden !important;
-            background: rgba(255,255,255,.96) !important;
-            box-shadow: 0 10px 24px rgba(2,6,23,.08) !important;
-        }
-        th{
-            background: linear-gradient(135deg, rgba(31,111,235,.16), rgba(34,199,255,.10)) !important;
-            color:#0f172a !important;
-            font-weight: 900 !important;
-        }
-        td{
-            border-bottom: 1px solid rgba(31,111,235,.10) !important;
-        }
-        tbody tr:nth-child(even){ background: rgba(2,6,23,.02); }
-
-        /* Buttons: professional */
-        .search-bar button{
-            background: linear-gradient(135deg, var(--brand-blue), var(--brand-cyan)) !important;
-            box-shadow: 0 12px 22px rgba(2,6,23,.14);
-        }
-        .payment-btn{
-            background: linear-gradient(135deg, var(--brand-blue), var(--brand-cyan)) !important;
-            box-shadow: 0 12px 22px rgba(2,6,23,.14);
-            border: 1px solid rgba(255,255,255,.22) !important;
-        }
-        .secondary-btn{
-            background: rgba(255,255,255,.90) !important;
-            border: 1px solid rgba(31,111,235,.18) !important;
-            box-shadow: 0 10px 18px rgba(2,6,23,.08) !important;
-        }
-        .secondary-btn:hover{ filter: brightness(1.03); }
-
-        /* Pills */
-        .status-pill{ box-shadow: 0 8px 16px rgba(2,6,23,.10); }
-        .status-pill.draft{ background: linear-gradient(135deg, var(--brand-orange), var(--brand-orange-deep)); }
-        .status-pill.deferred{ background: linear-gradient(135deg, #0f766e, #14b8a6); }
-        .status-pill.paid{ background: linear-gradient(135deg, #16a34a, #22c55e); }
-
-        /* Deferred box frame */
-        .deferred-box{
-            border: 1px solid rgba(31,111,235,.16) !important;
-            background: rgba(34,199,255,.06) !important;
-        }
-
-        /* Search results dropdown frame */
-        .search-results{
-            border: 1px solid rgba(31,111,235,.18) !important;
-            box-shadow: 0 18px 40px rgba(2,6,23,.16) !important;
-        }
-        .search-results .item:hover{ background: rgba(34,199,255,.08) !important; }
-
-        /* Notification (keep logic, adjust look slightly) */
-        .notification{
-            border: 1px solid rgba(255,255,255,.18);
-            backdrop-filter: blur(6px);
-        }
-
-
-        /* ===== NADER POS Theme PRO (closer to Home + Products) ===== */
-        header{
-            background:
-              linear-gradient(135deg, rgba(31,111,235,.95), rgba(34,199,255,.55)),
-              linear-gradient(180deg, #0b1220, #121a2b) !important;
-            border-bottom: 1px solid rgba(255,255,255,.10) !important;
-        }
-        .header-left{ display:flex; align-items:center; gap:10px; min-width: 220px; }
-        header h1{ margin:0; color:#fff; font-size:18px; font-weight: 900; letter-spacing:.2px; line-height:1.1; }
-        .header-sub{ color: rgba(255,255,255,.86) !important; font-size: 11px !important; font-weight: 600 !important; }
-        .header-actions{ display:flex; align-items:center; gap:8px; }
-
-        /* More attractive icon button */
-        .icon-btn{
-            width:40px !important;
-            height:36px !important;
-            border-radius: 12px !important;
-            border: 1px solid rgba(255,255,255,.18) !important;
-            background:
-              linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.06)) !important;
-            box-shadow: 0 14px 26px rgba(2,6,23,.18) !important;
-            backdrop-filter: blur(8px);
-        }
-        .icon-btn svg{ width:19px !important; height:19px !important; }
-        .icon-btn:hover{
-            transform: translateY(-2px) !important;
-            filter: brightness(1.08) saturate(1.05) !important;
-        }
-
-        /* Cards/frames closer to products */
-        .basket, .basket-actions, .side-panel, .parked-modal, .manual-modal{
-            border: 1px solid rgba(2,6,23,.10) !important;
-            background: rgba(255,255,255,.92) !important;
-            box-shadow: 0 10px 30px rgba(2,6,23,.10) !important;
-        }
-
-        /* Give section headers/panels subtle brand strip */
-        .basket::before, .side-panel::before{
-            content:"";
-            display:block;
-            height:4px;
-            border-radius: 16px 16px 0 0;
-            background: linear-gradient(90deg, rgba(31,111,235,.95), rgba(34,199,255,.85), rgba(255,154,47,.90));
-        }
-
-        /* Table header + action icons */
-        thead th{
-            background:
-              linear-gradient(135deg, rgba(31,111,235,.18), rgba(34,199,255,.10)) !important;
-        }
-
-        /* Nicer buttons (icons + gradients) without changing logic */
-        .payment-btn{
-            border-radius: 14px !important;
-            background: linear-gradient(135deg, var(--brand-blue), var(--brand-cyan)) !important;
-        }
-        .secondary-btn{
-            border-radius: 14px !important;
-            background: rgba(255,255,255,.94) !important;
-        }
-
-        /* Action buttons in basket table if present */
-        .btn-del, .btn-remove, .remove-btn, .delete-btn{
-            background: linear-gradient(135deg, #ef4444, #b91c1c) !important;
-            color:#fff !important;
-            border: 1px solid rgba(255,255,255,.18) !important;
-        }
-
-        /* Badges/pills more consistent */
-        .status-pill{
-            border-radius: 999px !important;
-            padding: 6px 10px !important;
-            border: 1px solid rgba(255,255,255,.16) !important;
-        }
-
-
-        /* ===== Layout polish: wider search + equal heights + responsive ===== */
-
-        /* Make the top search input wider and flexible */
-        .search-bar{
-            display:flex !important;
-            gap:10px !important;
-            align-items:center !important;
-            flex-wrap: wrap !important;
-        }
-        .search-bar input[type="text"],
-        .search-bar input{
-            flex: 1 1 520px !important;
-            min-width: 320px !important;
-            height: 48px !important;
-            font-size: 16px !important;
-        }
-        .search-bar button{
-            height: 48px !important;
-            border-radius: 14px !important;
-        }
-
-        /* Main two-column area: keep panels same height */
-        .main-grid, .layout, .content-grid, .wrap, .page{
-            /* do not force if not present */
-        }
-        .row, .grid, .main, main{
-            /* ensure content can stretch */
-        }
-        .basket, .side-panel{
-            height: 100% !important;
-            min-height: 520px;
-            display:flex;
-            flex-direction: column;
-        }
-        .basket table{
-            flex: 1 1 auto;
-        }
-
-        /* Equalize panel heights within a flex/grid container */
-        .content, .container, main{
-            /* allow stretch */
-        }
-        .two-col, .cols, .panels, .main-area{
-            align-items: stretch !important;
-        }
-
-        /* Responsive: stack panels on small screens */
-        @media (max-width: 980px){
-            .basket, .side-panel{ min-height: unset; }
-        }
-        @media (max-width: 720px){
-            .search-bar input{ min-width: 240px !important; }
-            header{ padding: 10px 12px !important; }
-        }
-
-        /* ===== Color tuning (closer to Home + Products) ===== */
-        body{
-            background:
-              radial-gradient(1200px 520px at 12% -10%, rgba(34,199,255,.20), transparent 55%),
-              radial-gradient(980px 460px at 92% 0%, rgba(255,154,47,.18), transparent 55%),
-              #f5f7fb !important;
-        }
-        .basket::before, .side-panel::before{
-            background: linear-gradient(90deg, rgba(31,111,235,.98), rgba(34,199,255,.90), rgba(255,154,47,.92)) !important;
-        }
-        .invoice-total{
-            background: linear-gradient(135deg, rgba(31,111,235,.98), rgba(34,199,255,.88)) !important;
-        }
-        .status-pill.draft{ background: linear-gradient(135deg, rgba(255,154,47,.95), rgba(255,122,24,.95)) !important; }
-
-
-        /* ===== Height tuning (shorter panels, same balance) ===== */
-        .basket, .side-panel{
-            min-height: 420px !important;
-        }
-        .search-bar input[type="text"],
-        .search-bar input{
-            height: 44px !important;
-        }
-        .search-bar button{
-            height: 44px !important;
-        }
-        .invoice-total{
-            padding: 14px 16px !important;
-        }
-        table th, table td{
-            padding-top: 8px !important;
-            padding-bottom: 8px !important;
-        }
-
-
-        /* ===== Extra compact height (fit above the fold) ===== */
-        .basket, .side-panel{
-            min-height: 360px !important;
-        }
-
-        /* Reduce vertical spacing everywhere */
-        .basket, .side-panel, .invoice-total, .basket-actions{
-            padding-top: 10px !important;
-            padding-bottom: 10px !important;
-        }
-
-        table th, table td{
-            padding-top: 6px !important;
-            padding-bottom: 6px !important;
-        }
-
-        /* Search row even more compact */
-        .search-bar input[type="text"],
-        .search-bar input{
-            height: 40px !important;
-            font-size: 15px !important;
-        }
-        .search-bar button{
-            height: 40px !important;
-        }
-
-        /* Reduce gaps between sections */
-        .basket + .side-panel,
-        .side-panel + .basket{
-            margin-top: 8px !important;
-        }
-
-        /* On laptops ensure no overflow */
-        @media (max-height: 800px){
-            .basket, .side-panel{
-                min-height: 320px !important;
-            }
-        }
-
+/* Tighten spacing (avoid going under screen) */
+.basket-actions{ padding:12px !important; }
 </style>
 </head>
 <body>
@@ -1057,49 +472,6 @@
 </div>
 
 <script>
-
-  // 
-    // Auto-attach Authorization Bearer token to any /api/* request.
-    // IMPORTANT: لا نستخدم أي "latest token" ولا نمسح التوكن هنا — فقط نقرأ توكن المستخدم الحالي من localStorage.
-    (function(){
-      function getToken(){
-        try{
-          return (localStorage.getItem("emp_token")
-            || localStorage.getItem("EMP_TOKEN")
-            || localStorage.getItem("token")
-            || "").trim();
-        }catch(e){
-          return "";
-        }
-      }
-      function isApiUrl(input){
-        try{
-          const url = (typeof input === "string") ? input : (input && input.url ? input.url : "");
-          // same-origin relative URLs are fine
-          return (url || "").includes("/api/");
-        }catch(e){
-          return false;
-        }
-      }
-
-      const _fetch = window.fetch.bind(window);
-      window.fetch = async function(input, init){
-        init = init || {};
-        if(isApiUrl(input)){
-          const t = getToken();
-          if(t){
-            // normalize headers
-            const h = new Headers(init.headers || {});
-            if(!h.get("Authorization")) h.set("Authorization","Bearer " + t);
-            init.headers = h;
-          }
-        }
-        return _fetch(input, init);
-      };
-    })();
-;
-
-
     let products = [];
     let basket = [];
     let taxEnabled = true;
@@ -2056,34 +1428,8 @@ document.addEventListener("keydown", function(e) {
             notes: invoiceNotesEl ? (invoiceNotesEl.value || null) : null,
             items: items
         };
-        // Stamp cashier info (FIX):
-        // - اولوية 1: emp_me (هو المستخدم اللي داخل فعلاً)
-        // - اولوية 2: /api/shifts/current لو كان يرجّع cashierId/cashierName
-        try{
-          // 1) emp_me
-          try{
-            const meRaw = localStorage.getItem("emp_me") || "";
-            const me = meRaw ? JSON.parse(meRaw) : null;
-            if(me){
-              const id = me.id ?? me.Id ?? null;
-              const nm = me.fullName ?? me.fullname ?? me.name ?? me.Name ?? me.username ?? me.Username ?? null;
-              if(id != null) payload.cashierId = id;
-              if(nm) payload.cashierName = nm;
-            }
-          }catch(e){}
 
-          // 2) shift (optional override)
-          try{
-            const sres = await fetch("/api/shifts/current");
-            if(sres.ok){
-              const st = await sres.json();
-              if(st && (st.cashierId != null || st.cashierName)){
-                if(st.cashierId != null) payload.cashierId = st.cashierId;
-                if(st.cashierName) payload.cashierName = st.cashierName;
-              }
-            }
-          }catch(e){}
-        }catch(e){}const res = await fetch("/api/cashier/invoices", {
+        const res = await fetch("/api/cashier/invoices", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -2119,25 +1465,6 @@ document.addEventListener("keydown", function(e) {
         showNotification("حدث خطأ أثناء حفظ الفاتورة", "error");
     }
 }
-
-// ===== EXPOSE FUNCTIONS FOR INLINE onclick (SAFE) =====
-try{
-  // attach the key actions to window so buttons never freeze
-  if(typeof saveInvoice === "function") window.saveInvoice = saveInvoice;
-  if(typeof parkInvoice === "function") window.parkInvoice = parkInvoice;
-  if(typeof showParkedInvoices === "function") window.showParkedInvoices = showParkedInvoices;
-  if(typeof closeParkedModal === "function") window.closeParkedModal = closeParkedModal;
-  if(typeof loadParkedInvoiceById === "function") window.loadParkedInvoiceById = loadParkedInvoiceById;
-
-  if(typeof openManualModal === "function") window.openManualModal = openManualModal;
-  if(typeof closeManualModal === "function") window.closeManualModal = closeManualModal;
-  if(typeof addManualProduct === "function") window.addManualProduct = addManualProduct;
-
-  // optional helpers used elsewhere
-  if(typeof clearBasket === "function") window.clearBasket = clearBasket;
-  if(typeof removeFromBasket === "function") window.removeFromBasket = removeFromBasket;
-}catch(e){ console.warn("Expose functions warning:", e); }
-
 </script>
 
 <script>

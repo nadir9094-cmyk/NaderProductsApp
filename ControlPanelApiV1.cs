@@ -13,16 +13,24 @@ public static class ControlPanelApiV1
     public static void MapControlPanelApiV1(WebApplication app)
     {
         var g = app.MapGroup("/api/cp");
+
+
+
+
         g.MapPost("/bootstrap", Bootstrap); // create initial superadmin + plans
         g.MapPost("/login", Login);
         g.MapPost("/logout", Logout);
+        g.MapGet("/ping", () => Results.Ok(new { ok = true, utc = DateTime.UtcNow }));
         g.MapGet("/me", Me);
 
         // tenants
-        g.MapGet("/tenants", TenantsList);
+
         g.MapPost("/tenants", TenantsCreate);
-        g.MapPut("/tenants/{id:int}", TenantsUpdate);
-        g.MapDelete("/tenants/{id:int}", TenantsDelete);
+g.MapGet("/tenants/list", async (AppDbContext db, HttpContext ctx) => await TenantsList(db, ctx));
+g.MapGet("/tenants/summary", async (AppDbContext db) => await TenantsSummary(db));
+g.MapPut("/tenants/{id:int}/renew", async (AppDbContext db, int id, RenewReq req) => await TenantRenew(db, id, req));
+g.MapPut("/tenants/{id:int}/cancel", async (AppDbContext db, int id) => await TenantCancel(db, id));
+g.MapDelete("/tenants/{id:int}", TenantsDelete);
     }
 
     private static async Task<IResult> Bootstrap([FromServices] AppDbContext db)
@@ -171,7 +179,7 @@ public static class ControlPanelApiV1
         t.Email = string.IsNullOrWhiteSpace(req.Email)? null : req.Email.Trim();
         t.PlanId = plan.Id;
 
-        if(req.ExpiresAtUtc.HasValue) t.ExpiresAt = DateTime.SpecifyKind(req.ExpiresAtUtc.Value, DateTimeKind.Utc);
+        if((req.ExpiresAt).HasValue) (t.ExpiresAt) = DateTime.SpecifyKind(((req.ExpiresAt) ?? DateTime.UtcNow), DateTimeKind.Utc);
         t.IsActive = req.IsActive;
 
         await db.SaveChangesAsync();
@@ -236,8 +244,74 @@ public static class ControlPanelApiV1
     }
 
     public record LoginReq(string Username, string Password);
-    public record TenantReq(string TenantCode, string OwnerName, string? Phone, string? Email, int PlanId, DateTime? ExpiresAtUtc, bool IsActive);
+    public record TenantReq(string TenantCode, string OwnerName, string? Phone, string? Email, int PlanId, DateTime? ExpiresAt, bool IsActive);
+    // ====== CP TENANTS DASHBOARD ======
+
+    private static async Task<IResult> TenantsList([FromServices] AppDbContext db)
+    {
+        var now = DateTime.UtcNow;
+
+        var tenants = await db.CpTenants
+            .Include(t => t.Plan)
+            .OrderByDescending(t => t.Id)
+            .Select(t => new {
+                t.Id,
+                StoreName = t.OwnerName,
+                VatNumber = t.Phone, // مؤقتاً: غيّرها لاحقاً لحقل رقم ضريبي حقيقي لو أضفناه
+                Plan = t.Plan != null ? t.Plan.Name : "",
+                Price = t.Plan != null ? t.Plan.PriceMonthly : 0m,
+                t.StartedAt,
+                t.ExpiresAt,
+                RemainingDays = t.ExpiresAt == null ? (int?)null :
+                    (int)Math.Ceiling((t.ExpiresAt - now).TotalDays),
+                t.IsActive
+            }).ToListAsync();
+
+        return Results.Ok(tenants);
+    }
+
+    private static async Task<IResult> TenantsSummary([FromServices] AppDbContext db)
+    {
+        var now = DateTime.UtcNow;
+        return Results.Ok(new {
+            total = await db.CpTenants.CountAsync(),
+            active = await db.CpTenants.CountAsync(x => x.IsActive),
+            expired = await db.CpTenants.CountAsync(x => x.ExpiresAt != null && x.ExpiresAt <= now)
+        });
+    }
+
+    public record RenewReq(int Months);
+
+    private static async Task<IResult> TenantRenew([FromServices] AppDbContext db, int id, [FromBody] RenewReq req)
+    {
+        if(req.Months <= 0) return Results.BadRequest(new { ok=false, msg="Months must be > 0" });
+
+        var t = await db.CpTenants.FirstOrDefaultAsync(x => x.Id == id);
+        if(t == null) return Results.NotFound(new { ok=false });
+
+        var now = DateTime.UtcNow;
+        var baseDate = (t.ExpiresAt != null && t.ExpiresAt > now) ? t.ExpiresAt : now;
+
+        t.ExpiresAt = baseDate.AddMonths(req.Months);
+        t.IsActive = true;
+
+        await db.SaveChangesAsync();
+        return Results.Ok(new { ok=true, t.ExpiresAt });
+    }
+
+    private static async Task<IResult> TenantCancel([FromServices] AppDbContext db, int id)
+    {
+        var t = await db.CpTenants.FirstOrDefaultAsync(x => x.Id == id);
+        if(t == null) return Results.NotFound(new { ok=false });
+
+        t.IsActive = false;
+        await db.SaveChangesAsync();
+        return Results.Ok(new { ok=true });
+    }
+
 }
+
+
 
 
 
