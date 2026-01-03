@@ -550,6 +550,8 @@ ExpensesApiV1.Map(app);
 EmployeesApiV1.MapEmployeesApi(app);
 ShiftsApiV1.MapShiftsApi(app);
 ShiftsApiV1.MapShiftListApi(app);
+ShiftsOpenApiV1.Map(app);
 DiagRoutesApiV1.Map(app);
 DiagSqlApiV1.Map(app);
 app.Run();
+
