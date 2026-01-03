@@ -60,7 +60,8 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
     // Try migrations first; if none exist, create schema
-    try { db.Database.Migrate(); }
+    try { db.Database.Migrate();
+FixDbSchema.Apply(db); }
     catch { db.Database.EnsureCreated(); }
 
     // Safety: if schema still missing (no migrations), create tables
@@ -550,6 +551,7 @@ ShiftsApiV1.MapShiftsApi(app);
 ShiftsApiV1.MapShiftListApi(app);
 DiagRoutesApiV1.Map(app);
 app.Run();
+
 
 
 
