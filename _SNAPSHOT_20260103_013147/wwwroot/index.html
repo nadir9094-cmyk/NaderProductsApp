@@ -1,0 +1,506 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <title>الرئيسية - NADER POS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      /* مستوحاة من ألوان الشعار */
+      --bg0:#070f24;
+      --bg1:#0b1c3b;
+      --card:#0b1222cc;
+      --card2:#0b1222;
+      --text:#eaf2ff;
+      --muted:#b9c7e6;
+      --line:rgba(255,255,255,.10);
+      --blue:#1f88c9;      /* ~ (27,98,145) */
+      --cyan:#20b7ff;      /* ~ (32,156,208) */
+      --orange:#e57d0f;    /* ~ (229,125,15) */
+      --shadow: 0 18px 45px rgba(0,0,0,.35);
+      --radius: 18px;
+      --radius2: 22px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: Tahoma, Arial, system-ui, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(900px 600px at 15% 10%, rgba(32,183,255,.22), transparent 60%),
+        radial-gradient(800px 550px at 80% 15%, rgba(31,136,201,.22), transparent 62%),
+        radial-gradient(700px 500px at 40% 85%, rgba(229,125,15,.18), transparent 60%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow-x:hidden;
+    }
+
+    /* خلفية ناعمة */
+    .bgGrid{
+      position:fixed; inset:0; pointer-events:none; opacity:.20;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,.06) 1px, transparent 1px);
+      background-size: 70px 70px;
+      mask-image: radial-gradient(circle at 50% 20%, black 0 55%, transparent 80%);
+    }
+
+    /* حاوية الصفحة */
+    .wrap{
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 18px 14px 36px;
+    }
+
+    /* شريط عنوان رئيسي */
+    .hero{
+      margin-top: 14px;
+      border:1px solid var(--line);
+      border-radius: var(--radius2);
+      padding: 18px;
+      background: linear-gradient(135deg, rgba(11,18,34,.72), rgba(11,18,34,.50));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      position:relative;
+      overflow:hidden;
+    }
+    .hero:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(500px 220px at 15% 20%, rgba(32,183,255,.25), transparent 70%),
+        radial-gradient(520px 240px at 80% 30%, rgba(31,136,201,.22), transparent 72%),
+        radial-gradient(520px 260px at 55% 120%, rgba(229,125,15,.20), transparent 70%);
+      filter: blur(2px);
+      opacity:.9;
+      pointer-events:none;
+    }
+    .hero > *{ position:relative; z-index:1; }
+
+    .heroTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      min-width: 260px;
+    }
+
+    .logo{
+      width:72px; height:72px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      box-shadow: 0 12px 30px rgba(0,0,0,.35);
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+      position:relative;
+    }
+    .logo:after{
+      content:"";
+      position:absolute; inset:0;
+      background: linear-gradient(135deg, rgba(32,183,255,.20), rgba(229,125,15,.12));
+      mix-blend-mode: screen;
+      opacity:.7;
+      pointer-events:none;
+    }
+    .logo img{
+      width:100%; height:100%;
+      object-fit: cover;
+      transform: scale(1.04);
+      display:block;
+    }
+
+    .titles h1{
+      margin:0;
+      font-size: 24px;
+      letter-spacing:.2px;
+      line-height:1.2;
+    }
+    .titles .sub{
+      margin-top:6px;
+      color: var(--muted);
+      font-size: 13px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .pillRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-start;
+    }
+    .pill{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      backdrop-filter: blur(8px);
+    }
+    .dot{
+      width:10px; height:10px; border-radius:50%;
+      background: var(--cyan);
+      box-shadow: 0 0 0 6px rgba(32,183,255,.16);
+    }
+    #clock{
+      font-variant-numeric: tabular-nums;
+      direction: rtl;
+      unicode-bidi: plaintext;
+    }
+
+    /* شبكة البطاقات */
+    .grid{
+      margin-top: 16px;
+      display:grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    }
+
+    .card{
+      border:1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04));
+      border-radius: var(--radius);
+      padding: 16px;
+      cursor:pointer;
+      transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+      box-shadow: 0 10px 24px rgba(0,0,0,.22);
+      position:relative;
+      overflow:hidden;
+      min-height: 128px;
+    }
+    .card:before{
+      content:"";
+      position:absolute; inset:-2px;
+      background:
+        radial-gradient(220px 140px at 20% 15%, rgba(32,183,255,.18), transparent 60%),
+        radial-gradient(220px 140px at 85% 20%, rgba(31,136,201,.16), transparent 60%),
+        radial-gradient(220px 140px at 65% 120%, rgba(229,125,15,.14), transparent 60%);
+      opacity:.85;
+      pointer-events:none;
+    }
+    .card > *{ position:relative; z-index:1; }
+
+    .card:hover{
+      transform: translateY(-4px);
+      box-shadow: 0 16px 34px rgba(0,0,0,.30);
+      border-color: rgba(32,183,255,.35);
+    }
+
+    .cardHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom: 10px;
+    }
+
+    .icon{
+      width:44px; height:44px;
+      border-radius: 14px;
+      display:grid;
+      place-items:center;
+      font-size: 22px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 10px 22px rgba(0,0,0,.25);
+    }
+
+    .badge{
+      font-size:11px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      white-space:nowrap;
+    }
+
+    .title{
+      font-size: 15px;
+      font-weight: 800;
+      margin:0 0 6px 0;
+    }
+    .desc{
+      font-size: 12.5px;
+      color: rgba(233,242,255,.80);
+      margin:0;
+      line-height: 1.65;
+    }
+
+    .footerNote{
+      margin-top: 16px;
+      color: rgba(233,242,255,.72);
+      font-size: 12px;
+      text-align:center;
+      opacity:.95;
+    }
+    .footerNote b{ color:#fff; }
+
+    /* توافق مع الشريط العلوي المضاف مسبقاً */
+    #naderTopbar{
+      border-bottom: 1px solid rgba(255,255,255,.10) !important;
+      background: rgba(7, 15, 36, .55) !important;
+      backdrop-filter: blur(12px) !important;
+    }
+    #naderTopbar a, #naderTopbar button{
+      border-color: rgba(255,255,255,.14) !important;
+      background: rgba(255,255,255,.06) !important;
+      color: #eaf2ff !important;
+    }
+
+    /* نسخة التطبيق */
+    #appVersion{
+      background: rgba(0,0,0,.55) !important;
+      border:1px solid rgba(255,255,255,.18);
+      box-shadow: 0 10px 24px rgba(0,0,0,.28);
+    }
+
+    @media (max-width: 520px){
+      .logo{ width:62px; height:62px; }
+      .titles h1{ font-size:20px; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- شريط نسخة التطبيق: كما هو -->
+  <div id="appVersion" style="position:fixed;left:12px;top:10px;z-index:999999;background:rgba(0,0,0,.60);color:#fff;padding:6px 10px;border-radius:10px;font:600 12px/1.2 Tahoma,Arial;backdrop-filter: blur(4px);">
+    NADER POS v1.0.1
+  </div>
+
+  <div class="bgGrid"></div>
+
+  <!-- شريط الدخول/الخروج: كما هو -->
+  <div id="naderTopbar" style="position:sticky;top:0;z-index:9999;background:rgba(246,248,251,.92);backdrop-filter:blur(10px);border-bottom:1px solid #e2e8f0">
+    <div style="max-width:1200px;margin:0 auto;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-family:system-ui">
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="width:10px;height:10px;border-radius:50%;background:#2563eb;box-shadow:0 0 0 6px rgba(37,99,235,.12)"></div>
+        <b>Nader POS</b>
+        <span id="naderMe" style="font-size:12px;color:#64748b;border:1px solid #e2e8f0;background:#fff;padding:5px 10px;border-radius:999px">...</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <a href="/employees.html" style="font-size:12px;color:#2563eb;text-decoration:none;border:1px solid #e2e8f0;background:#fff;padding:8px 10px;border-radius:12px">الموظفين</a>
+        <button id="naderLogout" style="font-size:12px;border:1px solid #e2e8f0;background:#fff;padding:8px 10px;border-radius:12px;cursor:pointer">خروج</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section class="hero">
+      <div class="heroTop">
+        <div class="brand">
+          <div class="logo" title="شعار NADER POS">
+            <!-- ضع ملف الشعار في نفس مجلد index.html باسم: naderpos-logo.jpg -->
+            <img src="naderpos-logo.jpg" alt="NADER POS Logo" onerror="this.style.display='none'; this.parentElement.style.display='grid'; this.parentElement.textContent='N'; this.parentElement.style.fontWeight='900'; this.parentElement.style.fontSize='28px'; this.parentElement.style.color='#fff';" />
+          </div>
+          <div class="titles">
+            <h1>لوحة التحكم الرئيسية</h1>
+            <div class="sub">
+              <span class="pill"><span class="dot"></span>جاهز للعمل</span>
+              <span class="pill">🕒 <span id="clock">...</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pillRow">
+          <div class="pill" title="نصيحة سريعة">✨ اختصر طريقك: اضغط على أي بطاقة للدخول فورًا</div>
+          <div class="pill" title="إدارة">🧠 كل شيء مرتب… إلا لو أنت اللي بعثرته 😄</div>
+        </div>
+      </div>
+
+      <div class="grid" aria-label="قائمة الشاشات">
+        <div class="card" onclick="go('products.html')">
+          <div class="cardHead">
+            <div class="icon">📦</div>
+            <div class="badge">إدارة المخزون</div>
+          </div>
+          <div class="title">المنتجات</div>
+          <p class="desc">إدارة المنتجات والعروض والباركود، وتتبع الكميات والحد الأدنى.</p>
+        </div>
+
+        <div class="card" onclick="go('cashier.html')">
+          <div class="cardHead">
+            <div class="icon">🧾</div>
+            <div class="badge" style="border-color:rgba(229,125,15,.35)">نقطة البيع</div>
+          </div>
+          <div class="title">شاشة الكاشير</div>
+          <p class="desc">نقطة بيع سريعة مع طباعة الفواتير والتحكم بطريقة الدفع.</p>
+        </div>
+
+        <div class="card" onclick="go('customers.html')">
+          <div class="cardHead">
+            <div class="icon">👥</div>
+            <div class="badge">ذمم العملاء</div>
+          </div>
+          <div class="title">العملاء والدفع المؤجل</div>
+          <p class="desc">إدارة العملاء، المديونيات، والسداد الجزئي والمتابعة.</p>
+        </div>
+
+        <div class="card" onclick="go('suppliers.html')">
+          <div class="cardHead">
+            <div class="icon">📑</div>
+            <div class="badge">المشتريات</div>
+          </div>
+          <div class="title">الموردين</div>
+          <p class="desc">فواتير الموردين، المستحقات، والمتابعة بكل وضوح.</p>
+        </div>
+
+        <div class="card" onclick="go('invoices.html')">
+          <div class="cardHead">
+            <div class="icon">📄</div>
+            <div class="badge">تقارير</div>
+          </div>
+          <div class="title">فواتير المبيعات</div>
+          <p class="desc">عرض فواتير النظام، البحث والطباعة والتصفية.</p>
+        </div>
+        <div class="card" onclick="go('reports.html')">
+          <div class="cardHead">
+            <div class="icon">📊</div>
+            <div class="badge">تقارير</div>
+          </div>
+          <div class="title">التقارير</div>
+          <p class="desc">ملخصات احترافية: المبيعات، الضريبة، الديون، الموردين، العروض، الصلاحيات… مع طباعة A4 وورق كاشير.</p>
+        </div>
+
+
+        <div class="card" onclick="go('expenses.html')">
+          <div class="cardHead">
+            <div class="icon">💸</div>
+            <div class="badge">مصروفات</div>
+          </div>
+          <div class="title">مصروفات المتجر</div>
+          <p class="desc">سجل المصروفات وإدارتها وعرض ملخصاتها.</p>
+        </div>
+
+        <div class="card" onclick="go('employees.html')">
+          <div class="cardHead">
+            <div class="icon">🧑‍💼</div>
+            <div class="badge">صلاحيات</div>
+          </div>
+          <div class="title">الموظفين والصلاحيات</div>
+          <p class="desc">إدارة المستخدمين، الأدوار، والتحكم بالصلاحيات.</p>
+        </div>
+
+        
+        <div class="card" onclick="go('shifts.html')">
+          <div class="cardHead">
+            <div class="icon">🔒</div>
+            <div class="badge">إقفال</div>
+          </div>
+          <div class="title">اقفال اليومية</div>
+          <p class="desc">إدارة الشفتات، إقفال اليومية، ومراجعة ملخص الحركة قبل الإغلاق.</p>
+        </div>
+
+<div class="card" onclick="go('settings.html')">
+          <div class="cardHead">
+            <div class="icon">⚙️</div>
+            <div class="badge">تهيئة</div>
+          </div>
+          <div class="title">الإعدادات</div>
+          <p class="desc">إعدادات المتجر والنظام (الضريبة، بيانات المنشأة، الطباعة).</p>
+        </div>
+
+        <div class="card" onclick="go('backup.html')">
+          <div class="cardHead">
+            <div class="icon">🗂️</div>
+            <div class="badge">أمان البيانات</div>
+          </div>
+          <div class="title">النسخ الاحتياطي</div>
+          <p class="desc">حفظ واستعادة البيانات بسرعة وطمأنينة.</p>
+        </div>
+
+                <div class="card" onclick="go('subscription.html')">
+          <div class="cardHead">
+            <div class="icon">🔑</div>
+            <div class="badge">تفعيل</div>
+          </div>
+          <div class="title">الاشتراكات والتفعيل</div>
+          <p class="desc">تسجيل الدخول، تجربة 3 أيام، وتفعيل بالسيريال مع إدارة حالة الاشتراك.</p>
+        </div>
+      </div>
+
+      <div class="footerNote">
+        <b>NADER POS</b> — تصميم واجهة متناسق مع ألوان الشعار، بدون تغيير أي مسارات أو أكواد تشغيل.
+      </div>
+    </section>
+  </div>
+
+  <script>
+    function go(page) {
+      window.location.href = page;
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const days = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+      const text = `${days[now.getDay()]} - ${now.toLocaleDateString('ar-SA')} - ${now.toLocaleTimeString('ar-SA',{hour12:false})}`;
+      document.getElementById("clock").textContent = text;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+
+  <script src="/js/auth.js"></script>
+  <script>
+  (async ()=>{
+    // الرئيسية تتطلب تسجيل دخول فقط (بدون صلاحية محددة)
+    const me = await window.NaderAuth?.requireAuth({ redirect:"/login.html" });
+    if(me){
+      const el = document.getElementById("naderMe");
+      if(el) el.textContent = "مرحباً: " + me.fullName + " (" + me.username + ")";
+    }
+    const lo = document.getElementById("naderLogout");
+    if(lo){
+      lo.onclick = async ()=>{
+        await window.NaderAuth.logout();
+        location.href="/login.html";
+      };
+    }
+  })();
+  </script>
+  <!-- NADER_AUTH_GUARD -->
+  <script>
+  (async ()=>{
+    await window.NaderAuth?.requireAuth({ redirect:"/login.html" });
+  })();
+  </script>
+  <script>
+  (async () => {
+    try{
+      const r = await fetch("version.txt?ts=" + Date.now(), { cache: "no-store" });
+      const v = (await r.text()).trim();
+      const el = document.getElementById("appVersion");
+      if(el && v) el.textContent = "NADER POS v" + v;
+    }catch(e){}
+  })();
+  </script>
+  <script id="appVersionScript">
+  (function(){
+    try{
+      var el=document.getElementById('appVersion');
+      if(!el) return;
+      el.style.display='block';
+      el.style.visibility='visible';
+      el.style.opacity='1';
+    }catch(e){}
+  })();
+  </script>
+</body>
+</html>

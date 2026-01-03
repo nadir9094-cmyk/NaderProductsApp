@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>إقفال اليومية (الوردية)</title>
+  <style>
+    :root{--bg:#0b1220;--card:#111a2e;--muted:#9fb0d0;--txt:#eaf0ff;--line:rgba(255,255,255,.08);--ok:#22c55e;--bad:#ef4444;--warn:#f59e0b;--btn:#2563eb}
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial}
+    body{margin:0;background:radial-gradient(1200px 800px at 30% 10%,#1a2b55 0,#0b1220 55%);color:var(--txt)}
+    a{color:inherit}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    .topbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .title{display:flex;flex-direction:column;gap:2px}
+    .title h1{margin:0;font-size:20px}
+    .title .sub{color:var(--muted);font-size:12px}
+    .btn{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--txt);padding:10px 12px;border-radius:12px;cursor:pointer}
+    .btn.primary{background:linear-gradient(180deg,#2f6fff,#1f4fe0);border-color:rgba(255,255,255,.14)}
+    .btn.danger{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.35)}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}
+    @media (max-width:980px){.grid{grid-template-columns:1fr}}
+    .card{background:rgba(17,26,46,.86);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+    .card h2{margin:0 0 10px 0;font-size:15px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .field{flex:1;min-width:200px}
+    label{display:block;color:var(--muted);font-size:12px;margin:0 0 6px}
+    input,select,textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--txt);outline:none}
+    textarea{min-height:82px;resize:vertical}
+    .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    @media (max-width:700px){.kpis{grid-template-columns:1fr}}
+    .kpi{border:1px solid var(--line);border-radius:16px;padding:12px;background:rgba(255,255,255,.02)}
+    .kpi .k{color:var(--muted);font-size:12px}
+    .kpi .v{font-size:20px;margin-top:6px}
+    .kpi .v.ok{color:var(--ok)} .kpi .v.bad{color:var(--bad)}
+    .hr{height:1px;background:var(--line);margin:12px 0}
+    .toast{position:fixed;left:16px;bottom:16px;max-width:460px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:rgba(17,26,46,.92);display:none}
+    .toast.show{display:block}
+    .toast.ok{border-color:rgba(34,197,94,.35)} .toast.bad{border-color:rgba(239,68,68,.35)} .toast.warn{border-color:rgba(245,158,11,.35)}
+    .hint{color:var(--muted);font-size:12px;line-height:1.55}
+    .mini{font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="title">
+      <h1>إقفال اليومية / الوردية</h1>
+      <div class="sub" id="meLine">—</div>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="goHome()">العودة للرئيسية</button>
+      <button class="btn" onclick="refresh()">تحديث</button>
+      <button class="btn primary" id="btnPrintA4" onclick="printA4()" disabled>طباعة A4</button>
+      <button class="btn" id="btnPrint80" onclick="print80()" disabled>طباعة كاشير 80مم</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>الوضع الحالي</h2>
+      <div class="kpis">
+        <div class="kpi"><div class="k">حالة الوردية</div><div class="v" id="kStatus">—</div><div class="mini" id="kShiftId"></div></div>
+        <div class="kpi"><div class="k">وقت الفتح</div><div class="v" id="kOpen">—</div><div class="mini" id="kClose"></div></div>
+        <div class="kpi"><div class="k">المبيعات (الإجمالي)</div><div class="v ok" id="kSales">0.00</div><div class="mini">يشمل الضريبة</div></div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="k">نقدي</div><div class="v" id="kCash">0.00</div></div>
+        <div class="kpi"><div class="k">شبكة</div><div class="v" id="kCard">0.00</div></div>
+        <div class="kpi"><div class="k">مؤجل</div><div class="v" id="kDebt">0.00</div></div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="k">ضريبة</div><div class="v" id="kVat">0.00</div></div>
+        <div class="kpi"><div class="k">مرتجع</div><div class="v bad" id="kReturns">0.00</div></div>
+        <div class="kpi"><div class="k">خصومات</div><div class="v" id="kDisc">0.00</div></div>
+      </div>
+
+      <div class="hr"></div>
+      <div class="hint">
+        الفكرة: كل وردية = فتح + إقفال. عند الإقفال نسجل "النقد المحسوب" ونقارن بالمتوقع.  
+        إذا فيه فرق: تسجله كتسوية (زيادة/نقص) مع ملاحظة — عشان التقرير يكون واضح وما يصير “حسابات سحرية”.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>إجراءات</h2>
+
+      <div id="openBox">
+        <div class="row">
+          <div class="field">
+            <label>رصيد افتتاح النقدية (عُهدة البداية)</label>
+            <input id="openCash" type="number" step="0.01" value="0"/>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary" onclick="openShift()">فتح وردية</button>
+        </div>
+        <div class="hr"></div>
+      </div>
+
+      <div id="closeBox" style="display:none">
+        <div class="row">
+          <div class="field">
+            <label>النقد المحسوب فعلياً (بعد عدّ الدرج)</label>
+            <input id="countedCash" type="number" step="0.01" value="0"/>
+          </div>
+          <div class="field">
+            <label>تسوية (اختياري) — موجب = زيادة / سالب = نقص</label>
+            <input id="adjustment" type="number" step="0.01" value="0"/>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field" style="min-width:100%">
+            <label>ملاحظة الإقفال / سبب الفرق</label>
+            <textarea id="note" placeholder="مثال: فرق 20 ريال بسبب صرف فكة / أو تعديل محاسبي بعد مراجعة…"></textarea>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn danger" onclick="closeShift()">إقفال الوردية</button>
+        </div>
+        <div class="hr"></div>
+      </div>
+
+      <div class="hint">
+        <b>مهم:</b> الإقفال ما يمنع البيع (لأنك ما تبغى توقف السوق 😅).  
+        لكنه “يقفل الفترة المحاسبية” بحيث أي تعديل بعد الإقفال يتسجل كتسوية/سند مستقل (نضيفها بعدين).
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const apiBase = location.origin; // served from same host
+  let __state = null;
+
+  function money(x){
+    const n = Number(x||0);
+    return n.toLocaleString('ar-SA', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  function fmtDT(s){
+    if(!s) return "—";
+    const d = new Date(s);
+    if(isNaN(d)) return String(s);
+    return d.toLocaleString('ar-SA');
+  }
+  function showToast(msg, kind="ok"){
+    const t = document.getElementById('toast');
+    t.className = 'toast show ' + (kind||'ok');
+    t.textContent = msg;
+    setTimeout(()=>t.className='toast', 2800);
+  }
+  function goHome(){ location.href = "/index.html"; }
+
+  async function api(path, opt){
+    const token = localStorage.getItem("emp_token") || "";
+    const headers = Object.assign({}, opt?.headers||{});
+    if(token) headers["Authorization"] = "Bearer " + token;
+    return fetch(apiBase + path, Object.assign({}, opt||{}, {headers}));
+  }
+
+  async function refresh(){
+    try{
+      const r = await api('/api/shifts/current', { method:'GET' });
+      if(!r.ok){ throw new Error(await r.text()); }
+      __state = await r.json();
+      render();
+    }catch(e){
+      showToast("فشل جلب حالة الوردية: " + (e?.message||e), "bad");
+    }
+  }
+
+  function render(){
+    const me = __state?.me;
+    document.getElementById('meLine').textContent = me ? ("المستخدم: " + (me.name||("موظف #" + me.id))) : "المستخدم: (غير معروف)";
+
+    const st = __state?.shift;
+    const sum = __state?.summary;
+
+    const openBox = document.getElementById('openBox');
+    const closeBox = document.getElementById('closeBox');
+
+    if(!st){
+      document.getElementById('kStatus').textContent = "لا توجد وردية مفتوحة";
+      document.getElementById('kShiftId').textContent = "";
+      document.getElementById('kOpen').textContent = "—";
+      document.getElementById('kClose').textContent = "";
+      openBox.style.display = '';
+      closeBox.style.display = 'none';
+      document.getElementById('btnPrintA4').disabled = true;
+      document.getElementById('btnPrint80').disabled = true;
+    }else{
+      document.getElementById('kStatus').textContent = st.isClosed ? "مقفلة" : "مفتوحة";
+      document.getElementById('kShiftId').textContent = "Shift #" + st.id;
+      document.getElementById('kOpen').textContent = fmtDT(st.openedAt);
+      document.getElementById('kClose').textContent = st.closedAt ? ("إقفال: " + fmtDT(st.closedAt)) : "—";
+      openBox.style.display = 'none';
+      closeBox.style.display = st.isClosed ? 'none' : '';
+      document.getElementById('btnPrintA4').disabled = false;
+      document.getElementById('btnPrint80').disabled = false;
+    }
+
+    document.getElementById('kSales').textContent = money(sum?.salesTotal);
+    document.getElementById('kCash').textContent = money(sum?.cashTotal);
+    document.getElementById('kCard').textContent = money(sum?.cardTotal);
+    document.getElementById('kDebt').textContent = money(sum?.debtTotal);
+    document.getElementById('kVat').textContent = money(sum?.vatTotal);
+    document.getElementById('kReturns').textContent = money(sum?.returnsTotal);
+    document.getElementById('kDisc').textContent = money(sum?.discountTotal);
+
+    // suggested defaults
+    if(st && !st.isClosed){
+      document.getElementById('countedCash').value = (sum?.expectedCash ?? 0).toFixed(2);
+      document.getElementById('adjustment').value = "0";
+    }
+  }
+
+  async function openShift(){
+    const openCash = Number(document.getElementById('openCash').value||0);
+    try{
+      const r = await api('/api/shifts/open', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ openingCash: openCash })
+      });
+      if(!r.ok) throw new Error(await r.text());
+      showToast("تم فتح الوردية ✅");
+      await refresh();
+    }catch(e){
+      showToast("فشل فتح الوردية: " + (e?.message||e), "bad");
+    }
+  }
+
+  async function closeShift(){
+    const countedCash = Number(document.getElementById('countedCash').value||0);
+    const adjustment = Number(document.getElementById('adjustment').value||0);
+    const note = String(document.getElementById('note').value||"").trim();
+    try{
+      const r = await api('/api/shifts/close', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ countedCash, adjustment, note })
+      });
+      if(!r.ok) throw new Error(await r.text());
+      showToast("تم إقفال الوردية ✅");
+      await refresh();
+    }catch(e){
+      showToast("فشل إقفال الوردية: " + (e?.message||e), "bad");
+    }
+  }
+
+  function buildPrintHtml(width){
+    const st = __state?.shift;
+    const me = __state?.me;
+    const s = __state?.summary || {};
+    const title = "تقرير إقفال الوردية";
+    const lines = [
+      ["الموظف", me ? (me.name || ("موظف #" + me.id)) : "—"],
+      ["رقم الوردية", st ? String(st.id) : "—"],
+      ["فتح", st ? fmtDT(st.openedAt) : "—"],
+      ["إقفال", st?.closedAt ? fmtDT(st.closedAt) : "—"],
+      ["عهدة الافتتاح", money(st?.openingCash)],
+      ["نقدي (مبيعات)", money(s.cashTotal)],
+      ["شبكة", money(s.cardTotal)],
+      ["مؤجل", money(s.debtTotal)],
+      ["إجمالي المبيعات", money(s.salesTotal)],
+      ["ضريبة", money(s.vatTotal)],
+      ["خصومات", money(s.discountTotal)],
+      ["مرتجع", money(s.returnsTotal)],
+      ["نقد متوقع", money(s.expectedCash)],
+      ["نقد محسوب", money(st?.countedCash)],
+      ["فرق", money(st?.difference)]
+    ];
+
+    const is80 = width === 80;
+    const css = `
+      body{font-family:Tahoma,Arial;direction:rtl;margin:0;padding:10px;color:#111}
+      .paper{${is80 ? "width:80mm" : "max-width:210mm"};margin:0 auto}
+      h1{font-size:${is80 ? "14px" : "18px"};margin:0 0 8px;text-align:center}
+      table{width:100%;border-collapse:collapse}
+      td{padding:${is80 ? "4px 2px" : "6px 4px"};font-size:${is80 ? "12px" : "13px"};border-bottom:1px solid #ddd}
+      td.k{color:#555;width:42%}
+      .note{margin-top:10px;font-size:${is80 ? "11px" : "12px"};color:#444;white-space:pre-wrap}
+      @media print{button{display:none}}
+    `;
+    const note = (st?.note || "").trim();
+    const html = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${title}</title><style>${css}</style></head>
+      <body><div class="paper"><h1>${title}</h1>
+      <table>${lines.map(([k,v])=>`<tr><td class="k">${k}</td><td>${v}</td></tr>`).join("")}</table>
+      ${note ? `<div class="note"><b>ملاحظة:</b>
+${note}</div>` : ``}
+      <script>window.onload=()=>setTimeout(()=>window.print(),200);<\/script>
+      </div></body></html>`;
+    return html;
+  }
+
+  function safePrint(html){
+    const w = window.open("", "_blank", "noopener,noreferrer");
+    if(!w){ showToast("المتصفح منع فتح نافذة الطباعة. اسمح بالـ Popups ثم جرّب.", "warn"); return; }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  }
+  function printA4(){ safePrint(buildPrintHtml("A4")); }
+  function print80(){ safePrint(buildPrintHtml(80)); }
+
+  // init
+  refresh();
+</script>
+</body>
+</html>

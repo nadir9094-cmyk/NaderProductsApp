@@ -12,7 +12,7 @@ public class Expense
 
     public string? Statement { get; set; }      // بيان/وصف مختصر
 
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
     // Alias للتوافق مع أي كود قديم يستخدم Expense.Date
@@ -22,3 +22,4 @@ public class Expense
         set => CreatedAt = value;
     }
 }
+

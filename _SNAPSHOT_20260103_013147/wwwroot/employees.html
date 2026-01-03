@@ -1,0 +1,614 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>الموظفون والصلاحيات</title>
+  <style>
+    :root{
+      --bg:#f5f7fb; --card:#fff; --line:rgba(2,6,23,.10);
+      --txt:#0f172a; --muted:#64748b;
+      --blue:#2563eb; --red:#dc2626; --green:#16a34a; --amber:#f59e0b;
+      --radius:18px;
+      --font: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, "Noto Kufi Arabic","Noto Sans Arabic", sans-serif;
+    }
+    *{box-sizing:border-box;font-family:var(--font);}
+    body{
+      margin:0;background:radial-gradient(1100px 520px at 12% -10%, rgba(37,99,235,.14), transparent 55%),
+                 radial-gradient(980px 460px at 92% 0%, rgba(245,158,11,.12), transparent 55%),
+                 var(--bg);
+      color:var(--txt);
+    }
+    .page{max-width:1200px;margin:22px auto;padding:14px;}
+    .card{
+      background:var(--card); border:1px solid rgba(2,6,23,.08);
+      border-radius:22px; box-shadow:0 14px 34px rgba(2,6,23,.12);
+      overflow:hidden;
+    }
+    .header{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 18px;
+      background:linear-gradient(90deg, rgba(37,99,235,.98), rgba(34,199,255,.85));
+      color:#fff;
+    }
+    .title{display:flex;gap:12px;align-items:center;}
+    .logo{
+      width:44px;height:44px;border-radius:14px;background:#0b1220;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 10px 22px rgba(2,6,23,.22);
+      border:1px solid rgba(255,255,255,.25);
+      font-weight:800;
+    }
+    h1{margin:0;font-size:18px;}
+    .sub{opacity:.9;font-size:12px;margin-top:2px;}
+    .header-right{display:flex;gap:8px;align-items:center;}
+    .btn{
+      border:none; cursor:pointer;
+      border-radius:14px; padding:9px 14px;
+      display:inline-flex; gap:10px; align-items:center; justify-content:center;
+      font-size:13px; font-weight:700;
+      transition:transform .06s ease, filter .12s ease;
+      box-shadow:0 10px 22px rgba(2,6,23,.12);
+      user-select:none;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn-primary{background:linear-gradient(135deg, rgba(245,158,11,.98), rgba(37,99,235,.96)); color:#fff;}
+    .btn-outline{background:rgba(255,255,255,.92); color:#0b1220; border:1px solid rgba(2,6,23,.10); box-shadow:none;}
+    .btn-danger{background:linear-gradient(135deg, rgba(220,38,38,.98), rgba(239,68,68,.92)); color:#fff;}
+    .btn-sm{padding:7px 10px; border-radius:12px; font-size:12px; box-shadow:none;}
+    .content{padding:14px 16px 18px;}
+    .toolbar{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;
+      margin-bottom:12px;
+    }
+    .search{
+      display:flex; align-items:center; gap:8px;
+      padding:8px 12px; border-radius:999px;
+      border:1px solid rgba(2,6,23,.12); background:rgba(255,255,255,.9);
+      min-width:280px;
+    }
+    .search input{
+      border:none; outline:none; background:transparent; width:100%;
+      font-size:13px;
+    }
+    .hint{color:var(--muted); font-size:12px;}
+    .tableWrap{
+      border:1px solid rgba(2,6,23,.10); border-radius:18px; overflow:hidden; background:#fff;
+    }
+    table{width:100%; border-collapse:collapse; font-size:13px;}
+    thead{background:rgba(34,199,255,.10);}
+    th,td{padding:10px 10px; border-bottom:1px solid rgba(2,6,23,.08); text-align:center; white-space:nowrap;}
+    th{color:#334155; font-weight:800;}
+    tbody tr:nth-child(even){background:#f8fafc;}
+    tbody tr:hover{background:rgba(37,99,235,.06);}
+    .pill{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:3px 10px; border-radius:999px; font-size:11px; font-weight:800;
+      border:1px solid rgba(2,6,23,.10); background:#fff;
+    }
+    .pill.on{background:rgba(22,163,74,.10); color:var(--green); border-color:rgba(22,163,74,.25);}
+    .pill.off{background:rgba(220,38,38,.10); color:var(--red); border-color:rgba(220,38,38,.25);}
+    .actions{display:flex; gap:6px; justify-content:center;}
+    .iconBtn{
+      width:36px; height:34px;
+      border-radius:12px;
+      border:1px solid rgba(2,6,23,.10);
+      background:#fff; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .iconBtn:hover{background:#f1f5f9}
+    .iconBtn.danger:hover{background:rgba(220,38,38,.08); border-color:rgba(220,38,38,.25)}
+    .small{font-size:12px;color:var(--muted)}
+    .toast{
+      position:fixed; bottom:18px; left:18px; z-index:9999;
+      background:#0b1220; color:#fff;
+      padding:10px 12px; border-radius:14px;
+      box-shadow:0 16px 44px rgba(2,6,23,.28);
+      display:none; max-width:min(520px, calc(100vw - 36px));
+    }
+    .toast.show{display:block;}
+    .toast.bad{background:#7f1d1d;}
+    .modalBack{
+      position:fixed; inset:0; background:rgba(2,6,23,.45);
+      display:none; align-items:center; justify-content:center; z-index:2000;
+      padding:14px;
+    }
+    .modalBack.show{display:flex;}
+    .modal{
+      width:min(980px, 100%);
+      background:#fff; border-radius:22px;
+      border:1px solid rgba(2,6,23,.12);
+      box-shadow:0 22px 70px rgba(2,6,23,.40);
+      overflow:hidden;
+    }
+    .modalHead{
+      padding:12px 16px; color:#fff;
+      background:linear-gradient(90deg, rgba(37,99,235,.98), rgba(34,199,255,.85));
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .modalHead h2{margin:0; font-size:15px;}
+    .xbtn{border:none;background:transparent;color:#fff;font-size:22px;cursor:pointer;line-height:1}
+    .modalBody{padding:14px 16px;}
+    .grid{
+      display:grid; grid-template-columns:repeat(3, minmax(0, 1fr));
+      gap:10px;
+    }
+    .field{display:flex;flex-direction:column;gap:6px;text-align:right}
+    .field label{font-size:12px;color:#334155;font-weight:800}
+    .field input{
+      border:1px solid rgba(2,6,23,.12); border-radius:14px;
+      padding:9px 12px; outline:none; background:#fff;
+      font-size:13px;
+    }
+    .field input:focus{border-color:rgba(34,199,255,.70); box-shadow:0 0 0 4px rgba(34,199,255,.14);}
+    .checkRow{display:flex;align-items:center;gap:10px;margin-top:6px}
+    .permBox{
+      margin-top:12px;
+      border:1px dashed rgba(2,6,23,.20);
+      border-radius:18px;
+      padding:10px 12px;
+      background:rgba(37,99,235,.03);
+    }
+    .permGrid{
+      display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px;
+      margin-top:8px;
+    }
+    .permItem{
+      display:flex; align-items:center; gap:10px;
+      padding:8px 10px; border:1px solid rgba(2,6,23,.10);
+      border-radius:14px; background:#fff;
+      font-size:13px;
+    }
+    .permItem input{width:18px;height:18px}
+    .modalFoot{
+      padding:12px 16px; background:#f8fafc; border-top:1px solid rgba(2,6,23,.08);
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    }
+    .warn401{
+      border:1px solid rgba(220,38,38,.25);
+      background:rgba(220,38,38,.06);
+      color:#7f1d1d;
+      padding:10px 12px;
+      border-radius:16px;
+      margin-bottom:12px;
+      display:none;
+    }
+    .warn401 a{color:#7f1d1d; font-weight:900; text-decoration:underline;}
+    @media (max-width: 900px){
+      .grid{grid-template-columns:repeat(2, minmax(0, 1fr));}
+      .permGrid{grid-template-columns:repeat(2, minmax(0, 1fr));}
+    }
+    @media (max-width: 560px){
+      .grid{grid-template-columns:1fr;}
+      .permGrid{grid-template-columns:1fr;}
+      .search{min-width:100%;}
+      th,td{padding:9px 8px;}
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="header">
+        <div class="title">
+          <div class="logo">N</div>
+          <div>
+            <h1>الموظفون والصلاحيات</h1>
+            <div class="sub">إضافة/تعديل/حذف الموظفين وإدارة الصلاحيات</div>
+          </div>
+        </div>
+        <div class="header-right">
+          <button class="btn btn-outline" id="btnReload" type="button">تحديث</button>
+          <button class="btn btn-primary" id="btnAdd" type="button">+ إضافة موظف</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="warn401" id="warn401">
+          لا يمكن عرض الموظفين: السيرفر رجّع <b>401 Unauthorized</b>.
+          تأكد أنك مسجّل دخول (Token موجود في <b>localStorage</b> باسم <b>emp_token</b> أو <b>token</b>).
+          <a href="index.html">اذهب للرئيسية</a>
+        </div>
+
+        <div class="toolbar">
+          <div class="search">
+            <span style="font-weight:900;color:#334155">بحث</span>
+            <input id="q" type="text" name="q_naderpos" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ابحث بالاسم أو اسم المستخدم…" readonly>
+          </div>
+          <div class="hint" id="countHint">—</div>
+        </div>
+
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>الاسم</th>
+                <th>اسم المستخدم</th>
+                <th>الحالة</th>
+                <th>الصلاحيات</th>
+                <th>إجراءات</th>
+              </tr>
+            </thead>
+            <tbody id="rows">
+              <tr><td colspan="6" class="small" style="padding:16px">جاري التحميل…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modalBack" id="modalBack" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+      <div class="modalHead">
+        <h2 id="mTitle">—</h2>
+        <button class="xbtn" id="btnClose" type="button">×</button>
+      </div>
+      <div class="modalBody">
+        <div class="grid">
+          <div class="field">
+            <label>الاسم الكامل</label>
+            <input id="fullName" type="text" placeholder="مثال: محمد أحمد">
+          </div>
+          <div class="field">
+            <label>اسم المستخدم</label>
+            <input id="username" type="text" placeholder="مثال: emp2">
+          </div>
+          <div class="field">
+            <label>كلمة المرور <span class="small" id="passHint"></span></label>
+            <input id="password" type="password" placeholder="اتركها فاضية إذا ما تبي تغيير">
+          </div>
+        </div>
+
+        <div class="checkRow">
+          <input id="isActive" type="checkbox">
+          <label for="isActive" style="cursor:pointer;font-weight:900">نشط</label>
+        </div>
+
+        <div class="permBox">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="font-weight:900;color:#334155">الصلاحيات</div>
+            <div class="small">حدد صلاحيات الموظف (تخزن كـ bitmask رقم)</div>
+          </div>
+          <div class="permGrid" id="permGrid"></div>
+        </div>
+      </div>
+      <div class="modalFoot">
+        <button class="btn btn-outline" id="btnCancel" type="button">إلغاء</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-danger" id="btnDelete" type="button" style="display:none">حذف</button>
+          <button class="btn btn-primary" id="btnSave" type="button">حفظ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+/* =========================
+   NADER POS - Employees
+   - Clean, no surprises
+   - Fixes: edit button never deletes/hides rows
+   - Fixes: attaches Bearer token (emp_token/token) to requests
+========================= */
+
+const state = {
+  list: [],
+  editId: null,
+  permsMask: 0,
+  lastError401: false
+};
+
+// عدّلها إذا عندك أسماء صلاحيات مختلفة (أو خذها من السيرفر لو عندك endpoint)
+const PERMS = [
+  { bit: 1,   name: "المنتجات" },
+  { bit: 2,   name: "الكاشير" },
+  { bit: 4,   name: "العملاء" },
+  { bit: 8,   name: "الموردين" },
+  { bit: 16,  name: "المصاريف" },
+  { bit: 32,  name: "التقارير" },
+  { bit: 64,  name: "الإعدادات" },
+  { bit: 128, name: "نسخ احتياطي" },
+  { bit: 256, name: "الموظفين" },
+  { bit: 512, name: "إقفال اليومية" }
+];
+
+function $(id){ return document.getElementById(id); }
+
+function toast(msg, ok=true){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.toggle("bad", !ok);
+  t.classList.add("show");
+  clearTimeout(toast._tm);
+  toast._tm = setTimeout(()=>t.classList.remove("show"), 2400);
+}
+
+function getToken(){
+  try{
+    return (localStorage.getItem("emp_token") || localStorage.getItem("token") || "").trim();
+  }catch(e){ return ""; }
+}
+
+async function apiFetch(url, options){
+  options = options || {};
+  options.headers = options.headers || {};
+  const token = getToken();
+  if(token && !options.headers["Authorization"] && !options.headers["authorization"]){
+    options.headers["Authorization"] = "Bearer " + token;
+  }
+  const res = await fetch(url, options);
+  if(res.status === 401){
+    state.lastError401 = true;
+    $("warn401").style.display = "block";
+  } else {
+    state.lastError401 = false;
+    $("warn401").style.display = "none";
+  }
+  if(!res.ok){
+    let txt = "";
+    try{ txt = await res.text(); }catch(e){}
+    throw new Error("HTTP " + res.status + (txt ? (" " + txt) : ""));
+  }
+  const ct = (res.headers.get("content-type")||"").toLowerCase();
+  if(ct.includes("application/json")) return await res.json();
+  return await res.text();
+}
+
+function money(n){
+  const x = Number(n);
+  return (isNaN(x)?0:x);
+}
+
+function permsSummary(mask){
+  mask = Number(mask||0);
+  if(!mask) return "بدون";
+  // اختصر العرض (أول 2 + عداد)
+  const names = PERMS.filter(p=> (mask & p.bit) === p.bit).map(p=>p.name);
+  if(!names.length) return "بدون";
+  if(names.length <= 2) return names.join("، ");
+  return names.slice(0,2).join("، ") + " +" + (names.length-2);
+}
+
+function renderPerms(){
+  const box = $("permGrid");
+  box.innerHTML = "";
+  PERMS.forEach(p=>{
+    const id = "perm_" + p.bit;
+    const row = document.createElement("label");
+    row.className = "permItem";
+    row.innerHTML = '<input type="checkbox" id="'+id+'"><span>'+p.name+'</span>';
+    const cb = row.querySelector("input");
+    cb.checked = (state.permsMask & p.bit) === p.bit;
+    cb.addEventListener("change", ()=>{
+      if(cb.checked) state.permsMask = (state.permsMask | p.bit);
+      else state.permsMask = (state.permsMask & ~p.bit);
+    });
+    box.appendChild(row);
+  });
+}
+
+function openModal(title){
+  $("mTitle").textContent = title;
+  $("modalBack").classList.add("show");
+  $("modalBack").setAttribute("aria-hidden","false");
+}
+function closeModal(){
+  $("modalBack").classList.remove("show");
+  $("modalBack").setAttribute("aria-hidden","true");
+}
+
+function fillForm(x){
+  $("fullName").value = x?.fullName || x?.name || "";
+  $("username").value = (x?.username || x?.userName || "").toLowerCase();
+  $("password").value = "";
+  $("isActive").checked = (x?.isActive ?? true) ? true : false;
+  state.permsMask = Number(x?.permissions || 0);
+  renderPerms();
+}
+
+function openAdd(){
+  state.editId = null;
+  $("btnDelete").style.display = "none";
+  $("passHint").textContent = " (مطلوبة)";
+  fillForm({ isActive:true, permissions:0 });
+  openModal("إضافة موظف");
+}
+
+function openEdit(x){
+  // مهم: لا نحذف ولا نخفي صفوف هنا أبداً
+  state.editId = Number(x.id);
+  $("btnDelete").style.display = "inline-flex";
+  $("passHint").textContent = " (اختياري)";
+  fillForm(x);
+  openModal("تعديل موظف");
+}
+
+async function saveEmployee(){
+  const fullName = $("fullName").value.trim();
+  const username = $("username").value.trim().toLowerCase();
+  const password = $("password").value; // قد تكون فاضية
+  const isActive = $("isActive").checked;
+  const permissions = Number(state.permsMask||0);
+
+  if(!fullName){ toast("اكتب الاسم الكامل", false); return; }
+  if(!username){ toast("اكتب اسم المستخدم", false); return; }
+  if(!state.editId && !password){ toast("كلمة المرور مطلوبة للإضافة", false); return; }
+
+  const payload = { fullName, username, isActive, permissions };
+  if(password) payload.password = password;
+
+  try{
+    if(state.editId){
+      await apiFetch("/api/employees/" + state.editId, {
+        method:"PUT",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      });
+      toast("تم التعديل ✅");
+    }else{
+      await apiFetch("/api/employees", {
+        method:"POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      });
+      toast("تمت الإضافة ✅");
+    }
+    closeModal();
+    await loadEmployees();
+  }catch(e){
+    toast("فشل الحفظ: " + e.message, false);
+  }
+}
+
+async function deleteEmployee(){
+  const x = state.list.find(a=> Number(a.id) === Number(state.editId));
+  if(!x){ toast("لا يوجد موظف محدد", false); return; }
+  if(!confirm("حذف الموظف: " + (x.fullName||x.name||x.username) + " ؟")) return;
+  try{
+    await apiFetch("/api/employees/" + state.editId, { method:"DELETE" });
+    toast("تم الحذف ✅");
+    closeModal();
+    await loadEmployees();
+  }catch(e){
+    toast("فشل الحذف: " + e.message, false);
+  }
+}
+
+function renderTable(){
+  const q = $("q").value.trim();
+  const list = (state.list||[]).filter(x=>{
+    const n = String(x.fullName||x.name||"");
+    const u = String(x.username||x.userName||"");
+    if(!q) return true;
+    return n.includes(q) || u.includes(q);
+  });
+
+  $("countHint").textContent = "النتائج: " + list.length;
+
+  const rows = $("rows");
+  if(!list.length){
+    rows.innerHTML = '<tr><td colspan="6" class="small" style="padding:16px">لا توجد بيانات</td></tr>';
+    return;
+  }
+
+  rows.innerHTML = "";
+  list.forEach((x, i)=>{
+    const tr = document.createElement("tr");
+    const active = (x.isActive ?? true) ? true : false;
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td>${escapeHtml(x.fullName||x.name||"")}</td>
+      <td>${escapeHtml((x.username||x.userName||""))}</td>
+      <td>${active ? '<span class="pill on">نشط</span>' : '<span class="pill off">موقوف</span>'}</td>
+      <td><span class="pill">${escapeHtml(permsSummary(x.permissions))}</span></td>
+      <td>
+        <div class="actions">
+          <button type="button" class="iconBtn" title="تعديل" data-act="edit">✏️</button>
+          <button type="button" class="iconBtn danger" title="حذف" data-act="del">🗑️</button>
+        </div>
+      </td>
+    `;
+    tr.querySelector('[data-act="edit"]').addEventListener("click", (ev)=>{
+      ev.preventDefault(); ev.stopPropagation();
+      openEdit(x);
+    });
+    tr.querySelector('[data-act="del"]').addEventListener("click", (ev)=>{
+      ev.preventDefault(); ev.stopPropagation();
+      state.editId = Number(x.id);
+      deleteEmployee();
+    });
+    rows.appendChild(tr);
+  });
+}
+
+function escapeHtml(s){
+  return String(s ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
+
+async function loadEmployees(){
+  const rows = $("rows");
+  rows.innerHTML = '<tr><td colspan="6" class="small" style="padding:16px">جاري التحميل…</td></tr>';
+  try{
+    const data = await apiFetch("/api/employees", { method:"GET" });
+    const list = Array.isArray(data) ? data :
+                 Array.isArray(data?.items) ? data.items :
+                 Array.isArray(data?.value) ? data.value : [];
+    state.list = list || [];
+    renderTable();
+  }catch(e){
+    console.error(e);
+    rows.innerHTML = '<tr><td colspan="6" class="small" style="padding:16px;color:#b91c1c">تعذر تحميل الموظفين: '+escapeHtml(e.message)+'</td></tr>';
+    $("countHint").textContent = "—";
+  }
+}
+
+$("btnAdd").addEventListener("click", openAdd);
+$("btnReload").addEventListener("click", loadEmployees);
+$("btnClose").addEventListener("click", closeModal);
+$("btnCancel").addEventListener("click", closeModal);
+$("btnSave").addEventListener("click", saveEmployee);
+$("btnDelete").addEventListener("click", deleteEmployee);
+$("q").addEventListener("input", renderTable);
+
+// إغلاق عند الضغط خارج المودال
+$("modalBack").addEventListener("click", (e)=>{ if(e.target === $("modalBack")) closeModal(); });
+
+function clearSearchOnLoad(){
+  const q = document.getElementById("q");
+  if(!q) return;
+
+  // منع autofill/restore في كروم/إيدج قدر الإمكان
+  try{
+    q.setAttribute("autocomplete","new-password");
+    q.setAttribute("autocorrect","off");
+    q.setAttribute("autocapitalize","off");
+    q.setAttribute("spellcheck","false");
+  }catch(e){}
+
+  const clearNow = ()=>{
+    try{
+      // لا نمسح إذا المستخدم كتب بنفسه
+      if(document.activeElement === q) return;
+      q.value = "";
+      q.defaultValue = "";
+      q.setAttribute("value","");
+    }catch(e){}
+  };
+
+  // 1) مسح فوري
+  clearNow();
+
+  // 2) خدعة readonly لتكسير autofill
+  try{
+    q.readOnly = true;
+    setTimeout(()=>{ try{ q.readOnly = false; }catch(e){} }, 0);
+  }catch(e){}
+
+  // 3) بعض المتصفحات تعبّي بعد التحميل بلحظات… نمسحها أكثر من مرة
+  try{
+    requestAnimationFrame(clearNow);
+    setTimeout(clearNow, 25);
+    setTimeout(clearNow, 120);
+    setTimeout(clearNow, 400);
+    setTimeout(clearNow, 900);
+  }catch(e){}
+}
+
+window.addEventListener("load", ()=>{
+  clearSearchOnLoad();
+  renderPerms();
+  loadEmployees();
+});
+</script>
+<a href="index.html" class="home-btn noPrint" title="العودة للرئيسية">🏠</a><style>.home-btn{position:fixed;top:12px;left:12px;width:42px;height:42px;border-radius:12px;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;text-decoration:none;z-index:9999;box-shadow:0 8px 20px rgba(0,0,0,.2)}.home-btn:hover{opacity:.9}</style>`r`n</body>
+</html>
+

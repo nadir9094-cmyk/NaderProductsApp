@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>التقارير</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card: rgba(255,255,255,.10);
+      --card2: rgba(255,255,255,.08);
+      --line: rgba(255,255,255,.14);
+      --text:#e5e7eb;
+      --muted:#9ca3af;
+      --good:#22c55e;
+      --bad:#ef4444;
+      --warn:#f59e0b;
+      --sky:#38bdf8;
+      --radius:16px;
+      --shadow: 0 14px 30px rgba(0,0,0,.22);
+    }
+    *{ box-sizing:border-box }
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,"Segoe UI",Tahoma,Arial;
+      background: radial-gradient(1000px 500px at 15% 0%, rgba(56,189,248,.25), transparent 60%),
+                  radial-gradient(900px 450px at 85% 0%, rgba(34,197,94,.18), transparent 60%),
+                  linear-gradient(180deg, #0b1220, #070b14 70%);
+      color:var(--text);
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      backdrop-filter: blur(12px);
+      background: rgba(3,7,18,.55);
+      border-bottom:1px solid var(--line);
+    }
+    .wrap{ max-width:1200px; margin:0 auto; padding:14px 14px 24px; }
+    .topbar{
+      display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+    }
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .logo{
+      width:38px; height:38px; border-radius:12px;
+      background: linear-gradient(135deg, rgba(56,189,248,.9), rgba(34,197,94,.75));
+      box-shadow: var(--shadow);
+    }
+    .brand h1{ margin:0; font-size:18px; }
+    .brand small{ display:block; color:var(--muted); margin-top:2px; }
+    .btn{
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.10);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:700;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      user-select:none;
+    }
+    .btn:hover{ filter:brightness(1.08); transform: translateY(-1px); }
+    .btn.primary{ background: rgba(56,189,248,.18); border-color: rgba(56,189,248,.35); }
+    .btn.ghost{ background: transparent; }
+    .card{
+      background: var(--card);
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:12px 12px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.06);
+    }
+    .card .bd{ padding:12px; }
+    .muted{ color:var(--muted); }
+    .filters{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap:10px;
+    }
+    .f{
+      grid-column: span 3;
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .f label{ font-size:12px; color: var(--muted); }
+    input,select{
+      width:100%;
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(17,24,39,.45);
+      color: var(--text);
+      outline:none;
+    }
+    input:focus,select:focus{ border-color: rgba(56,189,248,.65); box-shadow: 0 0 0 3px rgba(56,189,248,.12); }
+    .actions{
+      grid-column: span 3;
+      display:flex; gap:10px; align-items:end; justify-content:flex-end;
+    }
+    .kpis{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap:12px;
+    }
+    .kpi{
+      grid-column: span 3;
+      padding:12px;
+      border-radius: 16px;
+      background: var(--card2);
+      border:1px solid rgba(255,255,255,.12);
+    }
+    .kpi .t{ font-size:12px; color:var(--muted); }
+    .kpi .v{ font-size:22px; font-weight:900; margin-top:6px; letter-spacing:.2px; }
+    .kpi .s{ margin-top:6px; font-size:12px; color:var(--muted); }
+    .v.good{ color:var(--good); }
+    .v.bad{ color:var(--bad); }
+    .v.warn{ color:var(--warn); }
+    table{ width:100%; border-collapse: collapse; }
+    th,td{
+      padding:10px 8px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      text-align:right;
+      font-size:13px;
+    }
+    thead th{
+      background: rgba(255,255,255,.06);
+      color: #dbeafe;
+      font-weight:800;
+    }
+    .row{
+      display:grid; gap:12px;
+      grid-template-columns: 1.2fr .8fr;
+    }
+    .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      font-size:12px;
+    }
+    .msg{
+      padding:10px 12px; border-radius:14px;
+      border:1px dashed rgba(255,255,255,.18);
+      background: rgba(255,255,255,.05);
+      color: var(--muted);
+      white-space:pre-wrap;
+    }
+
+    @media (max-width: 980px){
+      .f{ grid-column: span 6; }
+      .actions{ grid-column: span 12; justify-content:stretch; }
+      .actions .btn{ width:100%; }
+      .kpi{ grid-column: span 6; }
+      .row{ grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px){
+      .kpi{ grid-column: span 12; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <h1>التقارير</h1>
+          <small>فلترة دقيقة + ملخصات (لا تقلق… CORS ما راح ينتصر علينا 😄)</small>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn ghost" href="/products.html">المنتجات</a>
+        <a class="btn ghost" href="/cashier.html">الكاشير</a>
+        <a class="btn ghost" href="/invoices.html">فواتير الكاشير</a>
+        <a class="btn ghost" href="/customers.html">العملاء</a>
+        <a class="btn ghost" href="/suppliers.html">الموردين</a>
+        <a class="btn ghost" href="/expenses.html">المصروفات</a>
+        <a class="btn ghost" href="/backup.html">النسخ الاحتياطي</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="card">
+    <div class="hd">
+      <div>
+        <b>الإعدادات</b>
+        <div class="muted" style="font-size:12px;margin-top:4px">لو فتحت الملف مباشرة (file://) لازم تحدد رابط الـ API</div>
+      </div>
+      <span id="rangePill" class="pill">—</span>
+    </div>
+    <div class="bd">
+      <div class="filters">
+        <div class="f" style="grid-column: span 6;">
+          <label>رابط السيرفر (API Base URL)</label>
+          <input id="apiBase" placeholder="http://127.0.0.1:5050" />
+          <div class="muted" style="font-size:12px">اتركه فاضي إذا فاتح الصفحة من داخل السيرفر (http://127.0.0.1:5050/reports.html)</div>
+        </div>
+
+        <div class="f">
+          <label>من تاريخ</label>
+          <input id="fromDate" type="date" />
+        </div>
+        <div class="f">
+          <label>إلى تاريخ</label>
+          <input id="toDate" type="date" />
+        </div>
+        <div class="f">
+          <label>قريب الانتهاء (بالأيام)</label>
+          <input id="nearDays" type="number" min="1" value="30" />
+        </div>
+
+        <div class="actions">
+          <button id="btnLoad" class="btn primary">تحديث التقارير</button>
+          <button id="btnToday" class="btn">اليوم</button>
+        </div>
+      </div>
+
+      <div id="msg" class="msg" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div style="height:12px"></div>
+
+  <div class="card">
+    <div class="hd">
+      <b>ملخص سريع</b>
+      <span class="muted" style="font-size:12px">الأرقام محسوبة من السيرفر</span>
+    </div>
+    <div class="bd">
+      <div class="kpis">
+        <div class="kpi">
+          <div class="t">صافي المبيعات</div>
+          <div id="kNetSales" class="v good">0.00</div>
+          <div id="kNetSalesS" class="s">—</div>
+        </div>
+        <div class="kpi">
+          <div class="t">إجمالي المبيعات</div>
+          <div id="kGross" class="v">0.00</div>
+          <div id="kGrossS" class="s">—</div>
+        </div>
+        <div class="kpi">
+          <div class="t">إجمالي الضريبة</div>
+          <div id="kVat" class="v">0.00</div>
+          <div id="kVatS" class="s">—</div>
+        </div>
+        <div class="kpi">
+          <div class="t">إجمالي المرتجع</div>
+          <div id="kReturns" class="v warn">0.00</div>
+          <div id="kReturnsS" class="s">—</div>
+        </div>
+
+        <div class="kpi">
+          <div class="t">نقدي</div>
+          <div id="kCash" class="v">0.00</div>
+          <div class="s muted">مبيعات نقدية</div>
+        </div>
+        <div class="kpi">
+          <div class="t">شبكة</div>
+          <div id="kCard" class="v">0.00</div>
+          <div class="s muted">مبيعات شبكة</div>
+        </div>
+        <div class="kpi">
+          <div class="t">مؤجل</div>
+          <div id="kDeferredSales" class="v">0.00</div>
+          <div class="s muted">مبيعات مؤجلة ضمن الفترة</div>
+        </div>
+        <div class="kpi">
+          <div class="t">المصروفات</div>
+          <div id="kExpenses" class="v bad">0.00</div>
+          <div class="s muted">ضمن الفترة</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:12px"></div>
+
+  <div class="row">
+    <div class="card">
+      <div class="hd"><b>العملاء</b><span class="muted" style="font-size:12px">ديون/مدفوعات</span></div>
+      <div class="bd">
+        <div class="kpis">
+          <div class="kpi">
+            <div class="t">ديون ضمن الفترة</div>
+            <div id="kCustInv" class="v">0.00</div>
+            <div class="s muted">Invoices</div>
+          </div>
+          <div class="kpi">
+            <div class="t">مسدد ضمن الفترة</div>
+            <div id="kCustPay" class="v good">0.00</div>
+            <div class="s muted">Payments</div>
+          </div>
+          <div class="kpi">
+            <div class="t">صافي الحركة ضمن الفترة</div>
+            <div id="kCustNet" class="v">0.00</div>
+            <div class="s muted">ديون - مسدد</div>
+          </div>
+          <div class="kpi">
+            <div class="t">الرصيد المتبقي (كل الوقت)</div>
+            <div id="kCustOutstanding" class="v warn">0.00</div>
+            <div class="s muted">Outstanding</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><b>الموردين</b><span class="muted" style="font-size:12px">مشتريات/مدفوع/متبقي</span></div>
+      <div class="bd">
+        <div class="kpis">
+          <div class="kpi">
+            <div class="t">مشتريات ضمن الفترة</div>
+            <div id="kSupPurch" class="v">0.00</div>
+            <div class="s muted">Purchases</div>
+          </div>
+          <div class="kpi">
+            <div class="t">مدفوعات ضمن الفترة</div>
+            <div id="kSupPaid" class="v good">0.00</div>
+            <div class="s muted">Payments</div>
+          </div>
+          <div class="kpi">
+            <div class="t">صافي الحركة ضمن الفترة</div>
+            <div id="kSupNet" class="v">0.00</div>
+            <div class="s muted">مشتريات - مدفوع</div>
+          </div>
+          <div class="kpi">
+            <div class="t">المتبقي (كل الوقت)</div>
+            <div id="kSupOutstanding" class="v warn">0.00</div>
+            <div class="s muted">Outstanding</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:12px"></div>
+
+  <div class="card">
+    <div class="hd"><b>إحصائيات المنتجات</b><span class="muted" style="font-size:12px">عروض/انتهاء/نفذ</span></div>
+    <div class="bd">
+      <div class="kpis">
+        <div class="kpi">
+          <div class="t">عدد المنتجات</div>
+          <div id="kProdTotal" class="v">0</div>
+          <div class="s muted">Total</div>
+        </div>
+        <div class="kpi">
+          <div class="t">عروض فعالة</div>
+          <div id="kOffersActive" class="v good">0</div>
+          <div class="s muted">Offers Active</div>
+        </div>
+        <div class="kpi">
+          <div class="t">قريبة الانتهاء</div>
+          <div id="kExpiryNear" class="v warn">0</div>
+          <div class="s muted">Near Expiry</div>
+        </div>
+        <div class="kpi">
+          <div class="t">منتهية الصلاحية</div>
+          <div id="kExpiryExpired" class="v bad">0</div>
+          <div class="s muted">Expired</div>
+        </div>
+        <div class="kpi">
+          <div class="t">نافذة (كمية=0)</div>
+          <div id="kOutStock" class="v bad">0</div>
+          <div class="s muted">Out of Stock</div>
+        </div>
+        <div class="kpi">
+          <div class="t">منخفضة المخزون</div>
+          <div id="kLowStock" class="v warn">0</div>
+          <div class="s muted">Low Stock</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:12px"></div>
+
+  <div class="card">
+    <div class="hd"><b>تفصيل سريع</b><span class="muted" style="font-size:12px">مراجعة</span></div>
+    <div class="bd">
+      <table>
+        <thead>
+          <tr>
+            <th>البند</th>
+            <th>القيمة</th>
+            <th>ملاحظات</th>
+          </tr>
+        </thead>
+        <tbody id="detailsBody">
+          <tr><td colspan="3" class="muted">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+  const fmtMoney = (n)=> (Number(n||0)).toFixed(2);
+  const fmtInt = (n)=> String(Math.trunc(Number(n||0)));
+
+  function todayISO(){
+    const d = new Date();
+    const pad=(x)=> String(x).padStart(2,'0');
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  }
+
+  function setRangePill(from,to){
+    const el = document.getElementById('rangePill');
+    if(!from && !to){ el.textContent='كل الوقت'; return; }
+    el.textContent = (from||'...') + '  →  ' + (to||'...');
+  }
+
+  function setMsg(text){ document.getElementById('msg').textContent = text; }
+
+  function getApiBase(){
+    const el = document.getElementById('apiBase');
+    const typed = (el.value || '').trim();
+
+    const proto = (location && location.protocol) ? location.protocol.toLowerCase() : '';
+    if(!typed){
+      if(proto === 'http:' || proto === 'https:') return location.origin;
+      return 'http://127.0.0.1:5050';
+    }
+    return typed.replace(/\/+$/,'');
+  }
+
+  function showCorsHint(){
+    const proto = location.protocol.toLowerCase();
+    const base = getApiBase();
+    if(proto === 'file:'){
+      setMsg(
+        'ملاحظة مهمة:\n' +
+        'أنت فاتح الصفحة من file:// وهذا يمنع fetch بسبب CORS.\n' +
+        'الحل الأفضل: انسخ reports.html إلى مجلد wwwroot ثم افتحها من:\n' +
+        '  http://127.0.0.1:5050/reports.html\n\n' +
+        'بديل مؤقت: اكتب رابط السيرفر هنا (حالياً: ' + base + ') ثم اضغط تحديث.'
+      );
+    } else {
+      setMsg('جاهز ✅ اضغط "تحديث التقارير"');
+    }
+  }
+
+  async function load(){
+    const from = document.getElementById('fromDate').value;
+    const to = document.getElementById('toDate').value;
+    const nearDays = document.getElementById('nearDays').value || '30';
+    setRangePill(from,to);
+
+    const qs = new URLSearchParams();
+    if(from) qs.set('from', from);
+    if(to) qs.set('to', to);
+    if(nearDays) qs.set('expiryNearDays', nearDays);
+
+    const base = getApiBase();
+    const url = base + '/api/reports/summary?' + qs.toString();
+
+    setMsg('جاري تحميل التقارير...\nGET ' + url);
+    try{
+      const res = await fetch(url, { cache:'no-store' });
+      if(!res.ok){
+        const t = await res.text().catch(()=> '');
+        throw new Error('فشل من السيرفر: ' + (t || res.status));
+      }
+      const data = await res.json();
+      render(data);
+      setMsg('تم التحديث ✅');
+    }catch(e){
+      console.error(e);
+      setMsg('خطأ: ' + (e.message || e) + '\n\n' +
+             'تأكد أنك فاتح الصفحة من السيرفر (http://127.0.0.1:5050/reports.html) وليس file://\n' +
+             'أو اكتب API Base URL الصحيح بالأعلى.');
+    }
+  }
+
+  function render(d){
+    document.getElementById('kNetSales').textContent = fmtMoney(d.sales?.netSales);
+    document.getElementById('kGross').textContent = fmtMoney(d.sales?.grossSales);
+    document.getElementById('kVat').textContent = fmtMoney(d.sales?.vatTotal);
+    document.getElementById('kReturns').textContent = fmtMoney(d.sales?.returnsTotal);
+
+    document.getElementById('kCash').textContent = fmtMoney(d.sales?.byPayment?.cash);
+    document.getElementById('kCard').textContent = fmtMoney(d.sales?.byPayment?.card);
+    document.getElementById('kDeferredSales').textContent = fmtMoney(d.sales?.byPayment?.deferred);
+
+    document.getElementById('kExpenses').textContent = fmtMoney(d.expenses?.total);
+
+    document.getElementById('kNetSalesS').textContent = 'عدد الفواتير: ' + fmtInt(d.sales?.invoiceCount) + ' | خصم: ' + fmtMoney(d.sales?.discountTotal);
+    document.getElementById('kGrossS').textContent = 'متوسط فاتورة: ' + fmtMoney(d.sales?.avgInvoice);
+
+    document.getElementById('kCustInv').textContent = fmtMoney(d.customers?.rangeDebits);
+    document.getElementById('kCustPay').textContent = fmtMoney(d.customers?.rangePayments);
+    document.getElementById('kCustNet').textContent = fmtMoney(d.customers?.rangeNet);
+    document.getElementById('kCustOutstanding').textContent = fmtMoney(d.customers?.outstandingAllTime);
+
+    document.getElementById('kSupPurch').textContent = fmtMoney(d.suppliers?.rangePurchases);
+    document.getElementById('kSupPaid').textContent = fmtMoney(d.suppliers?.rangePayments);
+    document.getElementById('kSupNet').textContent = fmtMoney(d.suppliers?.rangeNet);
+    document.getElementById('kSupOutstanding').textContent = fmtMoney(d.suppliers?.outstandingAllTime);
+
+    document.getElementById('kProdTotal').textContent = fmtInt(d.products?.total);
+    document.getElementById('kOffersActive').textContent = fmtInt(d.products?.offersActive);
+    document.getElementById('kExpiryNear').textContent = fmtInt(d.products?.expiryNear);
+    document.getElementById('kExpiryExpired').textContent = fmtInt(d.products?.expiryExpired);
+    document.getElementById('kOutStock').textContent = fmtInt(d.products?.outOfStock);
+    document.getElementById('kLowStock').textContent = fmtInt(d.products?.lowStock);
+
+    const b = document.getElementById('detailsBody');
+    const rows = [];
+    rows.push(['صافي المبيعات', fmtMoney(d.sales?.netSales), 'Gross - Returns']);
+    rows.push(['إجمالي الضريبة', fmtMoney(d.sales?.vatTotal), 'VAT Total']);
+    rows.push(['إجمالي المرتجع', fmtMoney(d.sales?.returnsTotal), 'Returns Total']);
+    rows.push(['نقدي', fmtMoney(d.sales?.byPayment?.cash), 'مبيعات نقدية']);
+    rows.push(['شبكة', fmtMoney(d.sales?.byPayment?.card), 'مبيعات شبكة']);
+    rows.push(['مؤجل', fmtMoney(d.sales?.byPayment?.deferred), 'مبيعات مؤجلة']);
+    rows.push(['مصروفات', fmtMoney(d.expenses?.total), 'ضمن الفترة']);
+    rows.push(['ديون العملاء (الحالية)', fmtMoney(d.customers?.outstandingAllTime), 'كل الوقت']);
+    rows.push(['مستحقات الموردين (الحالية)', fmtMoney(d.suppliers?.outstandingAllTime), 'كل الوقت']);
+    rows.push(['عروض فعالة', fmtInt(d.products?.offersActive), 'حسب تواريخ العرض']);
+    b.innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td><b>${r[1]}</b></td><td class="muted">${r[2]}</td></tr>`).join('');
+  }
+
+  document.getElementById('btnLoad').addEventListener('click', load);
+  document.getElementById('btnToday').addEventListener('click', ()=>{
+    const t = todayISO();
+    document.getElementById('fromDate').value = t;
+    document.getElementById('toDate').value = t;
+    load();
+  });
+
+  (function init(){
+    const t = todayISO();
+    document.getElementById('fromDate').value = t;
+    document.getElementById('toDate').value = t;
+    document.getElementById('apiBase').value = '';
+    setRangePill(t,t);
+    showCorsHint();
+  })();
+</script>
+</body>
+</html>

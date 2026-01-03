@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>لوحة الأدمن - إدارة الباقات والعروض</title>
+  <style>
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial}
+    body{margin:0;background:#f4f6fb;color:#1f2933}
+    .page{max-width:1200px;margin:24px auto;padding:16px}
+    .top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    h1{margin:0;font-size:20px}
+    .muted{color:#64748b;font-size:13px}
+    .card{background:#fff;border-radius:18px;box-shadow:0 12px 40px rgba(15,23,42,.08);padding:14px}
+    .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}
+    @media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .pill{border:1px solid #e2e8f0;background:#f8fafc;border-radius:999px;padding:6px 10px;font-size:12px;color:#334155}
+    .btn{cursor:pointer;border:0;border-radius:12px;padding:10px 12px;font-weight:800}
+    .btn.primary{background:#224fbd;color:#fff}
+    .btn.ghost{background:#eef2ff;color:#1e40af}
+    .btn.danger{background:#fee2e2;color:#991b1b}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .field{display:grid;gap:6px;margin-top:10px}
+    .field label{font-size:12px;color:#475569}
+    input,select{width:100%;padding:11px 12px;border-radius:12px;border:1px solid #e2e8f0;background:#fff;font-size:14px}
+    table{width:100%;border-collapse:separate;border-spacing:0 10px}
+    th{font-size:12px;color:#64748b;text-align:right;padding:0 8px}
+    td{background:#fff;border:1px solid #e2e8f0;padding:10px 8px}
+    tr td:first-child{border-radius:14px 0 0 14px}
+    tr td:last-child{border-radius:0 14px 14px 0}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+    .ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
+    .bad{background:#fef2f2;border-color:#fecaca;color:#7f1d1d}
+    .warn{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+    .preview{border:1px dashed #e2e8f0;background:#f8fafc;border-radius:16px;padding:10px 12px;margin-top:10px}
+    .old{color:#94a3b8;text-decoration:line-through;font-weight:800}
+    .badge{display:inline-block;margin:6px 0;font-size:12px;font-weight:900;padding:5px 10px;border-radius:999px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}
+    .new{font-size:18px;font-weight:900}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top">
+      <div>
+        <h1>إدارة الباقات والعروض</h1>
+        <div class="muted">إضافة/تعديل/إيقاف/تفعيل/حذف الباقات + عروض (نسبة أو مبلغ) وتظهر للعميل بسعر قديم مشطوب + <b>عرض حصري</b></div>
+      </div>
+      <div class="row">
+        <span class="pill">X-ADMIN-KEY</span>
+        <input id="adminKey" style="width:240px" placeholder="مثال: NADER-ADMIN-123" />
+        <button class="btn ghost" id="btnSaveKey">حفظ</button>
+        <button class="btn primary" id="btnReload">تحديث</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2 style="margin:0 0 10px 0;font-size:16px">إضافة/تعديل باقة</h2>
+
+        <div class="row">
+          <span class="pill" id="modePill">وضع: إضافة</span>
+          <span class="pill mono" id="editIdPill" style="display:none">ID</span>
+        </div>
+
+        <div class="field">
+          <label>اسم الباقة</label>
+          <input id="name" placeholder="مثال: شهر / 3 أشهر / سنة" />
+        </div>
+
+        <div class="row">
+          <div class="field" style="flex:1;min-width:160px">
+            <label>المدة (بالأيام)</label>
+            <input id="days" type="number" min="1" value="30" />
+          </div>
+          <div class="field" style="flex:1;min-width:160px">
+            <label>السعر (ر.س)</label>
+            <input id="price" type="number" min="0" step="0.01" value="49" />
+          </div>
+          <div class="field" style="flex:1;min-width:170px">
+            <label>حالة الباقة</label>
+            <select id="isActive">
+              <option value="true">مفعّلة</option>
+              <option value="false">موقوفة</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field" style="flex:1;min-width:190px">
+            <label>نوع العرض</label>
+            <select id="offerType">
+              <option value="">بدون عرض</option>
+              <option value="PERCENT">نسبة %</option>
+              <option value="AMOUNT">مبلغ (ر.س)</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1;min-width:190px">
+            <label>قيمة العرض</label>
+            <input id="offerValue" type="number" min="0" step="0.01" placeholder="مثال: 20 أو 10" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field" style="flex:1;min-width:240px">
+            <label>بداية العرض (اختياري)</label>
+            <input id="offerStart" type="datetime-local" />
+          </div>
+          <div class="field" style="flex:1;min-width:240px">
+            <label>نهاية العرض (اختياري)</label>
+            <input id="offerEnd" type="datetime-local" />
+          </div>
+        </div>
+
+        <div class="preview" id="previewBox"></div>
+
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary" id="btnSave">حفظ</button>
+          <button class="btn ghost" id="btnReset">جديد</button>
+        </div>
+
+        <div class="row" style="margin-top:10px" id="msgRow"></div>
+      </div>
+
+      <div class="card">
+        <h2 style="margin:0 0 10px 0;font-size:16px">قائمة الباقات</h2>
+        <div class="row" style="margin-bottom:10px">
+          <span class="pill warn">حذف الباقة مسموح فقط إذا ما لها مفاتيح (Serials)</span>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>الاسم</th>
+              <th>الأيام</th>
+              <th>السعر</th>
+              <th>العرض</th>
+              <th>الحالة</th>
+              <th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const $ = (id)=>document.getElementById(id);
+  const keyStore = "nader_admin_key_v1";
+
+  $("adminKey").value = localStorage.getItem(keyStore) || "";
+
+  function headers(){
+    const k = ($("adminKey").value||"").trim();
+    return k ? { "X-ADMIN-KEY": k } : {};
+  }
+  async function api(path, opts={}){
+    const r = await fetch(path, {
+      ...opts,
+      headers: { "Content-Type":"application/json", ...(opts.headers||{}), ...headers() }
+    });
+    const txt = await r.text();
+    let j=null;
+    try{ j = txt ? JSON.parse(txt) : null; }catch{}
+    return { r, txt, j };
+  }
+
+  function pill(text, tone=""){
+    const span=document.createElement("span");
+    span.className="pill";
+    if(tone==="ok") span.classList.add("ok");
+    if(tone==="bad") span.classList.add("bad");
+    if(tone==="warn") span.classList.add("warn");
+    span.textContent=text;
+    return span;
+  }
+
+  function money(v){
+    try{ return (Number(v)||0).toLocaleString("ar-SA",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+    catch{ return v; }
+  }
+  function escapeHtml(s){
+    return (s||"").replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+  }
+
+  function toIsoFromLocal(localValue){
+    // datetime-local => ISO string (UTC)
+    if(!localValue) return null;
+    const d = new Date(localValue);
+    if(isNaN(d.getTime())) return null;
+    return d.toISOString();
+  }
+
+  function setLocalFromIso(inputEl, iso){
+    if(!iso){ inputEl.value=""; return; }
+    const d = new Date(iso);
+    if(isNaN(d.getTime())){ inputEl.value=""; return; }
+    // datetime-local expects local time without seconds
+    const pad=n=>String(n).padStart(2,"0");
+    const y=d.getFullYear(), m=pad(d.getMonth()+1), da=pad(d.getDate());
+    const hh=pad(d.getHours()), mm=pad(d.getMinutes());
+    inputEl.value = `${y}-${m}-${da}T${hh}:${mm}`;
+  }
+
+  // state
+  let editId = null;
+  let cache = [];
+
+  function updateMode(){
+    $("modePill").textContent = editId ? "وضع: تعديل" : "وضع: إضافة";
+    $("editIdPill").style.display = editId ? "inline-flex" : "none";
+    $("editIdPill").textContent = editId ? ("ID: " + editId) : "";
+  }
+
+  function preview(){
+    const name = ($("name").value||"").trim() || "اسم الباقة";
+    const days = Number($("days").value||0) || 0;
+    const price = Number($("price").value||0) || 0;
+    const offerType = $("offerType").value;
+    const offerValue = Number($("offerValue").value||0) || 0;
+
+    let hasOffer = offerType && offerValue>0;
+    let final = price;
+    let offerTxt = "";
+
+    if(hasOffer){
+      if(offerType==="PERCENT"){
+        final = price - (price * offerValue / 100);
+        offerTxt = `خصم ${offerValue}%`;
+      }else{
+        final = price - offerValue;
+        offerTxt = `خصم ${money(offerValue)} ر.س`;
+      }
+      if(final < 0) final = 0;
+      final = Math.round(final*100)/100;
+    }
+
+    $("previewBox").innerHTML = `
+      <div style="font-weight:900">${escapeHtml(name)} <span class="pill">${days} يوم</span></div>
+      ${hasOffer? `<div class="old">${money(price)} ر.س</div><div class="badge">🔥 عرض حصري • ${escapeHtml(offerTxt)}</div><div class="new">${money(final)} ر.س</div>`
+                : `<div class="new">${money(price)} ر.س</div>`}
+      <div class="muted" style="margin-top:6px">هذا مجرد معاينة كيف يشوفها العميل.</div>
+    `;
+  }
+
+  ["name","days","price","offerType","offerValue","offerStart","offerEnd"].forEach(id=>{
+    $(id).addEventListener("input", preview);
+    $(id).addEventListener("change", preview);
+  });
+
+  function msg(text, tone){
+    const row=$("msgRow");
+    row.innerHTML="";
+    row.appendChild(pill(text,tone));
+  }
+
+  async function load(){
+    $("tbody").innerHTML = "";
+    msg("جاري التحميل...","");
+
+    const { r, j, txt } = await api("/api/admin/plans");
+    if(r.status===401){ msg("401 غير مصرح — تحقق من AdminKey","bad"); return; }
+    if(!r.ok){ msg("فشل التحميل: " + txt,"bad"); return; }
+    cache = j.plans || [];
+    msg("تم التحميل ✅","ok");
+
+    for(const p of cache){
+      const tr=document.createElement("tr");
+
+      const offer = (p.offerType && p.offerValue)
+        ? (p.offerType==="PERCENT" ? (`${p.offerValue}%`) : (`${money(p.offerValue)} ر.س`))
+        : "-";
+
+      const status = p.isActive ? "مفعّلة" : "موقوفة";
+
+      tr.innerHTML = `
+        <td class="mono">${p.id}</td>
+        <td>${escapeHtml(p.name||"")}</td>
+        <td>${p.days}</td>
+        <td>${money(p.price)} ر.س</td>
+        <td>${escapeHtml(offer)}</td>
+        <td>${status}</td>
+        <td>
+          <div class="row">
+            <button class="btn ghost" data-act="edit" data-id="${p.id}">تعديل</button>
+            ${p.isActive
+              ? `<button class="btn ghost" data-act="disable" data-id="${p.id}">إيقاف</button>`
+              : `<button class="btn ghost" data-act="enable" data-id="${p.id}">تفعيل</button>`}
+            <button class="btn danger" data-act="delete" data-id="${p.id}">حذف</button>
+          </div>
+        </td>
+      `;
+      $("tbody").appendChild(tr);
+    }
+  }
+
+  function fillForm(p){
+    editId = p.id;
+    $("name").value = p.name || "";
+    $("days").value = p.days ?? 0;
+    $("price").value = p.price ?? 0;
+    $("isActive").value = (p.isActive ? "true" : "false");
+    $("offerType").value = (p.offerType||"");
+    $("offerValue").value = (p.offerValue ?? "");
+    setLocalFromIso($("offerStart"), p.offerStart);
+    setLocalFromIso($("offerEnd"), p.offerEnd);
+    updateMode();
+    preview();
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+
+  function reset(){
+    editId = null;
+    $("name").value = "";
+    $("days").value = 30;
+    $("price").value = 49;
+    $("isActive").value = "true";
+    $("offerType").value = "";
+    $("offerValue").value = "";
+    $("offerStart").value = "";
+    $("offerEnd").value = "";
+    updateMode();
+    preview();
+  }
+
+  $("btnSaveKey").onclick = ()=>{
+    const k = ($("adminKey").value||"").trim();
+    localStorage.setItem(keyStore, k);
+    msg("تم حفظ AdminKey ✅","ok");
+  };
+  $("btnReload").onclick = load;
+  $("btnReset").onclick = reset;
+
+  $("btnSave").onclick = async ()=>{
+    const payload = {
+      name: ($("name").value||"").trim(),
+      days: Number($("days").value||0),
+      price: Number($("price").value||0),
+      isActive: $("isActive").value==="true",
+      offerType: $("offerType").value || null,
+      offerValue: $("offerValue").value ? Number($("offerValue").value) : null,
+      offerStart: toIsoFromLocal($("offerStart").value),
+      offerEnd: toIsoFromLocal($("offerEnd").value)
+    };
+
+    const isEdit = !!editId;
+    const url = isEdit ? `/api/admin/plans/${editId}` : "/api/admin/plans";
+    const method = isEdit ? "PUT" : "POST";
+
+    msg("جاري الحفظ...","");
+    const { r, txt } = await api(url, { method, body: JSON.stringify(payload) });
+    if(r.status===401){ msg("401 غير مصرح — تحقق من AdminKey","bad"); return; }
+    if(!r.ok){ msg("فشل الحفظ: " + txt,"bad"); return; }
+    msg("تم الحفظ ✅","ok");
+    reset();
+    await load();
+  };
+
+  $("tbody").onclick = async (e)=>{
+    const btn = e.target.closest("button");
+    if(!btn) return;
+    const act = btn.getAttribute("data-act");
+    const id = btn.getAttribute("data-id");
+    if(!act || !id) return;
+
+    const pid = Number(id);
+    const p = cache.find(x=>Number(x.id)===pid);
+
+    if(act==="edit" && p){ fillForm(p); return; }
+
+    if(act==="enable" || act==="disable"){
+      msg("جاري التنفيذ...","");
+      const { r, txt } = await api(`/api/admin/plans/${pid}/${act}`, { method:"POST" });
+      if(r.status===401){ msg("401 غير مصرح — تحقق من AdminKey","bad"); return; }
+      if(!r.ok){ msg("فشل: " + txt,"bad"); return; }
+      msg("تم ✅","ok");
+      await load();
+      return;
+    }
+
+    if(act==="delete"){
+      if(!confirm("حذف الباقة؟ (لن يسمح إذا كانت مستخدمة بمفاتيح)")) return;
+      msg("جاري الحذف...","");
+      const { r, txt } = await api(`/api/admin/plans/${pid}`, { method:"DELETE" });
+      if(r.status===401){ msg("401 غير مصرح — تحقق من AdminKey","bad"); return; }
+      if(!r.ok){ msg("فشل الحذف: " + txt,"bad"); return; }
+      msg("تم الحذف ✅","ok");
+      await load();
+      return;
+    }
+  };
+
+  // init
+  updateMode();
+  preview();
+  load();
+})();
+</script>
+</body>
+</html>

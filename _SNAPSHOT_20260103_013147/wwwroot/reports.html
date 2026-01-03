@@ -1,0 +1,659 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<script>
+function money(v){
+  try{
+    const n = Number(v);
+    if(!isFinite(n)) return '0.00';
+    return n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }catch{ return '0.00'; }
+}
+</script>
+<script>
+/* ===== GLOBAL MONEY FORMATTER (KSA SAFE) ===== */
+window.money = function (v) {
+  if (v === null || v === undefined || v === "" || isNaN(v)) return "0.00";
+  return Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+</script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>التقارير</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card: rgba(255,255,255,.10);
+      --card2: rgba(255,255,255,.08);
+      --line: rgba(255,255,255,.14);
+      --text:#e5e7eb;
+      --muted:#9ca3af;
+      --good:#22c55e;
+      --bad:#ef4444;
+      --warn:#f59e0b;
+      --sky:#38bdf8;
+      --radius:16px;
+      --shadow: 0 14px 30px rgba(0,0,0,.22);
+    }
+    *{ box-sizing:border-box }
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,"Segoe UI",Tahoma,Arial;
+      background: radial-gradient(1000px 500px at 15% 0%, rgba(56,189,248,.25), transparent 60%),
+                  radial-gradient(900px 450px at 85% 0%, rgba(34,197,94,.18), transparent 60%),
+                  linear-gradient(180deg, #0b1220, #070b14 70%);
+      color:var(--text);
+    }
+    header{
+      position:sticky; top:0; z-index:10;
+      backdrop-filter: blur(12px);
+      background: rgba(3,7,18,.55);
+      border-bottom:1px solid var(--line);
+    }
+    .wrap{ max-width:1200px; margin:0 auto; padding:14px 14px 24px; }
+    .topbar{ display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+    .brand{ display:flex; align-items:center; gap:10px; }
+    .logo{
+      width:38px; height:38px; border-radius:12px;
+      background: linear-gradient(135deg, rgba(56,189,248,.9), rgba(34,197,94,.75));
+      box-shadow: var(--shadow);
+    }
+    .brand h1{ margin:0; font-size:18px; }
+    .brand small{ display:block; color:var(--muted); margin-top:2px; }
+    .btn{
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.10);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:700;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      user-select:none;
+    }
+    .btn:hover{ filter:brightness(1.08); transform: translateY(-1px); }
+    .btn.primary{ background: rgba(56,189,248,.18); border-color: rgba(56,189,248,.35); }
+    .btn.ghost{ background: transparent; }
+
+    .card{
+      background: var(--card);
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:12px 12px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.06);
+    }
+    .card .bd{ padding:12px; }
+    .muted{ color:var(--muted); }
+
+    .filters{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap:10px;
+    }
+    .f{ grid-column: span 3; display:flex; flex-direction:column; gap:6px; }
+    .f label{ font-size:12px; color: var(--muted); }
+    input,select{
+      width:100%;
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(17,24,39,.45);
+      color: var(--text);
+      outline:none;
+    }
+    input:focus,select:focus{ border-color: rgba(56,189,248,.65); box-shadow: 0 0 0 3px rgba(56,189,248,.12); }
+    .actions{
+      grid-column: span 3;
+      display:flex; gap:10px; align-items:end; justify-content:flex-end;
+    }
+
+    .kpis{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap:12px;
+    }
+    .kpi{
+      grid-column: span 3;
+      padding:12px;
+      border-radius: 16px;
+      background: var(--card2);
+      border:1px solid rgba(255,255,255,.12);
+    }
+    .kpi .t{ font-size:12px; color:var(--muted); }
+    .kpi .v{ font-size:22px; font-weight:900; margin-top:6px; letter-spacing:.2px; }
+    .kpi .s{ margin-top:6px; font-size:12px; color:var(--muted); }
+    .v.good{ color:var(--good); }
+    .v.bad{ color:var(--bad); }
+    .v.warn{ color:var(--warn); }
+
+    table{ width:100%; border-collapse: collapse; }
+    th,td{
+      padding:10px 8px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      text-align:right;
+      font-size:13px;
+    }
+    thead th{
+      background: rgba(255,255,255,.06);
+      color: #dbeafe;
+      font-weight:800;
+    }
+
+    .row{ display:grid; gap:12px; grid-template-columns: 1.2fr .8fr; }
+    .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      font-size:12px;
+    }
+    .msg{
+      padding:10px 12px; border-radius:14px;
+      border:1px dashed rgba(255,255,255,.18);
+      background: rgba(255,255,255,.05);
+      color: var(--muted);
+      white-space:pre-wrap;
+    }
+
+    @media (max-width: 980px){
+      .f{ grid-column: span 6; }
+      .actions{ grid-column: span 12; justify-content:stretch; }
+      .actions .btn{ width:100%; }
+      .kpi{ grid-column: span 6; }
+      .row{ grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px){
+      .kpi{ grid-column: span 12; }
+    }
+
+    @media print{
+      header, .noPrint { display:none !important; }
+      body{ background:#fff; color:#111; }
+      .card{ box-shadow:none; border:0; background:#fff; }
+      .kpi{ background:#fff; border:1px solid #ddd; }
+      .msg{ display:none; }
+      th,td{ border-bottom:1px solid #ddd; color:#111; }
+    }
+  </style>
+<script>
+function setDateInputsYmd(){
+  try{
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const today = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+    const fromEl = document.getElementById('from') || document.querySelector('input[type="date"][name="from"]');
+    const toEl   = document.getElementById('to')   || document.querySelector('input[type="date"][name="to"]');
+    if(fromEl && !/^\d{4}-\d{2}-\d{2}$/.test(fromEl.value)) fromEl.value = today;
+    if(toEl   && !/^\d{4}-\d{2}-\d{2}$/.test(toEl.value))   toEl.value = today;
+  }catch(e){}
+}
+</script>
+</head>
+<body>
+<header class="noPrint">
+<script>
+function money(v){
+  try{
+    const n = Number(v);
+    if(!isFinite(n)) return '0.00';
+    return n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }catch{ return '0.00'; }
+}
+</script>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <h1>التقارير</h1>
+          <small>فلترة + ملخصات</small>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn ghost" href="/index.html">الرئيسية</a>
+        <a class="btn ghost" href="/products.html">المنتجات</a>
+        <a class="btn ghost" href="/cashier.html">الكاشير</a>
+        <a class="btn ghost" href="/invoices.html">فواتير الكاشير</a>
+        <a class="btn ghost" href="/customers.html">العملاء</a>
+        <a class="btn ghost" href="/suppliers.html">الموردين</a>
+        <a class="btn ghost" href="/expenses.html">المصروفات</a>
+        <a class="btn ghost" href="/backup.html">النسخ الاحتياطي</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="card noPrint">
+    <div class="hd">
+      <div>
+        <b>الإعدادات</b>
+        <div class="muted" style="font-size:12px;margin-top:4px">افتحها من السيرفر: http://127.0.0.1:5050/reports.html</div>
+      </div>
+      <span id="rangePill" class="pill">—</span>
+    </div>
+    <div class="bd">
+      <div class="filters">
+        <div class="f" style="grid-column: span 6;">
+          <label>رابط السيرفر (API Base URL)</label>
+          <input id="apiBase" placeholder="http://127.0.0.1:5050" />
+          <div class="muted" style="font-size:12px">اتركه فاضي إذا فاتح الصفحة من داخل السيرفر</div>
+        </div>
+
+        <div class="f">
+          <label>من تاريخ</label>
+          <input id="fromDate" type="date" />
+        </div>
+        <div class="f">
+          <label>إلى تاريخ</label>
+          <input id="toDate" type="date" />
+        </div>
+        <div class="f">
+          <label>قريب الانتهاء (بالأيام)</label>
+          <input id="nearDays" type="number" min="1" value="30" />
+        </div>
+
+        <div class="actions">
+          <button id="btnLoad" class="btn primary" type="button">تحديث التقارير</button>
+          <button id="btnToday" class="btn" type="button">اليوم</button>
+          <button id="btnPrintA4" class="btn" type="button">طباعة A4</button>
+          <button id="btnPrint80" class="btn" type="button">طباعة كاشير (80mm)</button>
+        </div>
+      </div>
+
+      <div id="msg" class="msg" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div style="height:12px"></div>
+
+  <div class="card">
+    <div class="hd">
+      <b>ملخص سريع</b>
+      <span class="muted" style="font-size:12px">الأرقام محسوبة من السيرفر</span>
+    </div>
+    <div class="bd">
+      <div class="kpis">
+        <div class="kpi">
+          <div class="t">صافي المبيعات</div>
+          <div id="kNetSales" class="v good">0.00</div>
+          <div id="kNetSalesS" class="s">—</div>
+        </div>
+        <div class="kpi">
+          <div class="t">إجمالي المبيعات</div>
+          <div id="kGross" class="v">0.00</div>
+          <div id="kGrossS" class="s">—</div>
+        </div>
+        <div class="kpi">
+          <div class="t">إجمالي الضريبة</div>
+          <div id="kVat" class="v">0.00</div>
+          <div id="kVatS" class="s">—</div>
+        </div>
+        <div class="kpi">
+          <div class="t">إجمالي المرتجع</div>
+          <div id="kReturns" class="v warn">0.00</div>
+          <div id="kReturnsS" class="s">—</div>
+        </div>
+
+        <div class="kpi">
+          <div class="t">نقدي</div>
+          <div id="kCash" class="v">0.00</div>
+          <div class="s muted">مبيعات نقدية</div>
+        </div>
+        <div class="kpi">
+          <div class="t">شبكة</div>
+          <div id="kCard" class="v">0.00</div>
+          <div class="s muted">مبيعات شبكة</div>
+        </div>
+        <div class="kpi">
+          <div class="t">مؤجل</div>
+          <div id="kDeferredSales" class="v">0.00</div>
+          <div class="s muted">مبيعات مؤجلة ضمن الفترة</div>
+        </div>
+        <div class="kpi">
+          <div class="t">المصروفات</div>
+          <div id="kExpenses" class="v bad">0.00</div>
+          <div class="s muted">ضمن الفترة</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:12px"></div>
+
+  <div class="row">
+    <div class="card">
+      <div class="hd"><b>العملاء</b><span class="muted" style="font-size:12px">ملخص</span></div>
+      <div class="bd">
+        <div class="kpis">
+          <div class="kpi">
+            <div class="t">ديون ضمن الفترة</div>
+            <div id="kCustInv" class="v">0.00</div>
+            <div class="s muted">—</div>
+          </div>
+          <div class="kpi">
+            <div class="t">مسدد ضمن الفترة</div>
+            <div id="kCustPay" class="v good">0.00</div>
+            <div class="s muted">—</div>
+          </div>
+          <div class="kpi">
+            <div class="t">صافي الحركة ضمن الفترة</div>
+            <div id="kCustNet" class="v">0.00</div>
+            <div class="s muted">—</div>
+          </div>
+          <div class="kpi">
+            <div class="t">الرصيد المتبقي (كل الوقت)</div>
+            <div id="kCustOutstanding" class="v warn">0.00</div>
+            <div class="s muted">—</div>
+          </div>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:8px">
+          * هذه الخانات تظهر إذا كانت قيمها موجودة في summary endpoint.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><b>الموردين</b><span class="muted" style="font-size:12px">ملخص</span></div>
+      <div class="bd">
+        <div class="kpis">
+          <div class="kpi">
+            <div class="t">مشتريات ضمن الفترة</div>
+            <div id="kSupPurch" class="v">0.00</div>
+            <div class="s muted">—</div>
+          </div>
+          <div class="kpi">
+            <div class="t">مدفوعات ضمن الفترة</div>
+            <div id="kSupPaid" class="v good">0.00</div>
+            <div class="s muted">—</div>
+          </div>
+          <div class="kpi">
+            <div class="t">صافي الحركة ضمن الفترة</div>
+            <div id="kSupNet" class="v">0.00</div>
+            <div class="s muted">—</div>
+          </div>
+          <div class="kpi">
+            <div class="t">المتبقي (كل الوقت)</div>
+            <div id="kSupOutstanding" class="v warn">0.00</div>
+            <div class="s muted">—</div>
+          </div>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:8px">
+          * هذه الخانات تظهر إذا كانت قيمها موجودة في summary endpoint.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:12px"></div>
+
+  <div class="card">
+    <div class="hd"><b>إحصائيات المنتجات</b><span class="muted" style="font-size:12px">عروض/انتهاء/نفذ</span></div>
+    <div class="bd">
+      <div class="kpis">
+        <div class="kpi">
+          <div class="t">عدد المنتجات</div>
+          <div id="kProdTotal" class="v">0</div>
+          <div class="s muted">Total</div>
+        </div>
+        <div class="kpi">
+          <div class="t">عروض فعالة</div>
+          <div id="kOffersActive" class="v good">0</div>
+          <div class="s muted">Offers Active</div>
+        </div>
+        <div class="kpi">
+          <div class="t">قريبة الانتهاء</div>
+          <div id="kExpiryNear" class="v warn">0</div>
+          <div class="s muted">Near Expiry</div>
+        </div>
+        <div class="kpi">
+          <div class="t">منتهية الصلاحية</div>
+          <div id="kExpiryExpired" class="v bad">0</div>
+          <div class="s muted">Expired</div>
+        </div>
+        <div class="kpi">
+          <div class="t">نافذة (كمية=0)</div>
+          <div id="kOutStock" class="v bad">0</div>
+          <div class="s muted">Out of Stock</div>
+        </div>
+        <div class="kpi">
+          <div class="t">منخفضة المخزون</div>
+          <div id="kLowStock" class="v warn">0</div>
+          <div class="s muted">Low Stock</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:12px"></div>
+
+  <div class="card">
+    <div class="hd"><b>تفصيل سريع</b><span class="muted" style="font-size:12px">مراجعة</span></div>
+    <div class="bd">
+      <table>
+        <thead>
+          <tr>
+            <th>البند</th>
+            <th>القيمة</th>
+            <th>ملاحظات</th>
+          </tr>
+        </thead>
+        <tbody id="detailsBody">
+          <tr><td colspan="3" class="muted">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = (sel) => document.querySelector(sel);
+
+  const fmtMoney = (n) => {
+    const v = Number(n ?? 0);
+    return v.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  const fmtInt = (n) => (Number(n ?? 0) || 0).toLocaleString('ar-SA');
+
+  const getToken = () =>
+    localStorage.getItem('emp_token') ||
+    localStorage.getItem('token') ||
+    localStorage.getItem('authToken') ||
+    localStorage.getItem('jwt') ||
+    localStorage.getItem('access_token') ||
+    sessionStorage.getItem('emp_token') ||
+    sessionStorage.getItem('token') ||
+    sessionStorage.getItem('authToken') ||
+    sessionStorage.getItem('jwt') ||
+    sessionStorage.getItem('access_token') ||
+    '';const apiBase = () => {
+    const inp = document.getElementById('apiBase');
+    const v = (inp && inp.value ? String(inp.value).trim() : '');
+    if (v) return v.replace(/\/$/, '');
+    const b = (window.API_BASE || '').trim();
+    if (b) return b.replace(/\/$/, '');
+    return location.origin.replace(/\/$/, '');
+  };
+
+  async function apiFetch(path, opts = {}) {
+    const url = path.startsWith('http') ? path : (apiBase() + path);
+    const token = getToken();
+    const headers = new Headers(opts.headers || {});
+    if (token) headers.set('Authorization', 'Bearer ' + token);
+    if (opts.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+
+    const res = await fetch(url, { cache: 'no-store', ...opts, headers });
+
+    if (res.status === 401) {
+      try { location.href = 'login.html'; } catch {}
+      throw new Error('Unauthorized');
+    }
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}: ${t}`);
+    }
+    const ct = res.headers.get('content-type') || '';
+    return ct.includes('application/json') ? res.json() : res.text();
+  }
+
+  function setText(id, val) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = (val === null || val === undefined || val === '') ? '—' : String(val);
+  }
+  function setMoney(id, val) { setText(id, fmtMoney(val)); }
+  function setCount(id, val) { setText(id, fmtInt(val)); }
+
+  function todayYmd() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}
+  function fmtDate(d){
+    try{ return new Date(d).toLocaleDateString('ar-SA'); }catch{ return ''; }
+  }
+-${m}-${day}`;
+  }
+
+  function applySummary(s) {
+    // ===== Main KPIs (مطابقة للـ IDs الموجودة بالشاشة) =====
+    const sales = +((s && s.salesTotal) ?? 0);
+    const returns = +((s && s.returnTotal) ?? 0);
+    const netSales = sales - returns;
+
+    setMoney('kNetSales', netSales);
+    setMoney('kGross', sales);
+    setMoney('kVat', +((s && s.vatTotal) ?? 0));
+    setMoney('kReturns', returns);
+    setMoney('kCash', +((s && s.cashTotal) ?? 0));
+    setMoney('kCard', +((s && s.cardTotal) ?? 0));
+    setMoney('kDeferredSales', +((s && s.deferredTotal) ?? 0));
+    setMoney('kExpenses', +((s && s.expensesTotal) ?? 0));
+
+    // Mirror to the small chips (إن وُجدت)
+    setText('kNetSalesS', money(netSales));
+    setText('kGrossS', money(sales));
+    setText('kVatS', money(+((s && s.vatTotal) ?? 0)));
+    setText('kReturnsS', money(returns));
+
+    // ===== Suppliers =====
+    setMoney('kSupPurch', +((s && s.suppliersRangePurchases) ?? 0));
+    setMoney('kSupPaid', +((s && s.suppliersRangePayments) ?? 0));
+    setMoney('kSupNet', +((s && s.suppliersRangeNet) ?? 0));
+    setMoney('kSupOutstanding', +((s && s.suppliersOutstandingAllTime) ?? 0));
+
+    // ===== Customers =====
+    setMoney('kCustInv', +((s && s.customersRangeDebits) ?? 0));
+    setMoney('kCustPay', +((s && s.customersRangePayments) ?? 0));
+    setMoney('kCustNet', +((s && s.customersRangeNet) ?? 0));
+    setMoney('kCustOutstanding', +((s && s.customersOutstandingAllTime) ?? 0));
+
+    // ===== Stock / Products =====
+    setCount('kProdTotal', +((s && s.productsCount) ?? 0));
+    setCount('kLowStock', +((s && s.lowStockCount) ?? 0));
+    setCount('kExpiryNear', +((s && s.expiryNearCount) ?? 0));
+
+    // حقول ما يجيها بيانات من summary حالياً -> خليها 0 بشكل واضح
+    setCount('kOffersActive', +((s && s.offersActiveCount) ?? 0));
+    setCount('kExpiryExpired', +((s && s.expiryExpiredCount) ?? 0));
+    setCount('kOutStock', +((s && s.outOfStockCount) ?? 0));
+
+    // ===== Range pill =====
+    try {
+      const f = s && s.from ? new Date(s.from) : null;
+      const t = s && s.to ? new Date(s.to) : null;
+      const label = (f && t) ? (fmtDate(f) + " → " + fmtDate(t)) : "";
+      setText('rangePill', label);
+    } catch {}
+  }
+
+
+  function setMsg(text, isErr=false){
+    const el = document.getElementById('msg');
+    if(!el) return;
+    el.textContent = text;
+    el.classList.toggle('bad', !!isErr);
+    el.classList.toggle('ok', !isErr);
+  }
+
+  async function load() {
+    const from = ($('#fromDate')?.value || todayYmd());
+    const to   = ($('#toDate')?.value || from);
+    const nearDays = Number($('#nearDays')?.value ?? 30) || 30;
+
+    setMsg('جاري التحميل…');
+
+    const q = new URLSearchParams({ from, to, expiryNearDays: String(nearDays) }).toString();
+    const s = await apiFetch(`/api/reports/summary?${q}`);
+
+    applySummary(s);
+    setMsg(`آخر تحديث: ${new Date().toLocaleString('ar-SA')}`);
+  }
+
+  function wire(){
+  try{ setDateInputsYmd(); }catch(e){}
+    try{ setDateInputsYmd(); }catch{}
+    try{
+      const inp = document.getElementById('apiBase');
+      if(inp){
+        inp.value = (localStorage.getItem('apiBase') || inp.value || '').trim();
+        if(!inp.value) inp.value = location.origin;
+        inp.addEventListener('change', ()=> localStorage.setItem('apiBase', inp.value.trim()));
+      }
+    }catch{}
+    if ($('#fromDate') && !$('#fromDate').value) $('#fromDate').value = todayYmd();
+    if ($('#toDate') && !$('#toDate').value) $('#toDate').value = $('#fromDate')?.value || todayYmd();
+
+    document.getElementById('btnToday')?.addEventListener('click', () => {
+      const t = todayYmd();
+      if ($('#fromDate')) $('#fromDate').value = t;
+      if ($('#toDate')) $('#toDate').value = t;
+      load().catch(showErr);
+    });
+
+    document.getElementById('btnLoad')?.addEventListener('click', () => load().catch(showErr));
+
+    load().catch(showErr);
+  }
+
+  function showErr(err){
+    console.error(err);
+    setMsg('❌ فشل تحميل التقرير (شوف Console)', true);
+  }
+
+  document.addEventListener('DOMContentLoaded', wire);
+})();
+</script>
+
+
+
+<script src="/js/auth.js"></script>
+<script>
+(async ()=>{
+  await window.NaderAuth?.requireAuth({ permissionBit: 32, redirect:"/login.html" });
+})();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+

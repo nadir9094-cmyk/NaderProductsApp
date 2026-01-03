@@ -1,0 +1,275 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>الاشتراك والتفعيل</title>
+  <style>
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial}
+    body{margin:0;background:#f4f6fb;color:#1f2933}
+    .page{max-width:1100px;margin:24px auto;padding:16px}
+    .top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .title{display:flex;gap:10px;align-items:center}
+    .title .logo{width:44px;height:44px;border-radius:14px;background:#e8efff;display:flex;align-items:center;justify-content:center;color:#224fbd;font-weight:800}
+    h1{margin:0;font-size:20px}
+    .muted{color:#64748b;font-size:13px}
+    .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}
+    @media(min-width:980px){.grid{grid-template-columns:1.05fr .95fr}}
+    .card{background:#fff;border-radius:18px;box-shadow:0 12px 40px rgba(15,23,42,.08);padding:14px}
+    .card h2{margin:0 0 10px 0;font-size:16px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .pill{border:1px solid #e2e8f0;background:#f8fafc;border-radius:999px;padding:6px 10px;font-size:12px;color:#334155}
+    .btn{cursor:pointer;border:0;border-radius:12px;padding:10px 12px;font-weight:700}
+    .btn.primary{background:#224fbd;color:#fff}
+    .btn.ghost{background:#eef2ff;color:#1e40af}
+    .btn.danger{background:#fee2e2;color:#991b1b}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .field{display:grid;gap:6px;margin-top:10px}
+    .field label{font-size:12px;color:#475569}
+    input{width:100%;padding:11px 12px;border-radius:12px;border:1px solid #e2e8f0;background:#fff;font-size:14px}
+    .note{margin-top:10px;padding:10px 12px;border-radius:14px;background:#f8fafc;border:1px dashed #e2e8f0;color:#334155;font-size:13px;line-height:1.6}
+    .plans{display:grid;grid-template-columns:1fr;gap:10px}
+    @media(min-width:720px){.plans{grid-template-columns:1fr 1fr}}
+    .plan{border:1px solid #e2e8f0;border-radius:16px;padding:12px;display:flex;justify-content:space-between;gap:10px}
+    .plan .name{font-weight:800}
+    .priceBox{text-align:left;min-width:170px}
+    .old{color:#94a3b8;text-decoration:line-through;font-weight:700}
+    .badge{display:inline-block;margin-top:6px;font-size:12px;font-weight:800;padding:5px 10px;border-radius:999px;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}
+    .new{font-size:18px;font-weight:900;color:#0f172a;margin-top:2px}
+    .small{font-size:12px;color:#64748b}
+    .footer{margin-top:14px;font-size:12px;color:#64748b}
+    code{background:#f1f5f9;padding:2px 6px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top">
+      <div class="title">
+        <div class="logo">N</div>
+        <div>
+          <h1>الاشتراك والتفعيل</h1>
+          <div class="muted">تجربة 3 أيام ثم تفعيل بالسيريال • يعمل أوفلاين لفترة سماح</div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="pill" id="devicePill">DeviceId: ...</span>
+        <button class="btn ghost" id="btnRefresh">تحديث</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>حالة الاشتراك</h2>
+        <div class="row" id="statusRow"></div>
+
+        <div class="field">
+          <label>سيريال نمبر</label>
+          <input id="serial" placeholder="مثال: NADER-XXXX-XXXX-XXXX" autocomplete="off" />
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary" id="btnActivate">تفعيل</button>
+          <button class="btn ghost" id="btnTrial">بدء التجربة</button>
+          <button class="btn danger" id="btnClear">مسح السيريال</button>
+        </div>
+
+        <div class="note" id="noteBox">
+          للحصول على السيريال: راسل واتساب <b dir="ltr">0551601780</b> أو <b dir="ltr">+966551601780</b>.
+        </div>
+
+        <div class="footer">
+          تلميح: لو تغيّر وقت الجهاز للخلف كثير، النظام ممكن يطلب اتصال للتحقق (عشان ما يصير “رجوع بالزمن”… ولا ندخل في فيلم خيال علمي 😄)
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>الباقات المتاحة</h2>
+        <div class="plans" id="plans"></div>
+        <div class="footer">الأسعار بالريال السعودي. العروض تظهر تلقائيًا كسعر مشطوب + <b>عرض حصري</b>.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const API = (path, opts={}) => fetch(path, {
+    ...opts,
+    headers: { "Content-Type":"application/json", ...(opts.headers||{}) }
+  });
+
+  const $ = (id)=>document.getElementById(id);
+
+  // deviceId ثابت للجهاز - نخزنه محليًا
+  const deviceKey = "nader_device_id_v1";
+  function uuid(){
+    // RFC4122-ish
+    const a = crypto.getRandomValues(new Uint8Array(16));
+    a[6] = (a[6] & 0x0f) | 0x40;
+    a[8] = (a[8] & 0x3f) | 0x80;
+    const h = [...a].map(x=>x.toString(16).padStart(2,"0")).join("");
+    return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+  }
+  const deviceId = localStorage.getItem(deviceKey) || (localStorage.setItem(deviceKey, uuid()), localStorage.getItem(deviceKey));
+  $("devicePill").textContent = "DeviceId: " + deviceId;
+
+  const serialKey="nader_serial_v1";
+  $("serial").value = localStorage.getItem(serialKey) || "";
+
+  function fmtDate(iso){
+    try{
+      const d = new Date(iso);
+      return d.toLocaleString("ar-SA");
+    }catch{ return ""; }
+  }
+  function money(v){
+    try{ return (Number(v)||0).toLocaleString("ar-SA",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+    catch{ return v; }
+  }
+
+  function pill(text, tone=""){
+    const span=document.createElement("span");
+    span.className="pill";
+    if(tone==="ok") span.style.background="#ecfdf5", span.style.borderColor="#a7f3d0", span.style.color="#065f46";
+    if(tone==="bad") span.style.background="#fef2f2", span.style.borderColor="#fecaca", span.style.color="#7f1d1d";
+    if(tone==="warn") span.style.background="#fff7ed", span.style.borderColor="#fed7aa", span.style.color="#9a3412";
+    span.textContent=text;
+    return span;
+  }
+
+    async function loadPlans(){
+    const box = $("plans");
+    box.innerHTML = "";
+    try{
+      const r = await API("/api/subscription/plans");
+      const j = await r.json();
+      const plans = (j && j.plans) ? j.plans : [];
+
+      if(!plans.length){
+        box.appendChild(pill("لا توجد باقات حالياً","warn"));
+        return;
+      }
+
+      for(const p of plans){
+        const el = document.createElement("div");
+        el.className = "plan";
+
+        const left = document.createElement("div");
+        left.innerHTML = `<div class="name">${escapeHtml(p.name||"")}</div>
+                          <div class="small">${(p.months ? (p.months+" شهر") : "")}</div>`;
+
+        const right = document.createElement("div");
+        right.className = "priceBox";
+
+        const hasOffer = !!p.badgeText && (p.finalPrice != null) && (p.price != null) && (Number(p.finalPrice) < Number(p.price));
+        if(hasOffer){
+          right.innerHTML = `<div class="old">${money(p.price)} ر.س</div>
+                             <div class="badge">🔥 ${escapeHtml(p.badgeText||"عرض حصري")}</div>
+                             <div class="new">${money(p.finalPrice)} ر.س</div>`;
+        }else{
+          right.innerHTML = `<div class="new">${money(p.finalPrice ?? p.price ?? 0)} ر.س</div>`;
+        }
+
+        el.appendChild(left);
+        el.appendChild(right);
+        box.appendChild(el);
+      }
+    }catch(e){
+      box.appendChild(pill("تعذر تحميل الباقات (تحقق من السيرفر)","bad"));
+      console.error(e);
+    }
+  }
+
+  async function loadStatus(){
+    const row=$("statusRow");
+    row.innerHTML="";
+    try{
+      const r = await API(`/api/subscription/status?deviceId=${encodeURIComponent(deviceId)}`);
+      const j = await r.json();
+
+      if(j.isBlocked){
+        row.appendChild(pill("الحساب موقوف","bad"));
+        if(j.blockReason) row.appendChild(pill("السبب: " + j.blockReason,"warn"));
+      }
+
+      if(!j.hasSubscription){
+        row.appendChild(pill("لا يوجد اشتراك","warn"));
+        row.appendChild(pill(`تجربة ${j.trialDays} أيام`,""));
+        row.appendChild(pill(`سماح أوفلاين ${j.offlineGraceDays} أيام`,""));
+        return;
+      }
+
+      if(j.isActive){
+        row.appendChild(pill("الاشتراك نشط","ok"));
+      }else{
+        row.appendChild(pill("الاشتراك منتهي","bad"));
+      }
+
+      row.appendChild(pill("النوع: " + j.mode,""));
+      if(j.expiresUtc) row.appendChild(pill("ينتهي: " + fmtDate(j.expiresUtc),""));
+      if(j.serial) row.appendChild(pill("Serial: " + j.serial,""));
+    }catch(e){
+      row.appendChild(pill("تعذر جلب الحالة","bad"));
+      console.error(e);
+    }
+  }
+
+  function escapeHtml(s){
+    return (s||"").replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
+  }
+
+  $("btnRefresh").onclick = async ()=>{ await loadStatus(); await loadPlans(); };
+
+  $("btnClear").onclick = ()=>{ localStorage.removeItem(serialKey); $("serial").value=""; };
+
+  $("btnTrial").onclick = async ()=>{
+    try{
+      const r = await API("/api/subscription/start-trial", {
+        method:"POST",
+        body: JSON.stringify({ deviceId })
+      });
+      const j = await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(j?.toString?.()||"TRIAL_FAILED");
+      await loadStatus();
+      alert("تم بدء التجربة ✅");
+    }catch(e){
+      console.error(e);
+      alert("فشل بدء التجربة");
+    }
+  };
+
+  $("btnActivate").onclick = async ()=>{
+    const serial = ($("serial").value||"").trim();
+    if(!serial){ alert("اكتب السيريال"); return; }
+    try{
+      const r = await API("/api/subscription/activate", {
+        method:"POST",
+        body: JSON.stringify({ deviceId, serial })
+      });
+      const txt = await r.text();
+      if(!r.ok){
+        alert("فشل التفعيل: " + txt);
+        return;
+      }
+      localStorage.setItem(serialKey, serial);
+      await loadStatus();
+      alert("تم التفعيل ✅");
+    }catch(e){
+      console.error(e);
+      alert("فشل التفعيل");
+    }
+  };
+
+  // init
+  loadStatus();
+  loadPlans();
+})();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+

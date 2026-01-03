@@ -1,0 +1,2421 @@
+﻿using System.Text.Json;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using System.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using NaderProductsApp.Data;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using NaderProductsApp.Models;
+// SQLite removed
+var builder = WebApplication.CreateBuilder(args);
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
+builder.Services.Configure<BackupSettings>(builder.Configuration.GetSection("BackupSettings"));
+builder.Services.AddHostedService<DailyBackupService>();
+builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+
+var app = builder.Build();
+
+AuthApiV1.MapAuthApi(app);
+EmployeesApiV1.MapEmployeesApi(app);
+
+// Ensure default admin user exists: admin / admin123
+AuthApiV1.EnsureDefaultAdmin(app.Services);
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+app.MapGet("/health", () => Results.Ok("OK"));
+
+// ===== LICENSING_ADMIN_V1 =====
+
+// AdminKey: ضع قيمة في appsettings.json مثلاً:
+// { "AdminKey": "CHANGE_ME_123" }
+// وسترسل من لوحة الإدارة في الهيدر: X-ADMIN-KEY
+
+static string GetAdminKey(IConfiguration cfg)
+    => (cfg["AdminKey"] ?? cfg["Licensing:AdminKey"] ?? "").Trim();
+
+static bool CheckAdmin(HttpRequest req, IConfiguration cfg, out IResult? fail)
+{
+    fail = null;
+    var key = GetAdminKey(cfg);
+    if (string.IsNullOrWhiteSpace(key))
+    {
+        fail = Results.Problem("AdminKey is not configured in appsettings.json", statusCode: 500);
+        return false;
+    }
+    var got = (req.Headers["X-ADMIN-KEY"].ToString() ?? "").Trim();
+    if (string.IsNullOrWhiteSpace(got) || !string.Equals(got, key, StringComparison.Ordinal))
+    {
+        fail = Results.Unauthorized();
+        return false;
+    }
+    return true;
+}
+
+static async Task<Npgsql.NpgsqlConnection> OpenPg(IConfiguration cfg)
+{
+    var cs = cfg.GetConnectionString("Default");
+    if (string.IsNullOrWhiteSpace(cs)) throw new Exception("Missing connection string: Default");
+    var con = new Npgsql.NpgsqlConnection(cs);
+    await con.OpenAsync();
+    return con;
+}
+
+static async Task EnsureLicensingTables(IConfiguration cfg)
+{
+    await using var con = await OpenPg(cfg);
+    var sql = @"
+CREATE TABLE IF NOT EXISTS lic_plans (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  days INT NOT NULL,
+  price NUMERIC(12,2) NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  updated_utc TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS lic_keys (
+  id BIGSERIAL PRIMARY KEY,
+  serial TEXT NOT NULL UNIQUE,
+  plan_id BIGINT NOT NULL REFERENCES lic_plans(id) ON DELETE RESTRICT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  max_devices INT NOT NULL DEFAULT 1,
+  created_utc TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+";
+    await using var cmd = new Npgsql.NpgsqlCommand(sql, con);
+    await cmd.ExecuteNonQueryAsync();
+
+    // seed default plans if empty
+    var countSql = "SELECT COUNT(*) FROM lic_plans;";
+    await using var ccmd = new Npgsql.NpgsqlCommand(countSql, con);
+    var count = (long)(await ccmd.ExecuteScalarAsync() ?? 0L);
+    if (count == 0)
+    {
+        var seed = @"
+INSERT INTO lic_plans(name,days,price,is_active) VALUES
+ (N'شهر', 30, 49, TRUE),
+ (N'3 أشهر', 90, 129, TRUE),
+ (N'سنة', 365, 399, TRUE);
+";
+        await using var scmd = new Npgsql.NpgsqlCommand(seed, con);
+        await scmd.ExecuteNonQueryAsync();
+    }
+}
+
+// نضمن الجداول بعد migration (مرة واحدة عند تشغيل السيرفر)
+_ = EnsureLicensingTables(app.Configuration);
+
+
+static async Task EnsurePlanOfferColumns(IConfiguration cfg)
+{
+    await using var con = await OpenPg(cfg);
+    var sql = @"
+ALTER TABLE lic_plans
+  ADD COLUMN IF NOT EXISTS offer_type TEXT,
+  ADD COLUMN IF NOT EXISTS offer_value NUMERIC(12,2),
+  ADD COLUMN IF NOT EXISTS offer_start TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS offer_end TIMESTAMPTZ;
+";
+    await using var cmd = new Npgsql.NpgsqlCommand(sql, con);
+    await cmd.ExecuteNonQueryAsync();
+}
+_ = EnsurePlanOfferColumns(app.Configuration);
+
+
+// ---------- Public: Plans ----------
+app.MapGet("/api/subscription/plans", async (IConfiguration cfg) =>
+{
+    await using var con = await OpenPg(cfg);
+    var sql = @"SELECT id, name, days, price, is_active FROM lic_plans ORDER BY days;";
+    await using var cmd = new Npgsql.NpgsqlCommand(sql, con);
+    await using var rd = await cmd.ExecuteReaderAsync();
+    var list = new List<object>();
+    while (await rd.ReadAsync())
+    {
+        list.Add(new {
+            id = rd.GetInt64(0),
+            name = rd.GetString(1),
+            days = rd.GetInt32(2),
+            price = rd.GetDecimal(3),
+            isActive = rd.GetBoolean(4)
+        });
+    }
+    return Results.Ok(new { plans = list });
+});
+
+// ---------- Admin: Plans ----------
+app.MapGet("/api/admin/plans", async (HttpRequest req, IConfiguration cfg) =>
+{
+    if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+    await using var con = await OpenPg(cfg);
+
+    await using var cmd = new Npgsql.NpgsqlCommand(@"
+      SELECT id, name, days, price, is_active, updated_utc,
+             COALESCE(offer_type,''), COALESCE(offer_value,0),
+             offer_start, offer_end
+      FROM lic_plans
+      ORDER BY days ASC;", con);
+
+    var list = new List<object>();
+    await using var rd = await cmd.ExecuteReaderAsync();
+    while (await rd.ReadAsync())
+    {
+        list.Add(new
+        {
+            id = rd.GetInt64(0),
+            name = rd.GetString(1),
+            days = rd.GetInt32(2),
+            price = rd.GetDecimal(3),
+            isActive = rd.GetBoolean(4),
+            updatedUtc = rd.GetDateTime(5),
+
+            offerType = string.IsNullOrWhiteSpace(rd.GetString(6)) ? null : rd.GetString(6),
+            offerValue = rd.GetDecimal(7) <= 0m ? (decimal?)null : rd.GetDecimal(7),
+            offerStart = rd.IsDBNull(8) ? (DateTime?)null : rd.GetDateTime(8),
+            offerEnd   = rd.IsDBNull(9) ? (DateTime?)null : rd.GetDateTime(9)
+        });
+    }
+
+    return Results.Ok(new { ok = true, plans = list });
+});
+app.MapPost("/api/admin/plans", async (HttpRequest req, IConfiguration cfg) =>
+{
+    if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+    var body = await req.ReadFromJsonAsync<JsonElement>();
+    if (body.ValueKind != JsonValueKind.Object) return Results.BadRequest("INVALID_BODY");
+
+    var name = body.TryGetProperty("name", out var n) ? (n.GetString() ?? "").Trim() : "";
+    var days = body.TryGetProperty("days", out var d) && d.ValueKind == JsonValueKind.Number ? d.GetInt32() : 0;
+
+    decimal price = 0m;
+    if (body.TryGetProperty("price", out var p))
+    {
+        if (p.ValueKind == JsonValueKind.Number) price = p.GetDecimal();
+        else if (p.ValueKind == JsonValueKind.String) decimal.TryParse(p.GetString(), out price);
+    }
+
+    var isActive = body.TryGetProperty("isActive", out var a)
+        ? (a.ValueKind == JsonValueKind.True || (a.ValueKind == JsonValueKind.Number && a.GetInt32() != 0))
+        : true;
+
+    // Offer fields (optional)
+    string? offerType = null;
+    decimal? offerValue = null;
+    DateTime? offerStart = null;
+    DateTime? offerEnd = null;
+
+    if (body.TryGetProperty("offerType", out var ot) && ot.ValueKind == JsonValueKind.String)
+        offerType = (ot.GetString() ?? "").Trim().ToUpperInvariant();
+
+    if (body.TryGetProperty("offerValue", out var ov))
+    {
+        if (ov.ValueKind == JsonValueKind.Number) offerValue = ov.GetDecimal();
+        else if (ov.ValueKind == JsonValueKind.String && decimal.TryParse(ov.GetString(), out var vv)) offerValue = vv;
+    }
+
+    if (body.TryGetProperty("offerStart", out var os) && os.ValueKind == JsonValueKind.String && DateTime.TryParse(os.GetString(), out var ds)) offerStart = ds.ToUniversalTime();
+    if (body.TryGetProperty("offerEnd", out var oe) && oe.ValueKind == JsonValueKind.String && DateTime.TryParse(oe.GetString(), out var de)) offerEnd = de.ToUniversalTime();
+
+    // Validation
+    if (string.IsNullOrWhiteSpace(name)) return Results.BadRequest("NAME_REQUIRED");
+    if (days <= 0) return Results.BadRequest("DAYS_REQUIRED");
+    if (price < 0m) return Results.BadRequest("PRICE_INVALID");
+
+    if (!string.IsNullOrWhiteSpace(offerType) || (offerValue.HasValue && offerValue.Value > 0m))
+    {
+        if (offerType != "PERCENT" && offerType != "AMOUNT") return Results.BadRequest("OFFER_TYPE_INVALID");
+        if (!offerValue.HasValue || offerValue.Value <= 0m) return Results.BadRequest("OFFER_VALUE_REQUIRED");
+        if (offerType == "PERCENT" && offerValue.Value > 100m) return Results.BadRequest("OFFER_PERCENT_MAX_100");
+        if (offerStart.HasValue && offerEnd.HasValue && offerEnd.Value < offerStart.Value) return Results.BadRequest("OFFER_DATE_RANGE_INVALID");
+    }
+
+    await using var con = await OpenPg(cfg);
+    var sql = @"INSERT INTO lic_plans(name,days,price,is_active,offer_type,offer_value,offer_start,offer_end,updated_utc)
+                VALUES (@name,@days,@price,@act,@ot,@ov,@os,@oe,NOW()) RETURNING id;";
+    await using var cmd = new Npgsql.NpgsqlCommand(sql, con);
+    cmd.Parameters.AddWithValue("name", name);
+    cmd.Parameters.AddWithValue("days", days);
+    cmd.Parameters.AddWithValue("price", price);
+    cmd.Parameters.AddWithValue("act", isActive);
+    cmd.Parameters.AddWithValue("ot", (object?)offerType ?? DBNull.Value);
+    cmd.Parameters.AddWithValue("ov", (object?)offerValue ?? DBNull.Value);
+    cmd.Parameters.AddWithValue("os", (object?)offerStart ?? DBNull.Value);
+    cmd.Parameters.AddWithValue("oe", (object?)offerEnd ?? DBNull.Value);
+
+    var id = (long)(await cmd.ExecuteScalarAsync() ?? 0L);
+    return Results.Ok(new { ok = true, id });
+});
+app.MapPut("/api/admin/plans/{id:long}", async (long id, HttpRequest req, IConfiguration cfg) =>
+{
+    if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+    var body = await req.ReadFromJsonAsync<JsonElement>();
+    if (body.ValueKind != JsonValueKind.Object) return Results.BadRequest("INVALID_BODY");
+
+    var name = body.TryGetProperty("name", out var n) ? (n.GetString() ?? "").Trim() : "";
+    var days = body.TryGetProperty("days", out var d) && d.ValueKind == JsonValueKind.Number ? d.GetInt32() : 0;
+
+    decimal price = 0m;
+    if (body.TryGetProperty("price", out var p))
+    {
+        if (p.ValueKind == JsonValueKind.Number) price = p.GetDecimal();
+        else if (p.ValueKind == JsonValueKind.String) decimal.TryParse(p.GetString(), out price);
+    }
+
+    var isActive = body.TryGetProperty("isActive", out var a)
+        ? (a.ValueKind == JsonValueKind.True || (a.ValueKind == JsonValueKind.Number && a.GetInt32() != 0))
+        : true;
+
+    // Offer fields (optional)
+    string? offerType = null;
+    decimal? offerValue = null;
+    DateTime? offerStart = null;
+    DateTime? offerEnd = null;
+
+    if (body.TryGetProperty("offerType", out var ot) && ot.ValueKind == JsonValueKind.String)
+        offerType = (ot.GetString() ?? "").Trim().ToUpperInvariant();
+
+    if (body.TryGetProperty("offerValue", out var ov))
+    {
+        if (ov.ValueKind == JsonValueKind.Number) offerValue = ov.GetDecimal();
+        else if (ov.ValueKind == JsonValueKind.String && decimal.TryParse(ov.GetString(), out var vv)) offerValue = vv;
+    }
+
+    if (body.TryGetProperty("offerStart", out var os) && os.ValueKind == JsonValueKind.String && DateTime.TryParse(os.GetString(), out var ds)) offerStart = ds.ToUniversalTime();
+    if (body.TryGetProperty("offerEnd", out var oe) && oe.ValueKind == JsonValueKind.String && DateTime.TryParse(oe.GetString(), out var de)) offerEnd = de.ToUniversalTime();
+
+    // Validation
+    if (string.IsNullOrWhiteSpace(name)) return Results.BadRequest("NAME_REQUIRED");
+    if (days <= 0) return Results.BadRequest("DAYS_REQUIRED");
+    if (price < 0m) return Results.BadRequest("PRICE_INVALID");
+
+    bool anyOfferField = !string.IsNullOrWhiteSpace(offerType) || (offerValue.HasValue && offerValue.Value > 0m) || offerStart.HasValue || offerEnd.HasValue;
+    if (anyOfferField)
+    {
+        // allow clearing offer by sending offerType=null and offerValue=0 etc.
+        if (!string.IsNullOrWhiteSpace(offerType) && offerType != "PERCENT" && offerType != "AMOUNT") return Results.BadRequest("OFFER_TYPE_INVALID");
+        if (!string.IsNullOrWhiteSpace(offerType) && offerType == "PERCENT" && offerValue.HasValue && offerValue.Value > 100m) return Results.BadRequest("OFFER_PERCENT_MAX_100");
+        if (offerStart.HasValue && offerEnd.HasValue && offerEnd.Value < offerStart.Value) return Results.BadRequest("OFFER_DATE_RANGE_INVALID");
+    }
+
+    await using var con = await OpenPg(cfg);
+    var sql = @"UPDATE lic_plans
+                SET name=@name, days=@days, price=@price, is_active=@act,
+                    offer_type=@ot, offer_value=@ov, offer_start=@os, offer_end=@oe,
+                    updated_utc=NOW()
+                WHERE id=@id;";
+    await using var cmd = new Npgsql.NpgsqlCommand(sql, con);
+    cmd.Parameters.AddWithValue("id", id);
+    cmd.Parameters.AddWithValue("name", name);
+    cmd.Parameters.AddWithValue("days", days);
+    cmd.Parameters.AddWithValue("price", price);
+    cmd.Parameters.AddWithValue("act", isActive);
+    cmd.Parameters.AddWithValue("ot", (object?)offerType ?? DBNull.Value);
+    cmd.Parameters.AddWithValue("ov", (object?)offerValue ?? DBNull.Value);
+    cmd.Parameters.AddWithValue("os", (object?)offerStart ?? DBNull.Value);
+    cmd.Parameters.AddWithValue("oe", (object?)offerEnd ?? DBNull.Value);
+
+    var nrows = await cmd.ExecuteNonQueryAsync();
+    if (nrows == 0) return Results.NotFound();
+    return Results.Ok(new { ok = true });
+});
+
+app.MapPost("/api/admin/plans/{id:long}/enable", async (long id, HttpRequest req, IConfiguration cfg) =>
+{
+    if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+    await using var con = await OpenPg(cfg);
+    await using var cmd = new Npgsql.NpgsqlCommand("UPDATE lic_plans SET is_active=TRUE, updated_utc=NOW() WHERE id=@id;", con);
+    cmd.Parameters.AddWithValue("id", id);
+    var nrows = await cmd.ExecuteNonQueryAsync();
+    if (nrows == 0) return Results.NotFound();
+    return Results.Ok(new { ok = true });
+});
+
+app.MapPost("/api/admin/plans/{id:long}/disable", async (long id, HttpRequest req, IConfiguration cfg) =>
+{
+    if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+    await using var con = await OpenPg(cfg);
+    await using var cmd = new Npgsql.NpgsqlCommand("UPDATE lic_plans SET is_active=FALSE, updated_utc=NOW() WHERE id=@id;", con);
+    cmd.Parameters.AddWithValue("id", id);
+    var nrows = await cmd.ExecuteNonQueryAsync();
+    if (nrows == 0) return Results.NotFound();
+    return Results.Ok(new { ok = true });
+});
+
+app.MapDelete("/api/admin/plans/{id:long}", async (long id, HttpRequest req, IConfiguration cfg) =>
+{
+    if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+    await using var con = await OpenPg(cfg);
+
+    // لا تسمح بحذف باقة مستخدمة بمفاتيح
+    await using (var chk = new Npgsql.NpgsqlCommand("SELECT COUNT(*) FROM lic_keys WHERE plan_id=@id;", con))
+    {
+        chk.Parameters.AddWithValue("id", id);
+        var used = (long)(await chk.ExecuteScalarAsync() ?? 0L);
+        if (used > 0) return Results.BadRequest("PLAN_IN_USE");
+    }
+
+    await using var cmd = new Npgsql.NpgsqlCommand("DELETE FROM lic_plans WHERE id=@id;", con);
+    cmd.Parameters.AddWithValue("id", id);
+    var nrows = await cmd.ExecuteNonQueryAsync();
+    if (nrows == 0) return Results.NotFound();
+    return Results.Ok(new { ok = true });
+});
+// ---------- Admin: Licenses ----------
+static string GenSerial()
+{
+    // NADER-XXXX-XXXX-XXXX
+    string Part()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        var bytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(4);
+        var sb = new System.Text.StringBuilder(4);
+        foreach (var b in bytes) sb.Append(chars[b % chars.Length]);
+        return sb.ToString();
+    }
+    return $"NADER-{Part()}-{Part()}-{Part()}";
+}
+
+app.MapGet("/api/admin/licenses", async (HttpRequest req, IConfiguration cfg) =>
+{
+    if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+    int take = 200;
+    if (int.TryParse(req.Query["take"], out var t)) take = Math.Clamp(t, 1, 2000);
+
+    await using var con = await OpenPg(cfg);
+    var sql = @"
+SELECT k.id, k.serial, k.plan_id, p.name, p.days, p.price, k.is_active, k.max_devices, k.created_utc
+FROM lic_keys k
+JOIN lic_plans p ON p.id = k.plan_id
+ORDER BY k.id DESC
+LIMIT @take;";
+    await using var cmd = new Npgsql.NpgsqlCommand(sql, con);
+    cmd.Parameters.AddWithValue("take", take);
+    await using var rd = await cmd.ExecuteReaderAsync();
+    var list = new List<object>();
+    while (await rd.ReadAsync())
+    {
+        list.Add(new {
+            id = rd.GetInt64(0),
+            serial = rd.GetString(1),
+            planId = rd.GetInt64(2),
+            planName = rd.GetString(3),
+            planDays = rd.GetInt32(4),
+            planPrice = rd.GetDecimal(5),
+            isActive = rd.GetBoolean(6),
+            maxDevices = rd.GetInt32(7),
+            createdUtc = rd.GetDateTime(8)
+        });
+    }
+    return Results.Ok(new { licenses = list });
+});
+
+app.MapPost("/api/admin/licenses/generate", async (HttpRequest req, IConfiguration cfg) =>
+{
+    if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+    var body = await req.ReadFromJsonAsync<JsonElement>();
+    if (body.ValueKind != JsonValueKind.Object) return Results.BadRequest("INVALID_BODY");
+
+    var planId = body.TryGetProperty("planId", out var pid) && pid.ValueKind == JsonValueKind.Number ? pid.GetInt64() : 0;
+    var maxDevices = body.TryGetProperty("maxDevices", out var md) && md.ValueKind == JsonValueKind.Number ? md.GetInt32() : 1;
+    var count = body.TryGetProperty("count", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetInt32() : 1;
+
+    if (planId <= 0) return Results.BadRequest("PLAN_REQUIRED");
+    maxDevices = Math.Clamp(maxDevices, 1, 50);
+    count = Math.Clamp(count, 1, 200);
+
+    await using var con = await OpenPg(cfg);
+
+    // ensure plan exists
+    await using (var pcmd = new Npgsql.NpgsqlCommand("SELECT COUNT(*) FROM lic_plans WHERE id=@id;", con))
+    {
+        pcmd.Parameters.AddWithValue("id", planId);
+        var exists = (long)(await pcmd.ExecuteScalarAsync() ?? 0L);
+        if (exists == 0) return Results.BadRequest("PLAN_NOT_FOUND");
+    }
+
+    var created = new List<string>();
+    for (int i = 0; i < count; i++)
+    {
+        // retry few times to avoid unique collision
+        for (int tries = 0; tries < 5; tries++)
+        {
+            var serial = GenSerial();
+            try
+            {
+                var sql = "INSERT INTO lic_keys(serial,plan_id,is_active,max_devices,created_utc) VALUES (@s,@pid,TRUE,@md,NOW());";
+                await using var cmd = new Npgsql.NpgsqlCommand(sql, con);
+                cmd.Parameters.AddWithValue("s", serial);
+                cmd.Parameters.AddWithValue("pid", planId);
+                cmd.Parameters.AddWithValue("md", maxDevices);
+                await cmd.ExecuteNonQueryAsync();
+                created.Add(serial);
+                break;
+            }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505")
+            {
+                // unique violation, try again
+            }
+        }
+    }
+
+    return Results.Ok(new { created });
+});
+
+app.MapPost("/api/admin/licenses/{id:long}/set-active", async (long id, HttpRequest req, IConfiguration cfg) =>
+{
+    if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+    var body = await req.ReadFromJsonAsync<JsonElement>();
+    if (body.ValueKind != JsonValueKind.Object) return Results.BadRequest("INVALID_BODY");
+    var isActive = body.TryGetProperty("isActive", out var a) ? (a.ValueKind == JsonValueKind.True || (a.ValueKind == JsonValueKind.Number && a.GetInt32()!=0)) : true;
+
+    await using var con = await OpenPg(cfg);
+    var sql = "UPDATE lic_keys SET is_active=@a WHERE id=@id;";
+    await using var cmd = new Npgsql.NpgsqlCommand(sql, con);
+    cmd.Parameters.AddWithValue("a", isActive);
+    cmd.Parameters.AddWithValue("id", id);
+    var n = await cmd.ExecuteNonQueryAsync();
+    if (n == 0) return Results.NotFound();
+    return Results.Ok(new { ok = true });
+});
+
+
+
+static string NormPm(string? pm)
+{
+    pm = (pm ?? "").Trim().ToLowerInvariant();
+    if (pm is "cash" or "card" or "deferred") return pm;
+    return "cash";
+}
+
+// ======================= PRODUCTS =======================
+app.MapGet("/api/products", async ([FromServices] AppDbContext db) =>
+    Results.Ok(await db.Products.OrderByDescending(x => x.Id).ToListAsync()));
+
+app.MapGet("/api/products/cashier", async ([FromServices] AppDbContext db) =>
+{
+    var list = await db.Products
+        .Select(p => new {
+            id = p.Id,
+            name = p.Name,
+            barcode = p.Barcode,
+            salePrice = p.SalePrice,
+            isVatIncluded = p.IsVatIncluded,
+            offerEnabled = p.OfferEnabled,
+            offerName = p.OfferName,
+            offerPrice = p.OfferPrice,
+            offerVatIncluded = p.OfferVatIncluded,
+            offerStart = p.OfferStart,
+            offerEnd = p.OfferEnd
+        })
+        .OrderByDescending(x => x.id)
+        .ToListAsync();
+
+    return Results.Ok(list);
+});
+
+app.MapPost("/api/products", async ([FromServices] AppDbContext db, Product input) =>
+{
+    input.Barcode = (input.Barcode ?? "").Trim();
+    input.Name    = (input.Name ?? "").Trim();
+
+    if (string.IsNullOrWhiteSpace(input.Barcode) || string.IsNullOrWhiteSpace(input.Name))
+        return Results.BadRequest("REQUIRED_FIELDS");
+
+    var exists = await db.Products.AnyAsync(p => p.Barcode == input.Barcode);
+    if (exists) return Results.BadRequest("BARCODE_DUPLICATE");
+
+    db.Products.Add(input);
+    await db.SaveChangesAsync();
+    return Results.Ok(input);
+});
+
+app.MapPut("/api/products/{id:int}", async ([FromServices] AppDbContext db, int id, Product input) =>
+{
+    var p = await db.Products.FindAsync(id);
+    if (p is null) return Results.NotFound();
+
+    input.Barcode = (input.Barcode ?? "").Trim();
+    input.Name    = (input.Name ?? "").Trim();
+
+    if (string.IsNullOrWhiteSpace(input.Barcode) || string.IsNullOrWhiteSpace(input.Name))
+        return Results.BadRequest("REQUIRED_FIELDS");
+
+    var dup = await db.Products.AnyAsync(x => x.Id != id && x.Barcode == input.Barcode);
+    if (dup) return Results.BadRequest("BARCODE_DUPLICATE");
+
+    p.Barcode = input.Barcode;
+    p.Name = input.Name;
+    p.SupplierName = input.SupplierName;
+    p.Category = input.Category;
+    p.Quantity = input.Quantity;
+    p.MinQuantity = input.MinQuantity;
+    p.SoldQuantity = input.SoldQuantity;
+    p.PurchasePrice = input.PurchasePrice;
+    p.SalePrice = input.SalePrice;
+    p.IsVatIncluded = input.IsVatIncluded;
+    p.ExpiryDate = input.ExpiryDate;
+    p.OfferEnabled = input.OfferEnabled;
+    p.OfferName = input.OfferName;
+    p.OfferPrice = input.OfferPrice;
+    p.OfferVatIncluded = input.OfferVatIncluded;
+    p.OfferStart = input.OfferStart;
+    p.OfferEnd = input.OfferEnd;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(p);
+});
+
+app.MapDelete("/api/products/{id:int}", async ([FromServices] AppDbContext db, int id) =>
+{
+    var p = await db.Products.FindAsync(id);
+    if (p is null) return Results.NotFound();
+    db.Products.Remove(p);
+    await db.SaveChangesAsync();
+    return Results.Ok(new { ok = true });
+});
+
+// ======================= CASHIER =======================
+app.MapPost("/api/cashier/invoices", async (HttpRequest http, [FromServices] AppDbContext db, CashierInvoiceRequest req) =>
+{
+    if (req.Items is null || req.Items.Count == 0) return Results.BadRequest("EMPTY_ITEMS");
+
+    var pm = NormPm(req.PaymentMethod);
+    var allowOutOfStock = http.Query["allowOutOfStock"] == "1";
+    var warnings = new List<string>();
+
+    // تحقق المخزون أولاً
+    foreach (var it in req.Items)
+    {
+        if (it.Quantity <= 0) return Results.BadRequest("INVALID_QTY");
+        if (it.ProductId > 0)
+        {
+            var pr = await db.Products.FirstOrDefaultAsync(p => p.Id == it.ProductId);
+            if (pr is null) return Results.BadRequest("PRODUCT_NOT_FOUND:" + it.ProductId);
+            var qNeed = (int)Math.Ceiling(it.Quantity);
+            if (pr.Quantity < qNeed)
+            {
+                if (!allowOutOfStock) return Results.BadRequest("OUT_OF_STOCK:" + pr.Barcode);
+                warnings.Add("OUT_OF_STOCK:" + pr.Barcode);
+            }
+        }
+    }
+
+    var inv = new CashierInvoice
+    {
+        InvoiceDate = DateTime.UtcNow,
+        PaymentMethod = pm,
+        CustomerId = req.CustomerId,
+        Notes = string.IsNullOrWhiteSpace(req.Notes) ? null : req.Notes,
+        SubTotal = (decimal)Math.Round(req.SubTotal, 2),
+        VatTotal = (decimal)Math.Round(req.VatTotal, 2),
+        DiscountTotal = (decimal)Math.Round(req.DiscountTotal, 2),
+        GrandTotal = (decimal)Math.Round(req.GrandTotal, 2),
+        IsSuspended = false
+    };
+
+    foreach (var it in req.Items)
+    {
+        if (it.ProductId > 0)
+        {
+            var pr = await db.Products.FirstAsync(p => p.Id == it.ProductId);
+            var q = (int)Math.Ceiling(it.Quantity);
+            if (allowOutOfStock) { pr.Quantity = Math.Max(0, pr.Quantity - q); } else { pr.Quantity -= q; }
+            pr.SoldQuantity += q;
+        }
+
+        inv.Items.Add(new CashierInvoiceItem
+        {
+            ProductId = it.ProductId > 0 ? it.ProductId : null,
+            Barcode = it.Barcode,
+            ProductName = (it.ProductName ?? "").Trim(),
+            Quantity = (decimal)it.Quantity,
+            UnitPrice = (decimal)it.UnitPrice,
+            Discount = (decimal)it.Discount,
+            TaxIncluded = it.TaxIncluded,
+            HasOffer = it.HasOffer,
+            OfferName = it.OfferName
+        });
+    }
+
+        // --- cashier stamping (FIX) ---
+    // Take cashier from client request (logged-in user)
+    if (req.CashierId.HasValue) inv.CashierId = req.CashierId.Value;
+    if (!string.IsNullOrWhiteSpace(req.CashierName)) inv.CashierName = req.CashierName!.Trim();
+db.CashierInvoices.Add(inv);
+    await db.SaveChangesAsync();
+
+    // SYNC_DEFERRED_TO_CUSTOMER_LEDGER
+    // إذا كانت الفاتورة "مؤجل" وعلى عميل -> سجلها كسند على العميل لعرضها في customers.html
+    if (pm == "deferred" && inv.CustomerId.HasValue && inv.CustomerId.Value > 0)
+    {
+        var ledger = new CustomerInvoice
+        {
+            CustomerId = inv.CustomerId.Value,
+            Amount = (double)inv.GrandTotal,
+            Description = "فاتورة كاشير رقم " + inv.Id,
+            Date = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")
+        };
+        db.CustomerInvoices.Add(ledger);
+        await db.SaveChangesAsync();
+    }
+
+    return Results.Ok(new { id = inv.Id, warnings = warnings });
+});
+
+app.MapGet("/api/cashier/invoices/{id:int}", async ([FromServices] AppDbContext db, int id) =>
+{
+    var inv = await db.CashierInvoices.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+    if (inv is null) return Results.NotFound();
+
+    return Results.Ok(new {
+        id = inv.Id,
+        invoiceDate = KsaTime.ToKsaIso(inv.InvoiceDate),
+        customerName = inv.CustomerName,
+        customerPhone = inv.CustomerPhone,
+        paymentMethod = inv.PaymentMethod,
+        isSuspended = inv.IsSuspended,
+        discountTotal = inv.DiscountTotal,
+        vatTotal = inv.VatTotal,
+        grandTotal = inv.GrandTotal,
+        returnAmount = inv.ReturnAmount
+    });
+});
+
+app.MapGet("/api/cashier/invoices/{id:int}/items", async ([FromServices] AppDbContext db, int id) =>
+{
+    var inv = await db.CashierInvoices.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+    if (inv is null) return Results.NotFound();
+
+    var items = await db.CashierInvoiceItems.AsNoTracking()
+        .Where(x => x.CashierInvoiceId == id)
+        .OrderBy(x => x.Id)
+        .Select(x => new {
+            id = x.Id,
+            productName = x.ProductName,
+            barcode = x.Barcode,
+            quantity = x.Quantity,
+            price = x.UnitPrice,
+            discount = x.Discount,
+            taxIncluded = x.TaxIncluded
+        })
+        .ToListAsync();
+
+    return Results.Ok(items);
+});
+
+app.MapGet("/api/cashier/invoices/report", async ([FromServices] AppDbContext db,
+    [FromQuery] int? invoiceId,
+    [FromQuery] string? from,
+    [FromQuery] string? to,
+    [FromQuery] string? paymentMethod,
+    [FromQuery] string? status,
+    [FromQuery] string? returnFilter) =>
+{
+    var q = db.CashierInvoices.AsNoTracking().AsQueryable();
+
+    if (invoiceId.HasValue) q = q.Where(x => x.Id == invoiceId.Value);
+
+    if (!string.IsNullOrWhiteSpace(from) && DateTime.TryParse(from, out var df))
+        q = q.Where(x => x.InvoiceDate >= df);
+
+    if (!string.IsNullOrWhiteSpace(to) && DateTime.TryParse(to, out var dt))
+        q = q.Where(x => x.InvoiceDate <= dt);
+
+    var pm = (paymentMethod ?? "").Trim().ToLowerInvariant();
+    if (pm is "cash" or "card" or "deferred") q = q.Where(x => x.PaymentMethod == pm);
+
+    var st = (status ?? "").Trim().ToLowerInvariant();
+    if (st == "normal") q = q.Where(x => !x.IsSuspended);
+    if (st == "suspended") q = q.Where(x => x.IsSuspended);
+
+    var rf = (returnFilter ?? "").Trim().ToLowerInvariant();
+    if (rf == "with") q = q.Where(x => x.ReturnAmount > 0.0001m);
+    if (rf == "without") q = q.Where(x => x.ReturnAmount <= 0.0001m);
+
+    var list = await q.OrderByDescending(x => x.Id)
+        .Select(x => new {
+            id = x.Id,
+            invoiceDateUtc = x.InvoiceDate,
+            customerName = x.CustomerName,
+            customerPhone = x.CustomerPhone,
+            paymentMethod = x.PaymentMethod,
+            isSuspended = x.IsSuspended,
+            discountTotal = x.DiscountTotal,
+            vatTotal = x.VatTotal,
+            grandTotal = x.GrandTotal,
+            returnAmount = x.ReturnAmount,
+            cashierId = x.CashierId,
+            cashierName = x.CashierName
+        })
+        .ToListAsync();
+
+    return Results.Ok(list);
+});
+
+// ======================= CASHIERS (for invoices filters) =======================
+// ملاحظة: شاشة invoices.html تحتاج قائمة "الكاشير" لتصفية التقارير.
+// سابقاً كانت تستدعي /api/employees (يتطلب صلاحية الموظفين 256) مما يسبب 401 لموظف عنده صلاحية الفواتير فقط.
+// هذا endpoint يرجّع قائمة الكاشير من الفواتير نفسها (Distinct) بدون الحاجة لصلاحية الموظفين.
+app.MapGet("/api/cashiers", async (AppDbContext db, HttpRequest req) =>
+{
+    int days = 3650; // افتراضي 10 سنوات
+    if (int.TryParse(req.Query["days"], out var d)) days = Math.Clamp(d, 1, 3650);
+
+    var cutoffUtc = DateTime.UtcNow.AddDays(-days);
+
+    var raw = await db.CashierInvoices.AsNoTracking()
+        .Where(x => x.InvoiceDate >= cutoffUtc)
+        .Select(x => new { id = x.CashierId ?? 0, name = x.CashierName ?? "" })
+        .ToListAsync();
+
+    var list = raw
+        .Select(x => new { id = x.id, name = x.name.Trim() })
+        .Where(x => x.id > 0 || !string.IsNullOrWhiteSpace(x.name))
+        .GroupBy(x => new { x.id, x.name })
+        .Select(g => g.Key)
+        .OrderBy(x => x.name)
+        .ThenBy(x => x.id)
+        .ToList();
+
+    return Results.Ok(list);
+});
+
+app.MapPost("/api/cashier/invoices/{id:int}/return", async ([FromServices] AppDbContext db, int id, ReturnRequest req) =>
+{
+    if (req.Items is null || req.Items.Count == 0) return Results.BadRequest("EMPTY_RETURN");
+
+    var inv = await db.CashierInvoices.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id);
+    if (inv is null) return Results.NotFound();
+
+    decimal retSum = 0m;
+
+    foreach (var r in req.Items)
+    {
+        var item = inv.Items.FirstOrDefault(x => x.Id == r.ItemId);
+        if (item is null) return Results.BadRequest("ITEM_NOT_FOUND:" + r.ItemId);
+        if (r.ReturnQuantity <= 0) return Results.BadRequest("INVALID_RETURN_QTY");
+        if ((decimal)r.ReturnQuantity > item.Quantity) return Results.BadRequest("RETURN_EXCEEDS_ORIGINAL");
+
+        // ✅ ثبت المرتجع على نفس سطر الفاتورة
+        item.Quantity = Math.Max(0m, item.Quantity - (decimal)r.ReturnQuantity);
+
+        if (item.ProductId.HasValue && item.ProductId.Value > 0)
+        {
+            var pr = await db.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId.Value);
+            if (pr != null)
+            {
+                var qret = (int)Math.Ceiling(r.ReturnQuantity);
+                pr.Quantity += qret;
+                pr.SoldQuantity = Math.Max(0, pr.SoldQuantity - qret);
+            }
+        }
+
+        retSum += (item.UnitPrice * (decimal)r.ReturnQuantity);
+    }
+
+    inv.ReturnAmount = Math.Round(inv.ReturnAmount + retSum, 2);
+
+    // ✅ SYNC_RETURN_TO_CUSTOMER_LEDGER (للمؤجل فقط)
+    if (inv.PaymentMethod == "deferred" && inv.CustomerId.HasValue && inv.CustomerId.Value > 0 && retSum > 0.0001m)
+    {
+        db.CustomerInvoices.Add(new CustomerInvoice
+        {
+            CustomerId = inv.CustomerId.Value,
+            Amount = -(double)Math.Round(retSum, 2),
+            Description = "مرتجع فاتورة كاشير رقم " + inv.Id,
+            Date = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")
+        });
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { ok = true, returnAdded = Math.Round(retSum, 2), invoiceReturnAmount = inv.ReturnAmount });
+});
+
+app.MapDelete("/api/cashier/invoices/{id:int}", async ([FromServices] AppDbContext db, int id) =>
+{
+    var inv = await db.CashierInvoices.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id);
+    if (inv is null) return Results.NotFound();
+
+    foreach (var item in inv.Items)
+    {
+        if (item.ProductId.HasValue && item.ProductId.Value > 0)
+        {
+            var pr = await db.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId.Value);
+            if (pr != null)
+            {
+                var q = (int)Math.Ceiling(item.Quantity);
+                pr.Quantity += q;
+                pr.SoldQuantity = Math.Max(0, pr.SoldQuantity - q);
+            }
+        }
+    }
+
+    db.CashierInvoices.Remove(inv);
+    await db.SaveChangesAsync();
+    return Results.Ok(new { ok = true });
+});
+
+// ======================= CUSTOMERS =======================
+app.MapGet("/api/customers/full", async ([FromServices] AppDbContext db) =>
+{
+    var list = await db.Customers
+        .Include(x => x.Invoices)
+        .Include(x => x.Payments)
+        .OrderByDescending(x => x.Id)
+        .ToListAsync();
+
+    return Results.Ok(list.Select(c => new {
+        id = c.Id,
+        name = c.Name,
+        phone = c.Phone,
+        address = c.Address,
+        notes = c.Notes,
+        status = c.Status,
+        invoices = (c.Invoices ?? new List<CustomerInvoice>()).OrderByDescending(x => x.Id).Select(x => new {
+            id = x.Id, amount = x.Amount, description = x.Description, date = KsaTime.IsoUtcTextToKsaIso(x.Date)
+        }),
+        payments = (c.Payments ?? new List<CustomerPayment>()).OrderByDescending(x => x.Id).Select(x => new {
+            id = x.Id, amount = x.Amount, method = x.Method, note = x.Note, date = KsaTime.IsoUtcTextToKsaIso(x.Date)
+        })
+    }));
+});
+
+app.MapPost("/api/customers", async ([FromServices] AppDbContext db, Customer input) =>
+{
+    input.Name = (input.Name ?? "").Trim();
+    if (string.IsNullOrWhiteSpace(input.Name)) return Results.BadRequest("REQUIRED_NAME");
+
+    input.Phone = (input.Phone ?? "").Trim();
+    input.Address = (input.Address ?? "").Trim();
+    input.Notes = (input.Notes ?? "").Trim();
+    input.Status = string.IsNullOrWhiteSpace(input.Status) ? "active" : input.Status;
+
+    db.Customers.Add(input);
+    await db.SaveChangesAsync();
+    return Results.Ok(new { id = input.Id });
+});
+
+app.MapPut("/api/customers/{id:int}", async ([FromServices] AppDbContext db, int id, Customer input) =>
+{
+    var c = await db.Customers.FindAsync(id);
+    if (c is null) return Results.NotFound();
+
+    c.Name = (input.Name ?? "").Trim();
+    if (string.IsNullOrWhiteSpace(c.Name)) return Results.BadRequest("REQUIRED_NAME");
+
+    c.Phone = (input.Phone ?? "").Trim();
+    c.Address = (input.Address ?? "").Trim();
+    c.Notes = (input.Notes ?? "").Trim();
+    c.Status = string.IsNullOrWhiteSpace(input.Status) ? c.Status : input.Status.Trim();
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { ok = true });
+});
+
+app.MapDelete("/api/customers/{id:int}", async ([FromServices] AppDbContext db, int id) =>
+{
+    var c = await db.Customers
+        .Include(x => x.Invoices)
+        .Include(x => x.Payments)
+        .FirstOrDefaultAsync(x => x.Id == id);
+
+    if (c is null) return Results.NotFound();
+
+    db.CustomerInvoices.RemoveRange(c.Invoices);
+    db.CustomerPayments.RemoveRange(c.Payments);
+    db.Customers.Remove(c);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { ok = true });
+});
+
+app.MapPut("/api/customer-payments/{id:int}", async ([FromServices] AppDbContext db, int id, CustomerPaymentRequest req) =>
+{
+    var p = await db.CustomerPayments.FindAsync(id);
+    if (p is null) return Results.NotFound();
+
+    if (req.Amount <= 0) return Results.BadRequest("INVALID_AMOUNT");
+
+    p.Amount = req.Amount;
+    p.Method = string.IsNullOrWhiteSpace(req.Method) ? p.Method : req.Method.Trim();
+    p.Note   = string.IsNullOrWhiteSpace(req.Note) ? null : req.Note.Trim();
+
+    var d = string.IsNullOrWhiteSpace(req.Date) ? (string.IsNullOrWhiteSpace(req.PaymentDate) ? null : req.PaymentDate) : req.Date;
+    if (!string.IsNullOrWhiteSpace(d)) p.Date = d!;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { ok = true });
+});
+
+app.MapDelete("/api/customer-payments/{id:int}", async ([FromServices] AppDbContext db, int id) =>
+{
+    var p = await db.CustomerPayments.FindAsync(id);
+    if (p is null) return Results.NotFound();
+
+    db.CustomerPayments.Remove(p);
+    await db.SaveChangesAsync();
+    return Results.Ok(new { ok = true });
+});
+
+// BEGIN_CUSTOMER_LEDGER_API
+app.MapPost("/api/customers/{id:int}/invoices", async ([FromServices] AppDbContext db, int id, CustomerLedgerRequest req) =>
+{
+    var c = await db.Customers.FindAsync(id);
+    if (c is null) return Results.NotFound();
+
+    if (req.Amount <= 0) return Results.BadRequest("INVALID_AMOUNT");
+
+    var inv = new CustomerInvoice
+    {
+        CustomerId = id,
+        Amount = req.Amount,
+        Description = string.IsNullOrWhiteSpace(req.Description) ? "تعديل رصيد يدوي" : req.Description.Trim(),
+        Date = string.IsNullOrWhiteSpace(req.Date) ? DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss") : req.Date!
+    };
+
+    db.CustomerInvoices.Add(inv);
+    await db.SaveChangesAsync();
+    return Results.Ok(new { ok = true });
+});
+
+app.MapPost("/api/customers/{id:int}/payments", async ([FromServices] AppDbContext db, int id, CustomerPaymentRequest req) =>
+{
+    var c = await db.Customers.FindAsync(id);
+    if (c is null) return Results.NotFound();
+
+    if (req.Amount <= 0) return Results.BadRequest("INVALID_AMOUNT");
+
+    var pay = new CustomerPayment
+    {
+        CustomerId = id,
+        Amount = req.Amount,
+        Method = string.IsNullOrWhiteSpace(req.Method) ? "كاش" : req.Method.Trim(),
+        Note = string.IsNullOrWhiteSpace(req.Note) ? null : req.Note.Trim(),
+        Date = string.IsNullOrWhiteSpace(req.Date) ? DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss") : req.Date!
+    };
+
+    db.CustomerPayments.Add(pay);
+    await db.SaveChangesAsync();
+    return Results.Ok(new { ok = true });
+});
+// END_CUSTOMER_LEDGER_API
+
+// ===================== BACKUP_FEATURE_V2 =====================
+app.MapGet("/api/backup/list", (IOptions<BackupSettings> opt, IHostEnvironment env) =>
+{
+    var s = opt.Value ?? new BackupSettings();
+    var dir = Path.Combine(env.ContentRootPath, s.OutputDir ?? "wwwroot/backups");
+    Directory.CreateDirectory(dir);
+
+    var files = new DirectoryInfo(dir).GetFiles("*.sql")
+        .OrderByDescending(f => f.LastWriteTimeUtc)
+        .Select(f => new {
+            name = f.Name,
+            size = f.Length,
+            modifiedLocal = f.LastWriteTime.ToString("yyyy-MM-dd HH:mm")
+        })
+        .ToList();
+
+    return Results.Json(new {
+        settings = new { enabled = s.Enabled, timeLocal = s.TimeLocal, retainDays = s.RetainDays, outputDir = s.OutputDir ?? "wwwroot/backups" },
+        files
+    });
+});
+
+app.MapGet("/api/backup/download/{name}", (string name, IOptions<BackupSettings> opt, IHostEnvironment env) =>
+{
+    var s = opt.Value ?? new BackupSettings();
+    var dir = Path.Combine(env.ContentRootPath, s.OutputDir ?? "wwwroot/backups");
+    var safe = Path.GetFileName(name);
+    var path = Path.Combine(dir, safe);
+    if (!System.IO.File.Exists(path)) return Results.NotFound("File not found");
+    return Results.File(System.IO.File.ReadAllBytes(path), "application/sql", safe);
+});
+
+app.MapPost("/api/backup/run", async (IConfiguration cfg, IOptions<BackupSettings> opt, IHostEnvironment env) =>
+{
+    var s = opt.Value ?? new BackupSettings();
+    if (!s.Enabled) return Results.Problem("Backup disabled in settings.");
+
+    var cs = cfg.GetConnectionString("Default");
+    if (string.IsNullOrWhiteSpace(cs)) return Results.Problem("Missing connection string: Default");
+
+    var b = new Npgsql.NpgsqlConnectionStringBuilder(cs);
+
+    var dir = Path.Combine(env.ContentRootPath, s.OutputDir ?? "wwwroot/backups");
+    Directory.CreateDirectory(dir);
+
+    var file = "backup_" + DateTime.UtcNow.ToString("yyyyMMdd_HHmmss") + ".sql";
+    var path = Path.Combine(dir, file);
+
+    var psi = new System.Diagnostics.ProcessStartInfo
+    {
+        FileName = "pg_dump",
+        Arguments = $"-h {b.Host} -p {b.Port} -U {b.Username} -d {b.Database} -F p -f \"{path}\"",
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false
+    };
+    if (!string.IsNullOrWhiteSpace(b.Password))
+        psi.Environment["PGPASSWORD"] = b.Password;
+
+    try
+    {
+        var p = System.Diagnostics.Process.Start(psi);
+        if (p == null) return Results.Problem("Failed to start pg_dump");
+        await p.WaitForExitAsync();
+        if (p.ExitCode != 0)
+        {
+            var err = await p.StandardError.ReadToEndAsync();
+            return Results.Problem("pg_dump failed: " + err);
+        }
+    }
+    catch (System.ComponentModel.Win32Exception)
+    {
+        return Results.Problem("pg_dump not found. Install PostgreSQL client tools or add pg_dump to PATH.");
+    }
+
+    return Results.Ok(new { file });
+});
+
+app.MapPost("/api/backup/restore/{name}", async (string name, IConfiguration cfg, IOptions<BackupSettings> opt, IHostEnvironment env) =>
+{
+    var s = opt.Value ?? new BackupSettings();
+    var cs = cfg.GetConnectionString("Default");
+    if (string.IsNullOrWhiteSpace(cs)) return Results.Problem("Missing connection string: Default");
+
+    var b = new Npgsql.NpgsqlConnectionStringBuilder(cs);
+
+    var dir = Path.Combine(env.ContentRootPath, s.OutputDir ?? "wwwroot/backups");
+    var safe = Path.GetFileName(name);
+    var path = Path.Combine(dir, safe);
+    if (!System.IO.File.Exists(path)) return Results.NotFound("File not found");
+
+    var psi = new System.Diagnostics.ProcessStartInfo
+    {
+        FileName = "psql",
+        Arguments = $"-h {b.Host} -p {b.Port} -U {b.Username} -d {b.Database} -v ON_ERROR_STOP=1 -f \"{path}\"",
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false
+    };
+    if (!string.IsNullOrWhiteSpace(b.Password))
+        psi.Environment["PGPASSWORD"] = b.Password;
+
+    try
+    {
+        var p = System.Diagnostics.Process.Start(psi);
+        if (p == null) return Results.Problem("Failed to start psql");
+        await p.WaitForExitAsync();
+        if (p.ExitCode != 0)
+        {
+            var err = await p.StandardError.ReadToEndAsync();
+            return Results.Problem("Restore failed: " + err);
+        }
+    }
+    catch (System.ComponentModel.Win32Exception)
+    {
+        return Results.Problem("psql not found. Install PostgreSQL client tools or add psql to PATH.");
+    }
+
+    return Results.Ok(new { ok = true, restored = safe });
+});
+
+#region POSTGRES_ONLY_SETTINGS_SUPPLIERS
+const string DefaultSuppliersJson = @"{""suppliers"":[],""invoices"":[],""payments"":[]}";
+static async Task<NaderProductsApp.Models.AppSetting> EnsureSettingsRow(AppDbContext db)
+{
+    var row = await db.AppSettings.FirstOrDefaultAsync(x => x.Id == 1);
+    if (row is null)
+    {
+        row = new NaderProductsApp.Models.AppSetting
+        {
+            Id = 1,
+            InvoicePaper = "Cashier",
+            CashierPaperWidthMm = 80,
+            BarcodeType = "QR",
+            ZatcaPhase = 1
+        };
+        db.AppSettings.Add(row);
+        await db.SaveChangesAsync();
+    }
+    return row;
+}
+
+static async Task<NaderProductsApp.Models.SuppliersStoreRow> EnsureSuppliersStoreRow(AppDbContext db)
+{
+    var row = await db.SuppliersStore.FirstOrDefaultAsync(x => x.Id == 1);
+    if (row is null)
+    {
+        row = new NaderProductsApp.Models.SuppliersStoreRow { Id = 1, Json = DefaultSuppliersJson };
+        db.SuppliersStore.Add(row);
+        await db.SaveChangesAsync();
+    }
+    if (string.IsNullOrWhiteSpace(row.Json)) row.Json = DefaultSuppliersJson;
+    return row;
+}
+
+app.MapGet("/api/settings", async (AppDbContext db) =>
+{
+    var row = await EnsureSettingsRow(db);
+    return Results.Ok(new
+    {
+        storeName = row.StoreName ?? "",
+        commercialRegister = row.CommercialRegister ?? "",
+        vatNumber = row.VatNumber ?? "",
+        storeAddress = row.StoreAddress ?? "",
+        storePhone = row.StorePhone ?? "",
+        invoicePaper = string.IsNullOrWhiteSpace(row.InvoicePaper) ? "Cashier" : row.InvoicePaper,
+        cashierPaperWidthMm = row.CashierPaperWidthMm ?? 80,
+        storeLogoBase64 = row.StoreLogoBase64 ?? "",
+        invoiceFooterNotes = row.InvoiceFooterNotes ?? "",
+        barcodeType = string.IsNullOrWhiteSpace(row.BarcodeType) ? "QR" : row.BarcodeType,
+        zatcaPhase = row.ZatcaPhase ?? 1,
+        phase2InvoiceHash = row.Phase2InvoiceHash ?? "",
+        phase2Signature = row.Phase2Signature ?? "",
+        phase2PublicKey = row.Phase2PublicKey ?? "",
+        phase2CertificateSignature = row.Phase2CertificateSignature ?? ""
+    });
+});
+
+app.MapPut("/api/settings", async (AppDbContext db, HttpRequest request) =>
+{
+    var dto = await request.ReadFromJsonAsync<NaderProductsApp.Models.SettingsDto>();
+    if (dto is null) return Results.BadRequest("INVALID_BODY");
+
+    var row = await EnsureSettingsRow(db);
+
+    var invoicePaper = (dto.InvoicePaper ?? "Cashier").Trim();
+    if (invoicePaper != "A4" && invoicePaper != "Cashier") invoicePaper = "Cashier";
+
+    var barcodeType = (dto.BarcodeType ?? "QR").Trim().ToUpperInvariant();
+    if (barcodeType != "QR") barcodeType = "QR";
+    var phase = dto.ZatcaPhase == 2 ? 2 : 1;
+    var width = dto.CashierPaperWidthMm <= 0 ? 80 : dto.CashierPaperWidthMm;
+    if (width < 58) width = 58;
+    if (width > 120) width = 120;
+
+    var logo = (dto.StoreLogoBase64 ?? "").Trim();
+    if (logo.Length > 2_000_000) return Results.BadRequest("LOGO_TOO_LARGE");
+
+    row.StoreName = (dto.StoreName ?? "").Trim();
+    row.CommercialRegister = (dto.CommercialRegister ?? "").Trim();
+    row.VatNumber = (dto.VatNumber ?? "").Trim();
+    row.StoreAddress = (dto.StoreAddress ?? "").Trim();
+    row.StorePhone = (dto.StorePhone ?? "").Trim();
+
+    row.InvoicePaper = invoicePaper;
+    row.CashierPaperWidthMm = width;
+    row.StoreLogoBase64 = logo;
+    row.InvoiceFooterNotes = (dto.InvoiceFooterNotes ?? "").Trim();
+
+    row.BarcodeType = barcodeType;
+    row.ZatcaPhase = phase;
+
+    row.Phase2InvoiceHash = phase == 2 ? (dto.Phase2InvoiceHash ?? "").Trim() : "";
+    row.Phase2Signature = phase == 2 ? (dto.Phase2Signature ?? "").Trim() : "";
+    row.Phase2PublicKey = phase == 2 ? (dto.Phase2PublicKey ?? "").Trim() : "";
+    row.Phase2CertificateSignature = phase == 2 ? (dto.Phase2CertificateSignature ?? "").Trim() : "";
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { ok = true });
+});
+
+app.MapGet("/api/suppliers-store", async (AppDbContext db) =>
+{
+    var row = await EnsureSuppliersStoreRow(db);
+    return Results.Text(row.Json ?? DefaultSuppliersJson, "application/json; charset=utf-8");
+});
+
+app.MapPut("/api/suppliers-store", async (AppDbContext db, HttpRequest request) =>
+{
+    using var sr = new StreamReader(request.Body);
+    var raw = await sr.ReadToEndAsync();
+    if (string.IsNullOrWhiteSpace(raw)) return Results.BadRequest("EMPTY_BODY");
+
+    var row = await EnsureSuppliersStoreRow(db);
+    row.Json = raw;
+    await db.SaveChangesAsync();
+    return Results.Ok(new { ok = true });
+});
+
+#endregion
+
+app.MapGet("/api/shifts/list", async (AppDbContext db, HttpRequest req) =>
+{
+    int days = 60;
+    int take = 200;
+
+    if (int.TryParse(req.Query["days"], out var d)) days = Math.Clamp(d, 1, 3650);
+    if (int.TryParse(req.Query["take"], out var t)) take = Math.Clamp(t, 1, 2000);
+
+    var cutoffUtc = DateTime.UtcNow.AddDays(-days);
+
+    var list = await db.Shifts.AsNoTracking()
+        .Where(s => s.OpenedAt >= cutoffUtc)
+        .OrderByDescending(s => s.Id)
+        .Take(take)
+        .Select(s => new {
+            id = s.Id,
+            openedAt = s.OpenedAt,
+            closedAt = s.ClosedAt,
+            openingCash = s.OpeningCash,
+            closingCash = s.ClosingCash,
+            note = s.Note ?? "",
+            isClosed = s.IsClosed
+        })
+        .ToListAsync();
+
+    return Results.Ok(list);
+});
+
+#region REPORTS_API_V1
+app.MapGet("/api/reports/summary", async (AppDbContext db, HttpRequest req) =>
+{
+    string? from = req.Query["from"].ToString();
+    string? to   = req.Query["to"].ToString();
+    string? expiryNearDaysStr = req.Query["expiryNearDays"].ToString();
+
+    DateTime ParseDayUtc(string? s, DateTime fallbackUtc)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return DateTime.SpecifyKind(fallbackUtc.Date, DateTimeKind.Utc);
+
+        if (DateTime.TryParseExact(s.Trim(), "yyyy-MM-dd", null,
+            System.Globalization.DateTimeStyles.None, out var d))
+            return DateTime.SpecifyKind(d.Date, DateTimeKind.Utc);
+
+        if (DateTime.TryParse(s, out var d2))
+            return DateTime.SpecifyKind(d2.Date, DateTimeKind.Utc);
+
+        return DateTime.SpecifyKind(fallbackUtc.Date, DateTimeKind.Utc);
+    }
+
+    var nowUtc   = DateTime.UtcNow;
+    var fromUtc  = ParseDayUtc(from, nowUtc);
+    var toUtcDay = ParseDayUtc(to, nowUtc);
+    var toUtcEnd = DateTime.SpecifyKind(toUtcDay.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+
+    int nearDays = 30;
+    if (!string.IsNullOrWhiteSpace(expiryNearDaysStr) && int.TryParse(expiryNearDaysStr, out var nd)) nearDays = nd;
+    if (nearDays < 0) nearDays = 0;
+    if (nearDays > 3650) nearDays = 3650;
+
+    var nearUtcEnd = DateTime.SpecifyKind(nowUtc.Date.AddDays(nearDays + 1).AddTicks(-1), DateTimeKind.Utc);
+
+    // ====== Sales / Invoices ======
+    var qInv = db.CashierInvoices.AsNoTracking()
+        .Where(x => x.InvoiceDate >= fromUtc && x.InvoiceDate <= toUtcEnd);
+
+    var invoiceCount   = await qInv.CountAsync();
+    var suspendedCount = await qInv.CountAsync(x => x.IsSuspended);
+
+    var salesTotal   = await qInv.SumAsync(x => (decimal?)(x.GrandTotal)) ?? 0m;
+    var vatTotal     = await qInv.SumAsync(x => (decimal?)(x.VatTotal)) ?? 0m;
+    var returnTotal  = await qInv.SumAsync(x => (decimal?)(x.ReturnAmount)) ?? 0m;
+
+    var cashTotal = await qInv.Where(x => x.PaymentMethod == "cash")
+        .SumAsync(x => (decimal?)(x.GrandTotal)) ?? 0m;
+
+    var cardTotal = await qInv.Where(x => x.PaymentMethod == "card")
+        .SumAsync(x => (decimal?)(x.GrandTotal)) ?? 0m;
+
+    var deferredTotal = await qInv.Where(x => x.PaymentMethod == "deferred")
+        .SumAsync(x => (decimal?)(x.GrandTotal)) ?? 0m;
+
+    // ====== Expenses ======
+    var qExp = db.Expenses.AsNoTracking()
+        .Where(x => x.Date >= fromUtc && x.Date <= toUtcEnd);
+
+    var expensesTotal = await qExp.SumAsync(x => (decimal?)(x.Amount)) ?? 0m;
+    var expensesCount = await qExp.CountAsync();
+
+    // ====== Inventory ======
+    var productsCount = await db.Products.AsNoTracking().CountAsync();
+    var lowStockCount = await db.Products.AsNoTracking().CountAsync(p => p.Quantity <= p.MinQuantity);
+
+    var expiryNearCount = await db.Products.AsNoTracking()
+        .CountAsync(p => p.ExpiryDate != null
+            && p.ExpiryDate >= DateTime.SpecifyKind(nowUtc.Date, DateTimeKind.Utc)
+            && p.ExpiryDate <= nearUtcEnd);
+
+    
+
+    // ====== Suppliers (from suppliers-store JSON) ======
+    decimal suppliersRangePurchases = 0m;
+    decimal suppliersRangePayments  = 0m;
+    decimal suppliersRangeNet       = 0m;
+    decimal suppliersOutstandingAllTime = 0m;
+
+    try
+    {
+        static DateTime? ParseAnyDate(string? s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return null;
+            s = s.Trim();
+            if (DateTime.TryParseExact(s, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out var d1))
+                return d1.Date; // date-only
+            if (DateTime.TryParse(s, out var d2))
+                return d2.Date;
+            return null;
+        }
+
+        static long ToLong(JsonElement el)
+        {
+            try
+            {
+                if (el.ValueKind == JsonValueKind.Number) return el.GetInt64();
+                if (el.ValueKind == JsonValueKind.String && long.TryParse(el.GetString(), out var x)) return x;
+            }
+            catch { }
+            return 0L;
+        }
+
+        static DateTime? FromCreatedAtMs(long ms)
+        {
+            if (ms <= 0) return null;
+            try { return DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime.Date; }
+            catch { return null; }
+        }
+
+        static decimal ToDec(JsonElement el)
+        {
+            try
+            {
+                if (el.ValueKind == JsonValueKind.Number) return el.GetDecimal();
+                if (el.ValueKind == JsonValueKind.String && decimal.TryParse(el.GetString(), out var d)) return d;
+            }
+            catch { }
+            return 0m;
+        }
+
+        static bool ToBool(JsonElement el)
+        {
+            try
+            {
+                if (el.ValueKind == JsonValueKind.True) return true;
+                if (el.ValueKind == JsonValueKind.False) return false;
+                if (el.ValueKind == JsonValueKind.String && bool.TryParse(el.GetString(), out var b)) return b;
+                if (el.ValueKind == JsonValueKind.Number) return el.GetInt32() != 0;
+            }
+            catch { }
+            return false;
+        }
+
+        var storeRow = await EnsureSuppliersStoreRow(db);
+        var rawJson = storeRow.Json ?? DefaultSuppliersJson;
+
+        using var doc = JsonDocument.Parse(rawJson);
+        var root = doc.RootElement;
+
+        // invoices
+        List<(DateTime? date, decimal total)> invTotals = new();
+        if (root.TryGetProperty("invoices", out var invArr) && invArr.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var inv in invArr.EnumerateArray())
+            {
+                DateTime? d = null;
+                if (inv.TryGetProperty("date", out var jd)) d = ParseAnyDate(jd.GetString());
+
+                decimal amount = inv.TryGetProperty("amount", out var ja) ? ToDec(ja) : 0m;
+                decimal vat    = inv.TryGetProperty("vat", out var jv) ? ToDec(jv) : 0m;
+                bool isVatIncluded = inv.TryGetProperty("isVatIncluded", out var jinc) ? ToBool(jinc) : false;
+
+                // total with VAT (same logic as suppliers.html: if VAT included -> total=amount, else amount+vat)
+                var total = isVatIncluded ? amount : (amount + vat);
+                long createdAt = inv.TryGetProperty("createdAt", out var jc) ? ToLong(jc) : 0L;
+                var dEff = d ?? FromCreatedAtMs(createdAt);
+                invTotals.Add((dEff, total));
+}
+        }
+
+        // payments
+        List<(DateTime? date, decimal amount)> payTotals = new();
+        if (root.TryGetProperty("payments", out var payArr) && payArr.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var p in payArr.EnumerateArray())
+            {
+                DateTime? d = null;
+                if (p.TryGetProperty("date", out var jd)) d = ParseAnyDate(jd.GetString());
+                decimal amt = p.TryGetProperty("amount", out var ja) ? ToDec(ja) : 0m;
+                long createdAt = p.TryGetProperty("createdAt", out var jc) ? ToLong(jc) : 0L;
+                var dEff = d ?? FromCreatedAtMs(createdAt);
+                payTotals.Add((dEff, amt));
+}
+        }
+
+        // range sums
+        suppliersRangePurchases = invTotals
+            .Where(x => x.date.HasValue && x.date.Value.Date >= fromUtc.Date && x.date.Value.Date <= toUtcEnd.Date)
+            .Sum(x => x.total);
+
+        suppliersRangePayments = payTotals
+            .Where(x => x.date.HasValue && x.date.Value.Date >= fromUtc.Date && x.date.Value.Date <= toUtcEnd.Date)
+            .Sum(x => x.amount);
+
+        suppliersRangeNet = suppliersRangePurchases - suppliersRangePayments;
+
+        // outstanding all time
+        var allPurch = invTotals.Sum(x => x.total);
+        var allPaid  = payTotals.Sum(x => x.amount);
+        suppliersOutstandingAllTime = Math.Max(0m, allPurch - allPaid);
+    }
+    catch
+    {
+        // Keep defaults = 0 if suppliers-store is missing or invalid
+    }
+
+
+
+// ====== Customers / Deferred (from CustomerInvoices + CustomerPayments) ======
+decimal customersRangeDebits = 0m;   // إجمالي الذمم (فواتير/سندات على العملاء) داخل الفترة
+decimal customersRangePayments = 0m; // إجمالي السداد داخل الفترة
+decimal customersRangeNet = 0m;      // صافي (Debits - Payments) داخل الفترة
+decimal customersOutstandingAllTime = 0m; // الرصيد المتبقي لكل الوقت
+
+try
+{
+    // NOTE: التاريخ محفوظ كنص ISO مثل: yyyy-MM-ddTHH:mm:ss  -> المقارنة النصية تعمل
+    var fromIso = fromUtc.ToString("yyyy-MM-ddTHH:mm:ss");
+    var toIso   = toUtcEnd.ToString("yyyy-MM-ddTHH:mm:ss");
+
+    var qCustInv = db.CustomerInvoices.AsNoTracking()
+        .Where(x => x.Date != null && x.Date.CompareTo(fromIso) >= 0 && x.Date.CompareTo(toIso) <= 0);
+
+    var qCustPay = db.CustomerPayments.AsNoTracking()
+        .Where(x => x.Date != null && x.Date.CompareTo(fromIso) >= 0 && x.Date.CompareTo(toIso) <= 0);
+
+    var debD = await qCustInv.SumAsync(x => (double?)x.Amount) ?? 0d;
+    var payD = await qCustPay.SumAsync(x => (double?)x.Amount) ?? 0d;
+
+    customersRangeDebits = (decimal)debD;
+    customersRangePayments = (decimal)payD;
+    customersRangeNet = customersRangeDebits - customersRangePayments;
+
+    var allDebD = await db.CustomerInvoices.AsNoTracking().SumAsync(x => (double?)x.Amount) ?? 0d;
+    var allPayD = await db.CustomerPayments.AsNoTracking().SumAsync(x => (double?)x.Amount) ?? 0d;
+    customersOutstandingAllTime = (decimal)Math.Max(0d, allDebD - allPayD);
+}
+catch
+{
+    // Keep defaults = 0 if something is wrong
+}
+
+return Results.Ok(new
+    {
+        from = KsaTime.ToKsaIso(fromUtc),
+        to = KsaTime.ToKsaIso(toUtcEnd),
+        invoiceCount,
+        suspendedCount,
+        salesTotal,
+        vatTotal,
+        returnTotal,
+        cashTotal,
+        cardTotal,
+        deferredTotal,
+        expensesTotal,
+        expensesCount,
+        productsCount,
+        lowStockCount,
+        expiryNearCount,
+        suppliersRangePurchases = suppliersRangePurchases,
+        suppliersRangePayments = suppliersRangePayments,
+        suppliersRangeNet = suppliersRangeNet,
+        suppliersOutstandingAllTime = suppliersOutstandingAllTime,
+        customersRangeDebits = customersRangeDebits,
+        customersRangePayments = customersRangePayments,
+        customersRangeNet = customersRangeNet,
+        customersOutstandingAllTime = customersOutstandingAllTime,
+        expiryNearDays = nearDays
+    });
+});
+#endregion
+ControlPanelApiV1.MapControlPanelApiV1(app);
+#region SHIFT_API_V1
+app.MapGet("/api/shifts/current", async (AppDbContext db) =>
+{
+    var cur = await db.Shifts.AsNoTracking()
+        .OrderByDescending(s => s.Id)
+        .FirstOrDefaultAsync(s => s.IsClosed == false);
+
+    if (cur == null) return Results.Ok(new { hasShift = false });
+
+    
+return Results.Ok(new {
+        hasShift = true,
+        id = cur.Id,
+        openedAt = cur.OpenedAt,
+        closedAt = cur.ClosedAt,
+        openingCash = cur.OpeningCash,
+        closingCash = cur.ClosingCash,
+        note = cur.Note ?? ""
+    });
+});
+
+app.MapPost("/api/shifts/open", async (AppDbContext db, HttpRequest request) =>
+{
+    var exists = await db.Shifts.AnyAsync(s => s.IsClosed == false);
+    if (exists) return Results.BadRequest("SHIFT_ALREADY_OPEN");
+
+    var body = await request.ReadFromJsonAsync<JsonElement>();
+    decimal openingCash = 0m;
+    string? note = null;
+
+    if (body.ValueKind == JsonValueKind.Object)
+    {
+        if (body.TryGetProperty("openingCash", out var oc) && oc.ValueKind == JsonValueKind.Number)
+            openingCash = oc.GetDecimal();
+        if (body.TryGetProperty("note", out var n) && n.ValueKind == JsonValueKind.String)
+            note = n.GetString();
+    }
+
+    var sh = new Shift
+    {
+        OpenedAt = DateTime.UtcNow,
+        OpeningCash = openingCash,
+        Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim(),
+        IsClosed = false
+    };
+
+    db.Shifts.Add(sh);
+    if (sh.StartAt == default) sh.StartAt = DateTime.UtcNow;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { id = sh.Id });
+});
+
+app.MapPost("/api/shifts/close", async (AppDbContext db, HttpRequest request) =>
+{
+    var sh = await db.Shifts.OrderByDescending(s => s.Id).FirstOrDefaultAsync(s => s.IsClosed == false);
+    if (sh == null) return Results.BadRequest("NO_OPEN_SHIFT");
+
+    var body = await request.ReadFromJsonAsync<JsonElement>();
+    decimal closingCash = 0m;
+    string? note = null;
+
+    if (body.ValueKind == JsonValueKind.Object)
+    {
+        if (body.TryGetProperty("closingCash", out var cc) && cc.ValueKind == JsonValueKind.Number)
+            closingCash = cc.GetDecimal();
+        if (body.TryGetProperty("note", out var n) && n.ValueKind == JsonValueKind.String)
+            note = n.GetString();
+    }
+
+    sh.IsClosed = true;
+    sh.ClosedAt = DateTime.UtcNow;
+    sh.ClosingCash = closingCash;
+    if (!string.IsNullOrWhiteSpace(note)) sh.Note = note.Trim();
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { ok = true, id = sh.Id });
+});
+#endregion
+
+//
+// EXPENSES_API_V1 (auto-added)
+// يعتمد على fields: id, date, statement, amount
+//
+app.MapGet("/api/expenses", async (AppDbContext db, HttpRequest req) =>
+{
+    string q = (req.Query["q"].ToString() ?? "").Trim();
+    string fromDate = (req.Query["fromDate"].ToString() ?? "").Trim();
+    string toDate   = (req.Query["toDate"].ToString() ?? "").Trim();
+    string minAmountStr = (req.Query["minAmount"].ToString() ?? "").Trim();
+    string maxAmountStr = (req.Query["maxAmount"].ToString() ?? "").Trim();
+
+    DateTime? fd = null; DateTime? td = null;
+    if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate, out var _fd)) fd = _fd.Date;
+    if (!string.IsNullOrWhiteSpace(toDate)   && DateTime.TryParse(toDate, out var _td)) td = _td.Date.AddDays(1).AddTicks(-1);
+
+    decimal? minAmount = null; decimal? maxAmount = null;
+    if (!string.IsNullOrWhiteSpace(minAmountStr) && decimal.TryParse(minAmountStr, out var _min)) minAmount = _min;
+    if (!string.IsNullOrWhiteSpace(maxAmountStr) && decimal.TryParse(maxAmountStr, out var _max)) maxAmount = _max;
+
+    var query = db.Expenses.AsNoTracking().AsQueryable();
+
+    if (fd.HasValue) query = query.Where(x => x.Date >= fd.Value);
+    if (td.HasValue) query = query.Where(x => x.Date <= td.Value);
+    if (minAmount.HasValue) query = query.Where(x => x.Amount >= minAmount.Value);
+    if (maxAmount.HasValue) query = query.Where(x => x.Amount <= maxAmount.Value);
+
+    if (!string.IsNullOrWhiteSpace(q))
+    {
+        var qq = q.ToLower();
+        query = query.Where(x => (x.Statement ?? "").ToLower().Contains(qq));
+    }
+
+    var rows = await query
+        .OrderByDescending(x => x.Date)
+        .ThenByDescending(x => x.Id)
+        .Select(x => new {
+            id = x.Id,
+            date = KsaTime.ToKsaIso(x.Date),
+            statement = x.Statement ?? "",
+            amount = x.Amount
+        })
+        .ToListAsync();
+
+    return Results.Ok(rows);
+});
+
+app.MapPost("/api/expenses", async (AppDbContext db, HttpRequest request) =>
+{
+    var body = await request.ReadFromJsonAsync<JsonElement>();
+    if (body.ValueKind != JsonValueKind.Object) return Results.BadRequest("INVALID_BODY");
+
+    string dateStr = body.TryGetProperty("date", out var d) && d.ValueKind == JsonValueKind.String ? (d.GetString() ?? "") : "";
+    string statement = body.TryGetProperty("statement", out var s) && s.ValueKind == JsonValueKind.String ? (s.GetString() ?? "") : "";
+    decimal amount = 0m;
+    if (body.TryGetProperty("amount", out var a))
+    {
+        if (a.ValueKind == JsonValueKind.Number) amount = a.GetDecimal();
+        else if (a.ValueKind == JsonValueKind.String) decimal.TryParse(a.GetString(), out amount);
+    }
+
+    if (string.IsNullOrWhiteSpace(statement)) return Results.BadRequest("STATEMENT_REQUIRED");
+    if (amount <= 0) return Results.BadRequest("AMOUNT_REQUIRED");
+
+    DateTime date = DateTime.Now;
+    if (!string.IsNullOrWhiteSpace(dateStr) && DateTime.TryParse(dateStr, out var parsed)) date = parsed;
+
+    var e = new Expense {
+        Date = date,
+        Statement = statement.Trim(),
+        Amount = amount
+    };
+
+    db.Expenses.Add(e);
+    await db.SaveChangesAsync();
+    return Results.Ok(new { id = e.Id });
+});
+
+app.MapPut("/api/expenses/{id:int}", async (AppDbContext db, int id, HttpRequest request) =>
+{
+    var e = await db.Expenses.FirstOrDefaultAsync(x => x.Id == id);
+    if (e == null) return Results.NotFound();
+
+    var body = await request.ReadFromJsonAsync<JsonElement>();
+    if (body.ValueKind != JsonValueKind.Object) return Results.BadRequest("INVALID_BODY");
+
+    string dateStr = body.TryGetProperty("date", out var d) && d.ValueKind == JsonValueKind.String ? (d.GetString() ?? "") : "";
+    string statement = body.TryGetProperty("statement", out var s) && s.ValueKind == JsonValueKind.String ? (s.GetString() ?? "") : (e.Statement ?? "");
+    decimal amount = e.Amount;
+    if (body.TryGetProperty("amount", out var a))
+    {
+        if (a.ValueKind == JsonValueKind.Number) amount = a.GetDecimal();
+        else if (a.ValueKind == JsonValueKind.String) decimal.TryParse(a.GetString(), out amount);
+    }
+
+    if (string.IsNullOrWhiteSpace(statement)) return Results.BadRequest("STATEMENT_REQUIRED");
+    if (amount <= 0) return Results.BadRequest("AMOUNT_REQUIRED");
+
+    if (!string.IsNullOrWhiteSpace(dateStr) && DateTime.TryParse(dateStr, out var parsed)) e.Date = parsed;
+    e.Statement = statement.Trim();
+    e.Amount = amount;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(true);
+});
+
+app.MapDelete("/api/expenses/{id:int}", async (AppDbContext db, int id) =>
+{
+    var e = await db.Expenses.FirstOrDefaultAsync(x => x.Id == id);
+    if (e == null) return Results.NotFound();
+    db.Expenses.Remove(e);
+    await db.SaveChangesAsync();
+    return Results.Ok(true);
+});
+// END_EXPENSES_API_V1
+
+ // ===== SUBSCRIPTION_API_V1 =====
+ static async Task EnsureSubscriptionTables(IConfiguration cfg)
+ {
+     await using var con = await OpenPg(cfg);
+     var sql = @"
+ CREATE TABLE IF NOT EXISTS lic_devices (
+   id BIGSERIAL PRIMARY KEY,
+   serial TEXT NOT NULL,
+   device_id TEXT NOT NULL,
+   first_seen_utc TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+   last_seen_utc TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+   UNIQUE(serial, device_id)
+ );
+ CREATE TABLE IF NOT EXISTS lic_device_subs (
+   id BIGSERIAL PRIMARY KEY,
+   device_id TEXT NOT NULL UNIQUE,
+   mode TEXT NOT NULL,
+   serial TEXT NULL,
+   expires_utc TIMESTAMPTZ NOT NULL,
+   last_check_utc TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+   created_utc TIMESTAMPTZ NOT NULL DEFAULT NOW()
+ );
+   ALTER TABLE lic_device_subs
+    ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS block_reason TEXT,
+    ADD COLUMN IF NOT EXISTS store_name TEXT,
+    ADD COLUMN IF NOT EXISTS store_address TEXT;";
+     await using var cmd = new Npgsql.NpgsqlCommand(sql, con);
+     await cmd.ExecuteNonQueryAsync();
+ }
+ _ = EnsureSubscriptionTables(app.Configuration);
+
+ static int GetTrialDays(IConfiguration cfg)
+ {
+     if (int.TryParse(cfg["Licensing:TrialDays"], out var d) && d > 0) return d;
+     return 3;
+ }
+ static int GetOfflineGraceDays(IConfiguration cfg)
+ {
+     if (int.TryParse(cfg["Licensing:OfflineGraceDays"], out var d) && d >= 0) return d;
+     return 7;
+ }
+
+ // Public plans (بدون AdminKey) - للعرض في subscription.html
+ app.MapGet("/api/subscription/plans", async (IConfiguration cfg) =>
+{
+    await using var con = await OpenPg(cfg);
+
+    // عرض باقات العملاء (تشمل العروض إن وجدت)
+    await using var cmd = new Npgsql.NpgsqlCommand(@"
+      SELECT id, name, days, price, is_active,
+             COALESCE(offer_type,''), COALESCE(offer_value,0),
+             offer_start, offer_end
+      FROM lic_plans
+      ORDER BY id ASC;", con);
+
+    var now = DateTime.UtcNow;
+    var list = new List<object>();
+    await using var rd = await cmd.ExecuteReaderAsync();
+    while (await rd.ReadAsync())
+    {
+        var id = rd.GetInt64(0);
+        var name = rd.GetString(1);
+        var days = rd.GetInt32(2);
+        var price = rd.GetDecimal(3);
+        var isActive = rd.GetBoolean(4);
+
+        var offerType = rd.GetString(5);
+        var offerValue = rd.GetDecimal(6);
+        DateTime? offerStart = rd.IsDBNull(7) ? (DateTime?)null : rd.GetDateTime(7);
+        DateTime? offerEnd   = rd.IsDBNull(8) ? (DateTime?)null : rd.GetDateTime(8);
+
+        bool inWindow = true;
+        if (offerStart.HasValue && now < offerStart.Value) inWindow = false;
+        if (offerEnd.HasValue && now > offerEnd.Value) inWindow = false;
+
+        bool hasOffer = isActive && inWindow && offerValue > 0m &&
+                        (offerType == "PERCENT" || offerType == "AMOUNT");
+
+        decimal finalPrice = price;
+        if (hasOffer)
+        {
+            if (offerType == "PERCENT")
+                finalPrice = price - (price * offerValue / 100m);
+            else if (offerType == "AMOUNT")
+                finalPrice = price - offerValue;
+
+            if (finalPrice < 0m) finalPrice = 0m;
+            finalPrice = Math.Round(finalPrice, 2, MidpointRounding.AwayFromZero);
+        }
+
+        list.Add(new
+        {
+            id,
+            name,
+            days,
+            isActive,
+            price = Math.Round(price, 2, MidpointRounding.AwayFromZero),
+            hasOffer,
+            offerType = hasOffer ? offerType : null,
+            offerValue = hasOffer ? offerValue : (decimal?)null,
+            offerStart,
+            offerEnd,
+            finalPrice,
+            badgeText = hasOffer ? "عرض حصري" : null
+        });
+    }
+
+    return Results.Ok(new { ok = true, plans = list });
+});
+
+app.MapGet("/api/subscription/status", async (HttpRequest req, IConfiguration cfg) =>
+{
+    var deviceId = (req.Query["deviceId"].ToString() ?? "").Trim();
+    if (string.IsNullOrWhiteSpace(deviceId)) return Results.BadRequest("DEVICE_REQUIRED");
+
+    await using var con = await OpenPg(cfg);
+    await using var cmd = new Npgsql.NpgsqlCommand(@"
+      SELECT
+        mode,
+        COALESCE(serial,''),
+        expires_utc,
+        last_check_utc,
+        COALESCE(is_blocked,false) AS is_blocked,
+        COALESCE(block_reason,'')  AS block_reason,
+        COALESCE(store_name,'')    AS store_name,
+        COALESCE(store_address,'') AS store_address
+      FROM lic_device_subs
+      WHERE device_id=@d
+      LIMIT 1;", con);
+
+    cmd.Parameters.AddWithValue("d", deviceId);
+
+    await using var rd = await cmd.ExecuteReaderAsync();
+    if (!await rd.ReadAsync())
+    {
+        return Results.Ok(new {
+            ok = true,
+            hasSubscription = false,
+            mode = "NONE",
+            isActive = false,
+            isBlocked = false,
+            blockReason = "",
+            storeName = "",
+            storeAddress = "",
+            offlineGraceDays = GetOfflineGraceDays(cfg),
+            trialDays = GetTrialDays(cfg)
+        });
+    }
+
+    var mode = rd.GetString(0);
+    var serial = rd.GetString(1);
+    var exp = rd.GetDateTime(2);
+    var last = rd.GetDateTime(3);
+
+    var isBlocked = rd.GetBoolean(4);
+    var blockReason = rd.GetString(5);
+
+    var storeName = rd.GetString(6);
+    var storeAddress = rd.GetString(7);
+
+    var isActive = (!isBlocked) && (exp > DateTime.UtcNow);
+
+    return Results.Ok(new {
+        ok = true,
+        hasSubscription = true,
+        mode,
+        serial = string.IsNullOrWhiteSpace(serial) ? null : serial,
+        expiresUtc = exp,
+        lastCheckUtc = last,
+        isActive,
+        isBlocked,
+        blockReason = string.IsNullOrWhiteSpace(blockReason) ? null : blockReason,
+        storeName = string.IsNullOrWhiteSpace(storeName) ? null : storeName,
+        storeAddress = string.IsNullOrWhiteSpace(storeAddress) ? null : storeAddress,
+        offlineGraceDays = GetOfflineGraceDays(cfg),
+        trialDays = GetTrialDays(cfg)
+    });
+});
+
+  app.MapPost("/api/subscription/start-trial", async (HttpRequest req, IConfiguration cfg) =>
+ {
+     var body = await req.ReadFromJsonAsync<JsonElement>();
+     if (body.ValueKind != JsonValueKind.Object) return Results.BadRequest("INVALID_BODY");
+     var deviceId = body.TryGetProperty("deviceId", out var d) ? (d.GetString() ?? "").Trim() : "";
+     if (string.IsNullOrWhiteSpace(deviceId)) return Results.BadRequest("DEVICE_REQUIRED");
+
+     await using var con = await OpenPg(cfg);
+
+     await using (var ccmd = new Npgsql.NpgsqlCommand("SELECT mode, expires_utc FROM lic_device_subs WHERE device_id=@d;", con))
+     {
+         ccmd.Parameters.AddWithValue("d", deviceId);
+         await using var rd = await ccmd.ExecuteReaderAsync();
+         if (await rd.ReadAsync())
+         {
+             var mode = rd.GetString(0);
+             var exp = rd.GetDateTime(1);
+             return Results.Ok(new { ok=true, already=true, mode, expiresUtc=exp, offlineGraceDays=GetOfflineGraceDays(cfg) });
+         }
+     }
+
+     var expires = DateTime.UtcNow.AddDays(GetTrialDays(cfg));
+     await using (var icmd = new Npgsql.NpgsqlCommand(@"
+         INSERT INTO lic_device_subs(device_id, mode, serial, expires_utc, last_check_utc, created_utc)
+         VALUES (@d, 'TRIAL', NULL, @exp, NOW(), NOW());", con))
+     {
+         icmd.Parameters.AddWithValue("d", deviceId);
+         icmd.Parameters.AddWithValue("exp", expires);
+         await icmd.ExecuteNonQueryAsync();
+     }
+
+     return Results.Ok(new { ok=true, mode="TRIAL", expiresUtc=expires, offlineGraceDays=GetOfflineGraceDays(cfg) });
+ });
+
+ app.MapPost("/api/subscription/activate", async (HttpRequest req, IConfiguration cfg) =>
+ {
+     var body = await req.ReadFromJsonAsync<JsonElement>();
+     if (body.ValueKind != JsonValueKind.Object) return Results.BadRequest("INVALID_BODY");
+
+     var deviceId = body.TryGetProperty("deviceId", out var d) ? (d.GetString() ?? "").Trim() : "";
+     var serial = body.TryGetProperty("serial", out var s) ? (s.GetString() ?? "").Trim() : "";
+     if (string.IsNullOrWhiteSpace(deviceId)) return Results.BadRequest("DEVICE_REQUIRED");
+     if (string.IsNullOrWhiteSpace(serial)) return Results.BadRequest("SERIAL_REQUIRED");
+
+     await using var con = await OpenPg(cfg);
+
+     int planDays=0, maxDevices=1; bool serialActive=false;
+     await using (var scmd = new Npgsql.NpgsqlCommand(@"
+         SELECT p.days, k.max_devices, k.is_active
+         FROM lic_keys k
+         JOIN lic_plans p ON p.id = k.plan_id
+         WHERE k.serial=@s
+         LIMIT 1;", con))
+     {
+         scmd.Parameters.AddWithValue("s", serial);
+         await using var rd = await scmd.ExecuteReaderAsync();
+         if (!await rd.ReadAsync()) return Results.BadRequest("SERIAL_NOT_FOUND");
+         planDays = rd.GetInt32(0);
+         maxDevices = rd.GetInt32(1);
+         serialActive = rd.GetBoolean(2);
+     }
+     if (!serialActive) return Results.BadRequest("SERIAL_DISABLED");
+
+     long deviceCount = 0;
+     await using (var ccmd = new Npgsql.NpgsqlCommand("SELECT COUNT(*) FROM lic_devices WHERE serial=@s;", con))
+     {
+         ccmd.Parameters.AddWithValue("s", serial);
+         deviceCount = (long)(await ccmd.ExecuteScalarAsync() ?? 0L);
+     }
+
+     long exists = 0;
+     await using (var ecmd = new Npgsql.NpgsqlCommand("SELECT COUNT(*) FROM lic_devices WHERE serial=@s AND device_id=@d;", con))
+     {
+         ecmd.Parameters.AddWithValue("s", serial);
+         ecmd.Parameters.AddWithValue("d", deviceId);
+         exists = (long)(await ecmd.ExecuteScalarAsync() ?? 0L);
+     }
+
+     if (exists == 0 && deviceCount >= maxDevices) return Results.BadRequest("MAX_DEVICES_REACHED");
+
+     if (exists == 0)
+     {
+         await using var icmd = new Npgsql.NpgsqlCommand("INSERT INTO lic_devices(serial, device_id) VALUES (@s,@d);", con);
+         icmd.Parameters.AddWithValue("s", serial);
+         icmd.Parameters.AddWithValue("d", deviceId);
+         await icmd.ExecuteNonQueryAsync();
+     }
+     else
+     {
+         await using var ucmd = new Npgsql.NpgsqlCommand("UPDATE lic_devices SET last_seen_utc=NOW() WHERE serial=@s AND device_id=@d;", con);
+         ucmd.Parameters.AddWithValue("s", serial);
+         ucmd.Parameters.AddWithValue("d", deviceId);
+         await ucmd.ExecuteNonQueryAsync();
+     }
+
+     var expires = DateTime.UtcNow.AddDays(Math.Max(1, planDays));
+     await using (var up = new Npgsql.NpgsqlCommand(@"
+        INSERT INTO lic_device_subs(device_id, mode, serial, expires_utc, last_check_utc, created_utc)
+        VALUES (@d, 'SERIAL', @s, @exp, NOW(), NOW())
+        ON CONFLICT (device_id) DO UPDATE SET
+           mode='SERIAL', serial=EXCLUDED.serial, expires_utc=EXCLUDED.expires_utc, last_check_utc=NOW();", con))
+     {
+         up.Parameters.AddWithValue("d", deviceId);
+         up.Parameters.AddWithValue("s", serial);
+         up.Parameters.AddWithValue("exp", expires);
+         await up.ExecuteNonQueryAsync();
+     }
+
+     return Results.Ok(new { ok=true, mode="SERIAL", expiresUtc=expires, planDays, maxDevices, offlineGraceDays=GetOfflineGraceDays(cfg) });
+ });
+ 
+ // ===== ADMIN_SUBSCRIBERS_V1 =====
+ // إضافة أعمدة اسم المتجر/العنوان + الحظر (إن لم تكن موجودة)
+ static async Task EnsureSubscriberColumns(IConfiguration cfg)
+ {
+     await using var con = await OpenPg(cfg);
+     var sql = @"
+ ALTER TABLE IF EXISTS lic_device_subs ADD COLUMN IF NOT EXISTS store_name TEXT NULL;
+ ALTER TABLE IF EXISTS lic_device_subs ADD COLUMN IF NOT EXISTS store_address TEXT NULL;
+ ALTER TABLE IF EXISTS lic_device_subs ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN NOT NULL DEFAULT FALSE;
+ ALTER TABLE IF EXISTS lic_device_subs ADD COLUMN IF NOT EXISTS block_reason TEXT NULL;
+ ";
+     await using var cmd = new Npgsql.NpgsqlCommand(sql, con);
+     await cmd.ExecuteNonQueryAsync();
+ }
+ _ = EnsureSubscriberColumns(app.Configuration);
+
+ // جهاز العميل يحدّث اسم المتجر/العنوان (مسموح بدون AdminKey)
+ app.MapPost("/api/subscription/profile", async (HttpRequest req, IConfiguration cfg) =>
+ {
+     var body = await req.ReadFromJsonAsync<JsonElement>();
+     if (body.ValueKind != JsonValueKind.Object) return Results.BadRequest("INVALID_BODY");
+
+     var deviceId = body.TryGetProperty("deviceId", out var d) ? (d.GetString() ?? "").Trim() : "";
+     var storeName = body.TryGetProperty("storeName", out var sn) ? (sn.GetString() ?? "").Trim() : "";
+     var storeAddress = body.TryGetProperty("storeAddress", out var sa) ? (sa.GetString() ?? "").Trim() : "";
+
+     if (string.IsNullOrWhiteSpace(deviceId)) return Results.BadRequest("DEVICE_REQUIRED");
+
+     await using var con = await OpenPg(cfg);
+
+     // إذا ما فيه سجل للجهاز, ننشئ سجل "NONE" من أجل حفظ الاسم/العنوان (بدون اشتراك)
+     await using (var ensure = new Npgsql.NpgsqlCommand(@"
+        INSERT INTO lic_device_subs(device_id, mode, serial, expires_utc, last_check_utc, created_utc, store_name, store_address)
+        VALUES (@d,'NONE',NULL, NOW(), NOW(), NOW(), NULLIF(@n,''), NULLIF(@a,''))
+        ON CONFLICT (device_id) DO UPDATE SET
+          store_name = COALESCE(NULLIF(@n,''), lic_device_subs.store_name),
+          store_address = COALESCE(NULLIF(@a,''), lic_device_subs.store_address),
+          last_check_utc = NOW();
+     ", con))
+     {
+         ensure.Parameters.AddWithValue("d", deviceId);
+         ensure.Parameters.AddWithValue("n", storeName ?? "");
+         ensure.Parameters.AddWithValue("a", storeAddress ?? "");
+         await ensure.ExecuteNonQueryAsync();
+     }
+
+     return Results.Ok(new { ok=true });
+ });
+
+ // قائمة المشتركين للأدمن
+ app.MapGet("/api/admin/subscribers", async (HttpRequest req, IConfiguration cfg) =>
+ {
+     if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+
+     int take = 500;
+     if (int.TryParse(req.Query["take"], out var t)) take = Math.Clamp(t, 1, 5000);
+
+     await using var con = await OpenPg(cfg);
+     await using var cmd = new Npgsql.NpgsqlCommand(@"
+       SELECT
+         s.device_id,
+         COALESCE(s.store_name,'') AS store_name,
+         COALESCE(s.store_address,'') AS store_address,
+         COALESCE(s.mode,'NONE') AS mode,
+         COALESCE(s.serial,'') AS serial,
+         s.expires_utc,
+         s.last_check_utc,
+         COALESCE(s.is_blocked,false) AS is_blocked,
+         COALESCE(s.block_reason,'') AS block_reason
+       FROM lic_device_subs s
+       ORDER BY s.last_check_utc DESC
+       LIMIT @take;
+     ", con);
+     cmd.Parameters.AddWithValue("take", take);
+
+     var list = new List<object>();
+     await using var rd = await cmd.ExecuteReaderAsync();
+     while (await rd.ReadAsync())
+     {
+         var expires = rd.GetDateTime(5);
+         var isBlocked = rd.GetBoolean(7);
+         var isActive = (!isBlocked) && expires > DateTime.UtcNow;
+
+         var leftDays = (int)Math.Ceiling((expires - DateTime.UtcNow).TotalDays);
+
+         list.Add(new {
+             deviceId = rd.GetString(0),
+             storeName = rd.GetString(1),
+             storeAddress = rd.GetString(2),
+             mode = rd.GetString(3),
+             serial = rd.GetString(4),
+             expiresUtc = expires,
+             lastCheckUtc = rd.GetDateTime(6),
+             isBlocked,
+             blockReason = rd.GetString(8),
+             isActive,
+             leftDays
+         });
+     }
+     return Results.Ok(new { ok=true, subscribers=list });
+ });
+
+ // حظر جهاز
+ app.MapPost("/api/admin/subscribers/{deviceId}/block", async (string deviceId, HttpRequest req, IConfiguration cfg) =>
+ {
+     if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+     deviceId = (deviceId ?? "").Trim();
+     if (string.IsNullOrWhiteSpace(deviceId)) return Results.BadRequest("DEVICE_REQUIRED");
+
+     var body = await req.ReadFromJsonAsync<JsonElement>();
+     var reason = (body.ValueKind == JsonValueKind.Object && body.TryGetProperty("reason", out var r)) ? (r.GetString() ?? "").Trim() : "";
+
+     await using var con = await OpenPg(cfg);
+     await using var cmd = new Npgsql.NpgsqlCommand(@"
+       UPDATE lic_device_subs
+       SET is_blocked = TRUE,
+           block_reason = NULLIF(@reason,''),
+           last_check_utc = NOW()
+       WHERE device_id = @d;
+     ", con);
+     cmd.Parameters.AddWithValue("d", deviceId);
+     cmd.Parameters.AddWithValue("reason", reason ?? "");
+     var n = await cmd.ExecuteNonQueryAsync();
+     return n > 0 ? Results.Ok(new { ok=true }) : Results.NotFound();
+ });
+
+ // فك الحظر
+ app.MapPost("/api/admin/subscribers/{deviceId}/unblock", async (string deviceId, HttpRequest req, IConfiguration cfg) =>
+ {
+     if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+     deviceId = (deviceId ?? "").Trim();
+     if (string.IsNullOrWhiteSpace(deviceId)) return Results.BadRequest("DEVICE_REQUIRED");
+
+     await using var con = await OpenPg(cfg);
+     await using var cmd = new Npgsql.NpgsqlCommand(@"
+       UPDATE lic_device_subs
+       SET is_blocked = FALSE,
+           block_reason = NULL
+       WHERE device_id = @d;
+     ", con);
+     cmd.Parameters.AddWithValue("d", deviceId);
+     var n = await cmd.ExecuteNonQueryAsync();
+     return n > 0 ? Results.Ok(new { ok=true }) : Results.NotFound();
+ });
+ // ===== END ADMIN_SUBSCRIBERS_V1 =====
+
+
+
+  // ===== ADMIN_NADER_ROUTE_V1 =====
+  app.MapGet("/admin-nader", () => Results.Redirect("/admin-nader.html"));
+  app.MapGet("/admin-nader/", () => Results.Redirect("/admin-nader.html"));
+  // ===== END ADMIN_NADER_ROUTE_V1 =====
+app.MapPost("/api/subscription/store-info", async (HttpRequest req, IConfiguration cfg) =>
+{
+    if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+    var body = await req.ReadFromJsonAsync<JsonElement>();
+    if (body.ValueKind != JsonValueKind.Object) return Results.BadRequest("INVALID_BODY");
+
+    var deviceId = body.TryGetProperty("deviceId", out var d) ? (d.GetString() ?? "").Trim() : "";
+    var storeName = body.TryGetProperty("storeName", out var sn) ? (sn.GetString() ?? "").Trim() : "";
+    var storeAddress = body.TryGetProperty("storeAddress", out var sa) ? (sa.GetString() ?? "").Trim() : "";
+
+    if (string.IsNullOrWhiteSpace(deviceId)) return Results.BadRequest("DEVICE_REQUIRED");
+
+    await using var con = await OpenPg(cfg);
+    await using var cmd = new Npgsql.NpgsqlCommand(@"
+      UPDATE lic_device_subs
+      SET store_name = NULLIF(@n,''),
+          store_address = NULLIF(@a,''),
+          last_check_utc = NOW()
+      WHERE device_id = @d;
+    ", con);
+
+    cmd.Parameters.AddWithValue("d", deviceId);
+    cmd.Parameters.AddWithValue("n", storeName ?? "");
+    cmd.Parameters.AddWithValue("a", storeAddress ?? "");
+
+    var n = await cmd.ExecuteNonQueryAsync();
+    return n > 0 ? Results.Ok(new { ok=true }) : Results.NotFound("DEVICE_NOT_FOUND");
+});
+
+ // ===== ADMIN_DB_ENSURE_LIC_COLS_V1 =====
+ app.MapPost("/api/admin/db/ensure-licensing-columns", async (HttpRequest req, IConfiguration cfg) =>
+ {
+     if (!CheckAdmin(req, cfg, out var fail)) return fail!;
+     await using var con = await OpenPg(cfg);
+
+     var sql = @"
+ALTER TABLE lic_device_subs
+  ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS block_reason TEXT NULL,
+  ADD COLUMN IF NOT EXISTS store_name TEXT NULL,
+  ADD COLUMN IF NOT EXISTS store_address TEXT NULL;
+
+ALTER TABLE lic_plans
+  ADD COLUMN IF NOT EXISTS offer_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS offer_type TEXT NULL,          -- PERCENT | AMOUNT | FIXED
+  ADD COLUMN IF NOT EXISTS offer_value NUMERIC(10,2) NULL,
+  ADD COLUMN IF NOT EXISTS offer_title TEXT NULL,         -- مثال: عرض رمضان
+  ADD COLUMN IF NOT EXISTS offer_badge TEXT NULL,         -- مثال: عرض حصري
+  ADD COLUMN IF NOT EXISTS offer_start TIMESTAMPTZ NULL,
+  ADD COLUMN IF NOT EXISTS offer_end TIMESTAMPTZ NULL;
+";
+     await using var cmd = new Npgsql.NpgsqlCommand(sql, con);
+     await cmd.ExecuteNonQueryAsync();
+     return Results.Ok(new { ok=true });
+ });
+ // ===== END ADMIN_DB_ENSURE_LIC_COLS_V1 =====
+
+ // ===== SUB_STOREINFO_V1 =====
+ app.MapPost("/api/subscription/store-info", async (HttpRequest req, IConfiguration cfg) =>
+ {
+     var body = await req.ReadFromJsonAsync<JsonElement>();
+     if (body.ValueKind != JsonValueKind.Object) return Results.BadRequest("INVALID_BODY");
+
+     var deviceId = body.TryGetProperty("deviceId", out var d) ? (d.GetString() ?? "").Trim() : "";
+     if (string.IsNullOrWhiteSpace(deviceId)) return Results.BadRequest("DEVICE_REQUIRED");
+
+     var storeName = body.TryGetProperty("storeName", out var sn) ? (sn.GetString() ?? "").Trim() : "";
+     var storeAddress = body.TryGetProperty("storeAddress", out var sa) ? (sa.GetString() ?? "").Trim() : "";
+
+     await using var con = await OpenPg(cfg);
+     await using var cmd = new Npgsql.NpgsqlCommand(@"
+INSERT INTO lic_device_subs(device_id, mode, serial, expires_utc, last_check_utc, created_utc, store_name, store_address)
+VALUES (@d, 'NONE', NULL, NOW(), NOW(), NOW(), NULLIF(@sn,''), NULLIF(@sa,''))
+ON CONFLICT (device_id) DO UPDATE SET
+  store_name = NULLIF(EXCLUDED.store_name,''),
+  store_address = NULLIF(EXCLUDED.store_address,''),
+  last_check_utc = NOW();
+", con);
+
+     cmd.Parameters.AddWithValue("d", deviceId);
+     cmd.Parameters.AddWithValue("sn", storeName ?? "");
+     cmd.Parameters.AddWithValue("sa", storeAddress ?? "");
+     await cmd.ExecuteNonQueryAsync();
+
+     return Results.Ok(new { ok=true });
+ });
+ // ===== END SUB_STOREINFO_V1 =====
+
+ // ===== ADMIN_NADER_ROUTE_V1 =====
+ // خله رابط واحد فقط لتفادي AmbiguousMatch
+ app.MapGet("/admin-nader", () => Results.Redirect("/admin-nader.html"));
+ // ===== END ADMIN_NADER_ROUTE_V1 =====
+
+ // ===== START_GATE_V1 =====
+ // اجعل الصفحة الرئيسية تفتح بوابة التشغيل
+ app.MapGet("/", () => Results.Redirect("/start.html"));
+
+ // endpoint بسيط لمعرفة هل فيه موظفين (أول تشغيل)
+ app.MapGet("/api/employees/any", async (IConfiguration cfg) =>
+ {
+     await using var con = await OpenPg(cfg);
+    await using var cmd = new Npgsql.NpgsqlCommand("SELECT EXISTS (SELECT 1 FROM \"Employees\")", con);
+     var has = (bool)(await cmd.ExecuteScalarAsync() ?? false);
+     return Results.Ok(new { ok = true, hasEmployees = has });
+ });
+
+ // حفظ بيانات المتجر (اسم/عنوان) على مستوى DeviceId - لتظهر في لوحة المشتركين
+ app.MapPost("/api/subscription/store-info", async (HttpRequest req, IConfiguration cfg) =>
+ {
+     var body = await req.ReadFromJsonAsync<JsonElement>();
+     if (body.ValueKind != JsonValueKind.Object) return Results.BadRequest("INVALID_BODY");
+
+     var deviceId = body.TryGetProperty("deviceId", out var d) ? (d.GetString() ?? "").Trim() : "";
+     var storeName = body.TryGetProperty("storeName", out var sn) ? (sn.GetString() ?? "").Trim() : "";
+     var storeAddress = body.TryGetProperty("storeAddress", out var sa) ? (sa.GetString() ?? "").Trim() : "";
+
+     if (string.IsNullOrWhiteSpace(deviceId)) return Results.BadRequest("DEVICE_REQUIRED");
+
+     await using var con = await OpenPg(cfg);
+     await using var cmd = new Npgsql.NpgsqlCommand(@"
+       UPDATE lic_device_subs
+       SET store_name = NULLIF(@n,''),
+           store_address = NULLIF(@a,''),
+           last_check_utc = NOW()
+       WHERE device_id=@d;
+     ", con);
+
+     cmd.Parameters.AddWithValue("d", deviceId);
+     cmd.Parameters.AddWithValue("n", storeName ?? "");
+     cmd.Parameters.AddWithValue("a", storeAddress ?? "");
+     var n = await cmd.ExecuteNonQueryAsync();
+     return Results.Ok(new { ok=true, updated = n });
+ });
+ // ===== END START_GATE_V1 =====
+
+ // ===== START_GATE_V1 =====
+ // اجعل الصفحة الرئيسية تفتح بوابة التشغيل
+ app.MapGet("/", () => Results.Redirect("/start.html"));
+
+ // endpoint بسيط لمعرفة هل فيه موظفين (أول تشغيل)
+ app.MapGet("/api/employees/any", async (IConfiguration cfg) =>
+ {
+     await using var con = await OpenPg(cfg);
+     await using var cmd = new Npgsql.NpgsqlCommand(@"
+         SELECT EXISTS (SELECT 1 FROM ""Employees"");
+     ", con);
+
+     var has = (bool)(await cmd.ExecuteScalarAsync() ?? false);
+     return Results.Ok(new { ok = true, hasEmployees = has });
+ });
+
+ // حفظ بيانات المتجر (اسم/عنوان) على مستوى DeviceId - لتظهر في لوحة المشتركين
+ app.MapPost("/api/subscription/store-info", async (HttpRequest req, IConfiguration cfg) =>
+ {
+     var body = await req.ReadFromJsonAsync<JsonElement>();
+     if (body.ValueKind != JsonValueKind.Object) return Results.BadRequest("INVALID_BODY");
+
+     var deviceId = body.TryGetProperty("deviceId", out var d) ? (d.GetString() ?? "").Trim() : "";
+     var storeName = body.TryGetProperty("storeName", out var sn) ? (sn.GetString() ?? "").Trim() : "";
+     var storeAddress = body.TryGetProperty("storeAddress", out var sa) ? (sa.GetString() ?? "").Trim() : "";
+
+     if (string.IsNullOrWhiteSpace(deviceId)) return Results.BadRequest("DEVICE_REQUIRED");
+
+     await using var con = await OpenPg(cfg);
+     await using var cmd = new Npgsql.NpgsqlCommand(@"
+         UPDATE lic_device_subs
+         SET store_name = NULLIF(@n,''),
+             store_address = NULLIF(@a,''),
+             last_check_utc = NOW()
+         WHERE device_id=@d;
+     ", con);
+
+     cmd.Parameters.AddWithValue("d", deviceId);
+     cmd.Parameters.AddWithValue("n", storeName ?? "");
+     cmd.Parameters.AddWithValue("a", storeAddress ?? "");
+
+     var n = await cmd.ExecuteNonQueryAsync();
+     return Results.Ok(new { ok = true, updated = n });
+ });
+ // ===== END START_GATE_V1 =====
+
+app.Run("http://127.0.0.1:5050");
+
+record SettingsDto(
+    string? StoreName,
+    string? CommercialRegister,
+    string? VatNumber,
+    string? StoreAddress,
+    string? StorePhone,
+
+    string? InvoicePaper,
+    int CashierPaperWidthMm,
+    string? StoreLogoBase64,
+    string? InvoiceFooterNotes,
+
+    string? BarcodeType,
+    int ZatcaPhase,
+
+    string? Phase2InvoiceHash,
+    string? Phase2Signature,
+    string? Phase2PublicKey,
+    string? Phase2CertificateSignature
+);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

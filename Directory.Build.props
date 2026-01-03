@@ -1,0 +1,30 @@
+﻿<Project>
+  <ItemGroup>
+    <!-- Ignore any folders named Launcher -->
+    <Compile Remove="**\Launcher\**\*.cs" />
+    <None Remove="**\Launcher\**\*" />
+    <Content Remove="**\Launcher\**\*" />
+    <EmbeddedResource Remove="**\Launcher\**\*" />
+    <Page Remove="**\Launcher\**\*.xaml" />
+    <ApplicationDefinition Remove="**\Launcher\**\*.xaml" />
+    <Resource Remove="**\Launcher\**\*" />
+
+    <!-- Ignore your actual launcher folders -->
+    <Compile Remove="**\NaderPOS_Launcher*\**\*.cs" />
+    <None Remove="**\NaderPOS_Launcher*\**\*" />
+    <Content Remove="**\NaderPOS_Launcher*\**\*" />
+    <EmbeddedResource Remove="**\NaderPOS_Launcher*\**\*" />
+    <Page Remove="**\NaderPOS_Launcher*\**\*.xaml" />
+    <ApplicationDefinition Remove="**\NaderPOS_Launcher*\**\*.xaml" />
+    <Resource Remove="**\NaderPOS_Launcher*\**\*" />
+
+    <!-- Extra safety: ignore any folder that contains _Launcher in its name -->
+    <Compile Remove="**\*_Launcher*\**\*.cs" />
+    <None Remove="**\*_Launcher*\**\*" />
+    <Content Remove="**\*_Launcher*\**\*" />
+    <EmbeddedResource Remove="**\*_Launcher*\**\*" />
+    <Page Remove="**\*_Launcher*\**\*.xaml" />
+    <ApplicationDefinition Remove="**\*_Launcher*\**\*.xaml" />
+    <Resource Remove="**\*_Launcher*\**\*" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,158 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <title>إدارة المشتركين</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root{--bg:#f4f6fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--border:#e5e7eb;--primary:#2563eb;--danger:#dc2626;--success:#16a34a;--warn:#f59e0b;--shadow:0 10px 25px rgba(0,0,0,.08);--r:18px;}
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+    body{margin:0;background:var(--bg);color:var(--text)}
+    .page{max-width:1400px;margin:28px auto;padding:16px}
+    .card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:18px}
+    h1{margin:0 0 6px;font-size:22px}
+    .sub{color:var(--muted);margin:0 0 16px;line-height:1.7}
+    .top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+    input,select{padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;min-width:240px}
+    button{border:0;border-radius:12px;padding:10px 14px;cursor:pointer}
+    .b1{background:var(--primary);color:#fff}
+    .b2{background:#fff;border:1px solid var(--border)}
+    .danger{background:var(--danger);color:#fff}
+    .success{background:var(--success);color:#fff}
+    .small{padding:8px 12px;border-radius:12px}
+    table{width:100%;border-collapse:separate;border-spacing:0 10px}
+    th{font-size:12px;color:var(--muted);text-align:right;padding:0 10px;white-space:nowrap}
+    td{background:#fff;border:1px solid var(--border);padding:10px;vertical-align:top}
+    tr td:first-child{border-top-right-radius:14px;border-bottom-right-radius:14px}
+    tr td:last-child{border-top-left-radius:14px;border-bottom-left-radius:14px}
+    .mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:999px;background:#f8fafc;border:1px solid var(--border);font-size:12px;white-space:nowrap}
+    .dot{width:8px;height:8px;border-radius:50%}
+    .ok{background:var(--success)} .bad{background:var(--danger)} .mid{background:var(--warn)}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      <div class="top">
+        <button class="b2" onclick="location.href='/admin-nader.html'">⬅️ العودة للرئيسية</button>
+        <h1 style="margin:0">إدارة المشتركين</h1>
+        <span style="flex:1"></span>
+        <button class="b1" onclick="load()">تحديث</button>
+      </div>
+      <p class="sub">تقدر توقف/تفك حظر جهاز، وتعدل اسم المتجر/العنوان (اختياري).</p>
+
+      <div class="top" style="align-items:flex-end">
+        <input id="q" placeholder="بحث: DeviceId / Serial / اسم المتجر / العنوان"/>
+        <select id="filter">
+          <option value="all">الكل</option>
+          <option value="active">نشط</option>
+          <option value="expired">منتهي</option>
+          <option value="blocked">موقوف</option>
+        </select>
+        <span class="mono" id="hint"></span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>المتجر</th><th>العنوان</th><th>DeviceId</th><th>النوع</th><th>السيريال</th><th>الانتهاء</th><th>المتبقي</th><th>الحالة</th><th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+const ADMIN_KEY = "NADER-ADMIN-123";
+try{ localStorage.setItem("ADMIN_KEY", ADMIN_KEY); }catch(e){}
+
+async function api(url, options={}){
+  options.headers = options.headers || {};
+  options.headers["X-ADMIN-KEY"] = ADMIN_KEY;
+  if(!options.headers["Content-Type"] && options.method && options.method.toUpperCase()!=="GET") options.headers["Content-Type"]="application/json";
+  const r = await fetch(url, options);
+  const txt = await r.text();
+  let data=null; try{ data = txt?JSON.parse(txt):null; }catch{ data={raw:txt}; }
+  if(!r.ok) throw new Error((r.status+" "+(data?.detail||data?.message||data?.error||data?.raw||txt||"")).trim());
+  return data;
+}
+
+function fmt(iso){ try{ return new Date(iso).toLocaleString("ar-SA"); }catch{ return iso||""; } }
+function escapeHtml(s){ return (s??"").replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])); }
+
+function statusPill(x){
+  if(x.isBlocked) return '<span class="pill"><span class="dot bad"></span>موقوف</span>';
+  if(x.isActive) return '<span class="pill"><span class="dot ok"></span>نشط</span>';
+  return '<span class="pill"><span class="dot mid"></span>منتهي</span>';
+}
+
+function row(x){
+  const store = `<input data-k="storeName" placeholder="اسم المتجر" value="${escapeHtml(x.storeName||"")}" style="min-width:200px"/>`;
+  const addr  = `<input data-k="storeAddress" placeholder="العنوان" value="${escapeHtml(x.storeAddress||"")}" style="min-width:220px"/>`;
+  const serial = x.serial ? `<span class="mono">${escapeHtml(x.serial)}</span>` : '—';
+
+  return `
+  <tr>
+    <td>${store}</td>
+    <td>${addr}</td>
+    <td class="mono">${escapeHtml(x.deviceId)}</td>
+    <td>${escapeHtml(x.mode)}</td>
+    <td>${serial}</td>
+    <td class="mono">${fmt(x.expiresUtc)}</td>
+    <td class="mono">${x.leftDays ?? ""} يوم</td>
+    <td>${statusPill(x)}</td>
+    <td style="white-space:nowrap">
+      <button class="b1 small" onclick="saveStore(this, '${x.deviceId}')">💾 حفظ المتجر</button>
+      <button class="danger small" onclick="blockDev('${x.deviceId}')">⛔ إيقاف</button>
+      <button class="success small" onclick="unblockDev('${x.deviceId}')">✅ تفعيل</button>
+    </td>
+  </tr>`;
+}
+
+async function load(){
+  const data = await api("/api/admin/subscribers?take=2000");
+  let list = data.subscribers || [];
+  const q = (document.getElementById("q").value||"").trim().toLowerCase();
+  const f = document.getElementById("filter").value;
+
+  if(q){
+    list = list.filter(x =>
+      (x.deviceId||"").toLowerCase().includes(q) ||
+      (x.serial||"").toLowerCase().includes(q) ||
+      (x.storeName||"").toLowerCase().includes(q) ||
+      (x.storeAddress||"").toLowerCase().includes(q)
+    );
+  }
+  if(f==="active") list = list.filter(x=>x.isActive && !x.isBlocked);
+  if(f==="expired") list = list.filter(x=>!x.isActive && !x.isBlocked);
+  if(f==="blocked") list = list.filter(x=>x.isBlocked);
+
+  document.getElementById("tb").innerHTML = list.map(row).join("");
+  document.getElementById("hint").textContent = "عدد النتائج: " + list.length;
+}
+
+async function saveStore(btn, deviceId){
+  const tr = btn.closest("tr");
+  const storeName = tr.querySelector('[data-k="storeName"]').value.trim();
+  const storeAddress = tr.querySelector('[data-k="storeAddress"]').value.trim();
+  await api("/api/subscription/store-info", { method:"POST", body: JSON.stringify({ deviceId, storeName, storeAddress }) });
+  await load();
+}
+
+async function blockDev(deviceId){
+  const reason = prompt("سبب الإيقاف؟ (اختياري)") || "";
+  await api(`/api/admin/subscribers/${encodeURIComponent(deviceId)}/block`, { method:"POST", body: JSON.stringify({ reason }) });
+  await load();
+}
+
+async function unblockDev(deviceId){
+  await api(`/api/admin/subscribers/${encodeURIComponent(deviceId)}/unblock`, { method:"POST" });
+  await load();
+}
+
+window.addEventListener("DOMContentLoaded", ()=>{ load().catch(e=>alert(e.message)); });
+</script>
+</body>
+</html>

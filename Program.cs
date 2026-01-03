@@ -191,7 +191,7 @@ app.MapPost("/api/cashier/invoices", async ([FromServices] AppDbContext db, Cash
 
     var inv = new CashierInvoice
     {
-        InvoiceDate = DateTime.Now,
+        InvoiceDate = DateTime.UtcNow,
         PaymentMethod = pm,
         CustomerId = req.CustomerId,
         Notes = string.IsNullOrWhiteSpace(req.Notes) ? null : req.Notes,
@@ -238,7 +238,7 @@ app.MapPost("/api/cashier/invoices", async ([FromServices] AppDbContext db, Cash
             CustomerId = inv.CustomerId.Value,
             Amount = (double)inv.GrandTotal,
             Description = "فاتورة كاشير رقم " + inv.Id,
-            Date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")
+            Date = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")
         };
         db.CustomerInvoices.Add(ledger);
         await db.SaveChangesAsync();
@@ -356,7 +356,7 @@ if (inv.PaymentMethod == "deferred" && inv.CustomerId.HasValue && inv.CustomerId
         CustomerId = inv.CustomerId.Value,
         Amount = -(double)Math.Round(retSum, 2),
         Description = "مرتجع فاتورة كاشير رقم " + inv.Id,
-        Date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")
+        Date = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")
     });
 }
 
@@ -505,7 +505,7 @@ app.MapPost("/api/customers/{id:int}/invoices", async ([FromServices] AppDbConte
         CustomerId = id,
         Amount = req.Amount,
         Description = string.IsNullOrWhiteSpace(req.Description) ? "تعديل رصيد يدوي" : req.Description.Trim(),
-        Date = string.IsNullOrWhiteSpace(req.Date) ? DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") : req.Date!
+        Date = string.IsNullOrWhiteSpace(req.Date) ? DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss") : req.Date!
     };
 
     db.CustomerInvoices.Add(inv);
@@ -526,7 +526,7 @@ app.MapPost("/api/customers/{id:int}/payments", async ([FromServices] AppDbConte
         Amount = req.Amount,
         Method = string.IsNullOrWhiteSpace(req.Method) ? "كاش" : req.Method.Trim(),
         Note = string.IsNullOrWhiteSpace(req.Note) ? null : req.Note.Trim(),
-        Date = string.IsNullOrWhiteSpace(req.Date) ? DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") : req.Date!
+        Date = string.IsNullOrWhiteSpace(req.Date) ? DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss") : req.Date!
     };
 
     db.CustomerPayments.Add(pay);
@@ -550,6 +550,7 @@ ShiftsApiV1.MapShiftsApi(app);
 ShiftsApiV1.MapShiftListApi(app);
 DiagRoutesApiV1.Map(app);
 app.Run();
+
 
 
 

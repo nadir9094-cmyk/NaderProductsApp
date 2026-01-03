@@ -193,7 +193,7 @@ app.MapPost("/api/cashier/invoices", async (HttpRequest http, [FromServices] App
             CustomerId = inv.CustomerId.Value,
             Amount = inv.GrandTotal,
             Description = "فاتورة كاشير رقم " + inv.Id,
-            Date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")
+            Date = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")
         };
         db.CustomerInvoices.Add(ledger);
         await db.SaveChangesAsync();
@@ -331,7 +331,7 @@ if (inv.PaymentMethod == "deferred" && inv.CustomerId.HasValue && inv.CustomerId
         CustomerId = inv.CustomerId.Value,
         Amount = -Math.Round(retSum, 2),
         Description = "مرتجع فاتورة كاشير رقم " + inv.Id,
-        Date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")
+        Date = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")
     });
 }
 
@@ -480,7 +480,7 @@ app.MapPost("/api/customers/{id:int}/invoices", async ([FromServices] AppDbConte
         CustomerId = id,
         Amount = req.Amount,
         Description = string.IsNullOrWhiteSpace(req.Description) ? "تعديل رصيد يدوي" : req.Description.Trim(),
-        Date = string.IsNullOrWhiteSpace(req.Date) ? DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") : req.Date!
+        Date = string.IsNullOrWhiteSpace(req.Date) ? DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss") : req.Date!
     };
 
     db.CustomerInvoices.Add(inv);
@@ -501,7 +501,7 @@ app.MapPost("/api/customers/{id:int}/payments", async ([FromServices] AppDbConte
         Amount = req.Amount,
         Method = string.IsNullOrWhiteSpace(req.Method) ? "كاش" : req.Method.Trim(),
         Note = string.IsNullOrWhiteSpace(req.Note) ? null : req.Note.Trim(),
-        Date = string.IsNullOrWhiteSpace(req.Date) ? DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") : req.Date!
+        Date = string.IsNullOrWhiteSpace(req.Date) ? DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss") : req.Date!
     };
 
     db.CustomerPayments.Add(pay);
@@ -651,7 +651,7 @@ app.MapPost("/api/backup/run", async (IConfiguration cfg, IOptions<BackupSetting
     var dir = Path.Combine(env.ContentRootPath, s.OutputDir ?? "wwwroot/backups");
     Directory.CreateDirectory(dir);
 
-    var file = "backup_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".sql";
+    var file = "backup_" + DateTime.UtcNow.ToString("yyyyMMdd_HHmmss") + ".sql";
     var path = Path.Combine(dir, file);
 
     // Requires: pg_dump available in PATH (PostgreSQL client tools)
@@ -872,6 +872,7 @@ record SettingsDto(
     string? Phase2CertificateSignature
 );
 //
+
 
 
 

@@ -1,0 +1,330 @@
+// =========================
+// SHIFTS (Daily closing) API
+// =========================
+// Tables: "CashierShifts" (created if missing)
+// Notes:
+// - Uses UTC timestamps to avoid Npgsql timestamptz Kind issues.
+// - Does NOT require EF model changes (ADO.NET only).
+// - Links shifts to invoices by time window + cashier id (no ShiftId column needed).
+//   (Later we can add ShiftId on invoices if you want.)
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NaderProductsApp.Data.AppDbContext>();
+        db.Database.ExecuteSqlRaw(@"
+            CREATE TABLE IF NOT EXISTS ""CashierShifts"" (
+              ""Id"" SERIAL PRIMARY KEY,
+              ""CashierId"" integer NULL,
+              ""CashierName"" text NULL,
+              ""OpenedAtUtc"" timestamp with time zone NOT NULL,
+              ""ClosedAtUtc"" timestamp with time zone NULL,
+              ""OpeningCash"" numeric(18,2) NOT NULL DEFAULT 0,
+              ""CountedCash"" numeric(18,2) NULL,
+              ""Adjustment"" numeric(18,2) NOT NULL DEFAULT 0,
+              ""Difference"" numeric(18,2) NULL,
+              ""Note"" text NULL,
+              ""IsClosed"" boolean NOT NULL DEFAULT FALSE
+            );
+        ");
+        Console.WriteLine("DB PATCH OK: CashierShifts ensured.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("DB PATCH FAIL (CashierShifts): " + ex.Message);
+    }
+});
+
+static async Task<(int? id, string? name)?> GetMeAsync(HttpContext http, NaderProductsApp.Data.AppDbContext db)
+{
+    // If you already have AuthApiV1 / employees auth:
+    // prefer reading from HttpContext.User claims.
+    // But to keep it simple and compatible, we support:
+    // 1) x-cashier-id + x-cashier-name headers (set by cashier.html)
+    // 2) If token/claims exist, use claims (optional)
+    try
+    {
+        var hId = http.Request.Headers["x-cashier-id"].FirstOrDefault();
+        var hName = http.Request.Headers["x-cashier-name"].FirstOrDefault();
+        if (int.TryParse(hId, out var cid))
+            return (cid, string.IsNullOrWhiteSpace(hName) ? null : hName);
+
+        // fallback: claim "id" or "emp_id"
+        var claimId = http.User?.Claims?.FirstOrDefault(c => c.Type == "id" || c.Type == "emp_id" || c.Type.EndsWith("/nameidentifier"))?.Value;
+        var claimName = http.User?.Identity?.Name;
+        if (int.TryParse(claimId, out var cid2))
+            return (cid2, string.IsNullOrWhiteSpace(claimName) ? null : claimName);
+    }
+    catch { }
+    return null;
+}
+
+app.MapPost("/api/shifts/open", async (HttpContext http, NaderProductsApp.Data.AppDbContext db) =>
+{
+    var me = await GetMeAsync(http, db);
+    if (me == null) return Results.Unauthorized();
+
+    decimal openingCash = 0;
+    try
+    {
+        using var sr = new StreamReader(http.Request.Body);
+        var body = await sr.ReadToEndAsync();
+        if (!string.IsNullOrWhiteSpace(body))
+        {
+            var doc = System.Text.Json.JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("openingCash", out var oc) && oc.TryGetDecimal(out var d))
+                openingCash = d;
+        }
+    }
+    catch { }
+
+    var nowUtc = DateTime.UtcNow;
+
+    await using var conn = (Npgsql.NpgsqlConnection)db.Database.GetDbConnection();
+    if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+
+    // close any previous open shifts for this cashier (safety)
+    await using (var cmd0 = new Npgsql.NpgsqlCommand(@"
+        UPDATE ""CashierShifts""
+        SET ""IsClosed""=TRUE, ""ClosedAtUtc""=@now
+        WHERE ""IsClosed""=FALSE AND ""CashierId""=@cid;
+    ", conn))
+    {
+        cmd0.Parameters.AddWithValue("now", nowUtc);
+        cmd0.Parameters.AddWithValue("cid", me.Value.id ?? (object)DBNull.Value);
+        await cmd0.ExecuteNonQueryAsync();
+    }
+
+    int newId;
+    await using (var cmd = new Npgsql.NpgsqlCommand(@"
+        INSERT INTO ""CashierShifts"" (""CashierId"",""CashierName"",""OpenedAtUtc"",""OpeningCash"",""IsClosed"")
+        VALUES (@cid,@cname,@open,@cash,FALSE)
+        RETURNING ""Id"";
+    ", conn))
+    {
+        cmd.Parameters.AddWithValue("cid", me.Value.id ?? (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("cname", (object?)me.Value.name ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("open", nowUtc);
+        cmd.Parameters.AddWithValue("cash", openingCash);
+        newId = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+    }
+
+    return Results.Ok(new { id = newId, openedAt = nowUtc, openingCash, isClosed = false });
+});
+
+static async Task<object> ShiftSummaryAsync(NaderProductsApp.Data.AppDbContext db, int? cashierId, DateTime minUtc, DateTime maxUtc)
+{
+    await using var conn = (Npgsql.NpgsqlConnection)db.Database.GetDbConnection();
+    if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+
+    decimal salesTotal = 0, vatTotal = 0, discountTotal = 0, returnsTotal = 0;
+    decimal cashTotal = 0, cardTotal = 0, debtTotal = 0;
+
+    var sql = @"
+      SELECT COALESCE(SUM(""GrandTotal""),0) AS sales,
+             COALESCE(SUM(""VatTotal""),0) AS vat,
+             COALESCE(SUM(""DiscountTotal""),0) AS disc,
+             COALESCE(SUM(""ReturnAmount""),0) AS ret
+      FROM ""CashierInvoices""
+      WHERE NOT ""IsSuspended""
+        AND ""InvoiceDate"" >= @min AND ""InvoiceDate"" < @max
+        AND (@cid IS NULL OR ""CashierId"" = @cid);
+
+      SELECT ""PaymentMethod"",
+             COALESCE(SUM(""GrandTotal""),0) AS total
+      FROM ""CashierInvoices""
+      WHERE NOT ""IsSuspended""
+        AND ""InvoiceDate"" >= @min AND ""InvoiceDate"" < @max
+        AND (@cid IS NULL OR ""CashierId"" = @cid)
+      GROUP BY ""PaymentMethod"";
+    ";
+
+    await using (var cmd = new Npgsql.NpgsqlCommand(sql, conn))
+    {
+        cmd.Parameters.AddWithValue("min", minUtc);
+        cmd.Parameters.AddWithValue("max", maxUtc);
+        cmd.Parameters.AddWithValue("cid", (object?)cashierId ?? DBNull.Value);
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+
+        if (await reader.ReadAsync())
+        {
+            salesTotal = reader.GetFieldValue<decimal>(0);
+            vatTotal = reader.GetFieldValue<decimal>(1);
+            discountTotal = reader.GetFieldValue<decimal>(2);
+            returnsTotal = reader.GetFieldValue<decimal>(3);
+        }
+
+        await reader.NextResultAsync();
+        while (await reader.ReadAsync())
+        {
+            var pm = reader.IsDBNull(0) ? "" : reader.GetString(0);
+            var tot = reader.GetFieldValue<decimal>(1);
+
+            // adapt to your PaymentMethod values (نقدي/شبكة/مؤجل)
+            if (pm.Contains("cash", StringComparison.OrdinalIgnoreCase) || pm.Contains("نقد"))
+                cashTotal += tot;
+            else if (pm.Contains("card", StringComparison.OrdinalIgnoreCase) || pm.Contains("شبك"))
+                cardTotal += tot;
+            else if (pm.Contains("debt", StringComparison.OrdinalIgnoreCase) || pm.Contains("مؤجل"))
+                debtTotal += tot;
+            else
+                cashTotal += tot; // default
+        }
+    }
+
+    // expected cash: cash sales - returns (assume refunds are cash) + opening cash (added by caller)
+    return new {
+        salesTotal, cashTotal, cardTotal, debtTotal,
+        vatTotal, discountTotal, returnsTotal
+    };
+}
+
+app.MapGet("/api/shifts/current", async (HttpContext http, NaderProductsApp.Data.AppDbContext db) =>
+{
+    var me = await GetMeAsync(http, db);
+    if (me == null) return Results.Unauthorized();
+
+    await using var conn = (Npgsql.NpgsqlConnection)db.Database.GetDbConnection();
+    if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+
+    int? shiftId = null;
+    DateTime openedAt = DateTime.UtcNow;
+    DateTime? closedAt = null;
+    decimal openingCash = 0, countedCash = 0, adjustment = 0, difference = 0;
+    string? note = null;
+    bool isClosed = false;
+
+    await using (var cmd = new Npgsql.NpgsqlCommand(@"
+      SELECT ""Id"",""OpenedAtUtc"",""ClosedAtUtc"",""OpeningCash"",""CountedCash"",""Adjustment"",""Difference"",""Note"",""IsClosed""
+      FROM ""CashierShifts""
+      WHERE ""CashierId""=@cid
+      ORDER BY ""Id"" DESC
+      LIMIT 1;
+    ", conn))
+    {
+        cmd.Parameters.AddWithValue("cid", me.Value.id ?? (object)DBNull.Value);
+        await using var r = await cmd.ExecuteReaderAsync();
+        if (await r.ReadAsync())
+        {
+            shiftId = r.GetInt32(0);
+            openedAt = r.GetFieldValue<DateTime>(1);
+            closedAt = r.IsDBNull(2) ? null : r.GetFieldValue<DateTime>(2);
+            openingCash = r.GetFieldValue<decimal>(3);
+            countedCash = r.IsDBNull(4) ? 0 : r.GetFieldValue<decimal>(4);
+            adjustment = r.GetFieldValue<decimal>(5);
+            difference = r.IsDBNull(6) ? 0 : r.GetFieldValue<decimal>(6);
+            note = r.IsDBNull(7) ? null : r.GetString(7);
+            isClosed = r.GetBoolean(8);
+        }
+        else
+        {
+            return Results.Ok(new { me = new { id = me.Value.id, name = me.Value.name }, shift = (object?)null, summary = new { salesTotal=0m,cashTotal=0m,cardTotal=0m,debtTotal=0m,vatTotal=0m,discountTotal=0m,returnsTotal=0m,expectedCash=0m } });
+        }
+    }
+
+    var maxUtc = (closedAt ?? DateTime.UtcNow);
+    var baseSum = await ShiftSummaryAsync(db, me.Value.id, openedAt, maxUtc);
+    var s = (dynamic)baseSum;
+    decimal expectedCash = openingCash + (decimal)s.cashTotal - (decimal)s.returnsTotal;
+
+    return Results.Ok(new {
+        me = new { id = me.Value.id, name = me.Value.name },
+        shift = new {
+            id = shiftId, openedAt = openedAt, closedAt = closedAt,
+            openingCash, countedCash, adjustment, difference, note, isClosed
+        },
+        summary = new {
+            salesTotal = (decimal)s.salesTotal,
+            cashTotal = (decimal)s.cashTotal,
+            cardTotal = (decimal)s.cardTotal,
+            debtTotal = (decimal)s.debtTotal,
+            vatTotal = (decimal)s.vatTotal,
+            discountTotal = (decimal)s.discountTotal,
+            returnsTotal = (decimal)s.returnsTotal,
+            expectedCash
+        }
+    });
+});
+
+app.MapPost("/api/shifts/close", async (HttpContext http, NaderProductsApp.Data.AppDbContext db) =>
+{
+    var me = await GetMeAsync(http, db);
+    if (me == null) return Results.Unauthorized();
+
+    decimal countedCash = 0, adjustment = 0;
+    string? note = null;
+
+    try
+    {
+        using var sr = new StreamReader(http.Request.Body);
+        var body = await sr.ReadToEndAsync();
+        if (!string.IsNullOrWhiteSpace(body))
+        {
+            var doc = System.Text.Json.JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("countedCash", out var cc) && cc.TryGetDecimal(out var d1)) countedCash = d1;
+            if (doc.RootElement.TryGetProperty("adjustment", out var adj) && adj.TryGetDecimal(out var d2)) adjustment = d2;
+            if (doc.RootElement.TryGetProperty("note", out var nt) && nt.ValueKind == System.Text.Json.JsonValueKind.String) note = nt.GetString();
+        }
+    }
+    catch { }
+
+    await using var conn = (Npgsql.NpgsqlConnection)db.Database.GetDbConnection();
+    if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+
+    // get latest open shift
+    int? shiftId = null;
+    DateTime openedAt = DateTime.UtcNow;
+    decimal openingCash = 0;
+
+    await using (var cmd = new Npgsql.NpgsqlCommand(@"
+      SELECT ""Id"",""OpenedAtUtc"",""OpeningCash""
+      FROM ""CashierShifts""
+      WHERE ""CashierId""=@cid AND ""IsClosed""=FALSE
+      ORDER BY ""Id"" DESC
+      LIMIT 1;
+    ", conn))
+    {
+        cmd.Parameters.AddWithValue("cid", me.Value.id ?? (object)DBNull.Value);
+        await using var r = await cmd.ExecuteReaderAsync();
+        if (await r.ReadAsync())
+        {
+            shiftId = r.GetInt32(0);
+            openedAt = r.GetFieldValue<DateTime>(1);
+            openingCash = r.GetFieldValue<decimal>(2);
+        }
+        else
+        {
+            return Results.BadRequest("لا توجد وردية مفتوحة لإقفالها.");
+        }
+    }
+
+    var nowUtc = DateTime.UtcNow;
+    var baseSum = await ShiftSummaryAsync(db, me.Value.id, openedAt, nowUtc);
+    var s = (dynamic)baseSum;
+    decimal expectedCash = openingCash + (decimal)s.cashTotal - (decimal)s.returnsTotal;
+    decimal difference = (countedCash + adjustment) - expectedCash;
+
+    await using (var cmd = new Npgsql.NpgsqlCommand(@"
+      UPDATE ""CashierShifts""
+      SET ""ClosedAtUtc""=@close,
+          ""CountedCash""=@counted,
+          ""Adjustment""=@adj,
+          ""Difference""=@diff,
+          ""Note""=@note,
+          ""IsClosed""=TRUE
+      WHERE ""Id""=@id;
+    ", conn))
+    {
+        cmd.Parameters.AddWithValue("close", nowUtc);
+        cmd.Parameters.AddWithValue("counted", countedCash);
+        cmd.Parameters.AddWithValue("adj", adjustment);
+        cmd.Parameters.AddWithValue("diff", difference);
+        cmd.Parameters.AddWithValue("note", (object?)note ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("id", shiftId.Value);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    return Results.Ok(new { id = shiftId, closedAt = nowUtc, countedCash, adjustment, expectedCash, difference });
+});

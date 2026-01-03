@@ -1,0 +1,442 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>لوحة إدارة الاشتراكات</title>
+  <style>
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+    body{margin:0;background:#f4f6fb;color:#1f2933}
+    .page{max-width:1200px;margin:24px auto;padding:16px}
+    .top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:14px}
+    .brand{display:flex;gap:10px;align-items:center}
+    .logo{width:44px;height:44px;border-radius:14px;background:#111827;color:#fff;display:grid;place-items:center;font-weight:800}
+    .title h1{margin:0;font-size:18px}
+    .title p{margin:2px 0 0;font-size:12px;color:#52606d}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media(max-width:980px){.grid{grid-template-columns:1fr}}
+    .card{background:#fff;border-radius:18px;box-shadow:0 6px 18px rgba(16,24,40,.08);padding:14px}
+    .card h3{margin:0 0 10px;font-size:14px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .field{flex:1;min-width:200px}
+    label{display:block;font-size:12px;color:#52606d;margin-bottom:6px}
+    input,select{width:100%;padding:10px 12px;border:1px solid #dde3ea;border-radius:12px;background:#fff;outline:none}
+    input:focus,select:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    button{border:0;border-radius:12px;padding:10px 12px;font-weight:700;cursor:pointer}
+    .primary{background:#2563eb;color:#fff}
+    .ghost{background:#eef2ff;color:#1e3a8a}
+    .danger{background:#fee2e2;color:#991b1b}
+    .muted{color:#52606d;font-size:12px}
+    table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    th{font-size:12px;color:#52606d;text-align:right;padding:0 10px}
+    td{background:#f8fafc;border:1px solid #e7edf5;padding:10px;border-left:0;border-right:0}
+    tr td:first-child{border-radius:12px 0 0 12px}
+    tr td:last-child{border-radius:0 12px 12px 0}
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:8px 10px;border-radius:999px;background:#f1f5f9;color:#334155;font-size:12px}
+    .toast{position:fixed;left:16px;bottom:16px;max-width:520px;background:#111827;color:#fff;padding:10px 12px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);display:none;white-space:pre-line}
+    .small{font-size:11px;color:#64748b}
+    .ok{color:#065f46}
+    .bad{color:#991b1b}
+  </style>
+<!-- ADMIN_HELPER_V4 (HEAD) -->
+<script>
+(function(){
+  window.getAdminKey = function(){ return localStorage.getItem("ADMIN_KEY") || ""; };
+  window.setAdminKey = function(){
+    const k = prompt("اكتب AdminKey:", window.getAdminKey());
+    if(k===null) return;
+    const v = (k||"").trim();
+    if(!v){ alert("AdminKey فارغ"); return; }
+    localStorage.setItem("ADMIN_KEY", v);
+    alert("تم الحفظ ✅");
+  };
+
+  // apiFetch = مثل fetch تمامًا (Response) لكن يضيف X-ADMIN-KEY
+  window.apiFetch = async function(url, options){
+    options = options || {};
+    options.headers = options.headers || {};
+    options.headers["X-ADMIN-KEY"] = window.getAdminKey();
+    return window.fetch(url, options);
+  };
+
+  // مساعد اختياري لو تبغى JSON جاهز
+  window.apiJson = async function(url, options){
+    const r = await window.apiFetch(url, options);
+    const txt = await r.text();
+    let data; try{ data = JSON.parse(txt); } catch { data = { ok:false, raw:txt }; }
+    data.__status = r.status;
+    return data;
+  };
+})();
+</script>
+<!-- END ADMIN_HELPER_V4 -->
+</head>
+<body>
+<!-- FORCE_ADMINKEY_V1 -->
+<script>
+(function(){
+  try{
+    localStorage.setItem("ADMIN_KEY","NADER-ADMIN-123");
+  }catch(e){}
+})();
+</script>
+<!-- END FORCE_ADMINKEY_V1 -->
+<div class="page">
+    <div class="top">
+      <div class="brand">
+        <div class="logo">N</div>
+        <div class="title">
+          <h1>لوحة إدارة الاشتراكات</h1>
+          <p>تحكم بالباقات والسيريالات في أي وقت — بدون كرت في الرئيسية 😄</p>
+        </div>
+      </div>
+      <div class="row">
+        <span class="pill">API: <b id="apiBase">...</b></span>
+        <span class="pill">الحالة: <b id="authState" class="bad">غير متصل</b></span>
+        <span class="pill">KeyLen: <b id="keyLen">0</b></span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Admin Key -->
+      <div class="card">
+        <h3>مفتاح الإدارة (AdminKey)</h3>
+        <div class="row">
+          <div class="field">
+            <label>AdminKey</label>
+            <input id="adminKey" placeholder="اكتب المفتاح الموجود في appsettings.json" />
+            <div class="small">يُحفظ محليًا داخل المتصفح (LocalStorage).</div>
+          </div>
+          <div class="field" style="min-width:160px;flex:0">
+            <button class="primary" id="btnSaveKey">حفظ</button>
+            <button class="danger" id="btnClearKey" style="margin-top:8px">مسح</button>
+          </div>
+        </div>
+        <div class="btns">
+          <button class="ghost" id="btnPing">اختبار الاتصال</button>
+        </div>
+        <div class="muted">الهيدر المطلوب لكل طلب إداري: <code>X-ADMIN-KEY</code></div>
+      </div>
+
+      <!-- Quick Generate -->
+      <div class="card">
+        <h3>توليد سيريال</h3>
+        <div class="row">
+          <div class="field">
+            <label>الخطة</label>
+            <select id="genPlan"></select>
+          </div>
+          <div class="field">
+            <label>عدد الأجهزة (MaxDevices)</label>
+            <input id="genMaxDevices" type="number" min="1" max="50" value="1" />
+          </div>
+          <div class="field">
+            <label>العدد</label>
+            <input id="genCount" type="number" min="1" max="200" value="1" />
+          </div>
+        </div>
+        <div class="btns">
+          <button class="primary" id="btnGenerate">توليد</button>
+          <button class="ghost" id="btnRefreshAll">تحديث البيانات</button>
+        </div>
+        <div class="muted" id="genOut"></div>
+      </div>
+
+      <!-- Plans -->
+      <div class="card" style="grid-column:1/-1">
+        <h3>إدارة الباقات</h3>
+        <div class="row">
+          <div class="field">
+            <label>اسم الخطة</label>
+            <input id="pName" placeholder="مثال: شهر" />
+          </div>
+          <div class="field">
+            <label>المدة (أيام)</label>
+            <input id="pDays" type="number" min="1" value="30" />
+          </div>
+          <div class="field">
+            <label>السعر</label>
+            <input id="pPrice" type="number" min="0" step="0.01" value="49" />
+          </div>
+          <div class="field">
+            <label>مفعلة؟</label>
+            <select id="pActive">
+              <option value="1">نعم</option>
+              <option value="0">لا</option>
+            </select>
+          </div>
+          <div class="field" style="min-width:160px;flex:0">
+            <button class="primary" id="btnAddPlan">إضافة</button>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;overflow:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>الاسم</th>
+                <th>الأيام</th>
+                <th>السعر</th>
+                <th>مفعلة</th>
+                <th>تعديل</th>
+              </tr>
+            </thead>
+            <tbody id="plansBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Licenses -->
+      <div class="card" style="grid-column:1/-1">
+        <h3>آخر السيريالات</h3>
+        <div class="row">
+          <div class="field">
+            <label>عدد العرض</label>
+            <input id="lTake" type="number" min="10" max="2000" value="200" />
+          </div>
+          <div class="field" style="min-width:160px;flex:0">
+            <button class="ghost" id="btnLoadLic">تحديث السيريالات</button>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;overflow:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Serial</th>
+                <th>الخطة</th>
+                <th>الأيام</th>
+                <th>السعر</th>
+                <th>MaxDevices</th>
+                <th>مفعّل</th>
+                <th>إجراء</th>
+              </tr>
+            </thead>
+            <tbody id="licBody"></tbody>
+          </table>
+        </div>
+        <div class="small">ملاحظة: التفعيل/الاشتراك للمستخدمين سيتم ربطه بالسيريال في مرحلة API التفعيل (الخطوة التالية).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  const API = location.origin;
+  document.getElementById("apiBase").textContent = API;
+
+  const KEY_STORE = "nader_admin_key";
+
+  function getQueryParam(name){
+    try{
+      const u = new URL(location.href);
+      const v = u.searchParams.get(name);
+      return v ? String(v) : "";
+    }catch{ return ""; }
+  }
+
+  // Allow passing key via URL for quick test: admin-licenses.html?adminKey=...  or ?k=...
+  const qpKey = (getQueryParam("adminKey") || getQueryParam("k") || "").trim();
+
+  const toast = (msg) => {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.style.display = "block";
+    setTimeout(()=> el.style.display="none", 3400);
+  };
+
+  const getKey = ()=> localStorage.getItem(KEY_STORE) || "";
+  const setKey = (k)=> { localStorage.setItem(KEY_STORE, (k||"").trim()); document.getElementById("keyLen").textContent = String((k||"").trim().length); };
+  const clearKey = ()=> { localStorage.removeItem(KEY_STORE); document.getElementById("keyLen").textContent = "0"; };
+
+  const setState = (ok, msg) => {
+    const el = document.getElementById("authState");
+    el.textContent = msg;
+    el.className = ok ? "ok" : "bad";
+  };
+
+  if(qpKey){ setKey(qpKey); }
+  document.getElementById("adminKey").value = getKey();
+  document.getElementById("adminKey").addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ document.getElementById("btnSaveKey").click(); }});
+
+  async function apiFetch(path, {method="GET", body=null} = {}){
+    const headers = { "Content-Type":"application/json" };
+    const k = getKey();
+    if(k) headers["X-ADMIN-KEY"] = k;
+
+    const res = await window.window.fetch(API + path, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : null
+    });
+
+    const text = await res.text();
+    let json = null;
+    try{ json = text ? JSON.parse(text) : null; }catch{}
+    if(!res.ok){
+      const msg = (json && (json.detail || json.error)) ? (json.detail || json.error) : (text || ("HTTP " + res.status));
+      throw new Error(msg);
+    }
+    return json;
+  }
+
+  async function ping(){
+    try{
+      await apiFetch("/api/admin/plans");
+      setState(true, "متصل ✅");
+      toast("تم الاتصال بنجاح");
+    }catch(e){
+      setState(false, "غير متصل");
+      toast("فشل الاتصال: " + e.message);
+    }
+  }
+
+  async function loadPlans(){
+    const body = document.getElementById("plansBody");
+    body.innerHTML = "<tr><td colspan='6'>تحميل...</td></tr>";
+    try{
+      const r = await apiFetch("/api/admin/plans");
+      const plans = r.plans || [];
+      body.innerHTML = plans.map(p => `
+        <tr>
+          <td>${p.id}</td>
+          <td><input data-id="${p.id}" class="eName" value="${esc(p.name)}"/></td>
+          <td><input data-id="${p.id}" class="eDays" type="number" min="1" value="${p.days}"/></td>
+          <td><input data-id="${p.id}" class="ePrice" type="number" step="0.01" min="0" value="${p.price}"/></td>
+          <td>
+            <select data-id="${p.id}" class="eActive">
+              <option value="1" ${p.isActive ? "selected":""}>نعم</option>
+              <option value="0" ${!p.isActive ? "selected":""}>لا</option>
+            </select>
+          </td>
+          <td><button class="ghost" onclick="savePlan(${p.id})">حفظ</button></td>
+        </tr>
+      `).join("") || "<tr><td colspan='6'>لا توجد خطط</td></tr>";
+
+      // fill generator select
+      const sel = document.getElementById("genPlan");
+      sel.innerHTML = plans.filter(x=>x.isActive).map(p=>`<option value="${p.id}">${esc(p.name)} (${p.days} يوم)</option>`).join("")
+        || `<option value="">لا توجد خطط مفعلة</option>`;
+    }catch(e){
+      body.innerHTML = "<tr><td colspan='6'>خطأ: " + esc(e.message) + "</td></tr>";
+    }
+  }
+
+  window.savePlan = async function(id){
+    try{
+      const name = document.querySelector(`.eName[data-id="${id}"]`).value.trim();
+      const days = parseInt(document.querySelector(`.eDays[data-id="${id}"]`).value||"0",10);
+      const price = parseFloat(document.querySelector(`.ePrice[data-id="${id}"]`).value||"0");
+      const isActive = document.querySelector(`.eActive[data-id="${id}"]`).value === "1";
+      await apiFetch(`/api/admin/plans/${id}`, { method:"PUT", body:{ name, days, price, isActive }});
+      toast("تم حفظ الخطة ✅");
+      await loadPlans();
+    }catch(e){
+      toast("فشل الحفظ: " + e.message);
+    }
+  }
+
+  async function addPlan(){
+    try{
+      const name = document.getElementById("pName").value.trim();
+      const days = parseInt(document.getElementById("pDays").value||"0",10);
+      const price = parseFloat(document.getElementById("pPrice").value||"0");
+      const isActive = document.getElementById("pActive").value === "1";
+      await apiFetch("/api/admin/plans", { method:"POST", body:{ name, days, price, isActive }});
+      toast("تمت إضافة الخطة ✅");
+      document.getElementById("pName").value = "";
+      await loadPlans();
+    }catch(e){
+      toast("فشل الإضافة: " + e.message);
+    }
+  }
+
+  async function generate(){
+    const out = document.getElementById("genOut");
+    out.textContent = "";
+    try{
+      const planId = parseInt(document.getElementById("genPlan").value||"0",10);
+      const maxDevices = parseInt(document.getElementById("genMaxDevices").value||"1",10);
+      const count = parseInt(document.getElementById("genCount").value||"1",10);
+      if(!planId) return toast("اختر خطة أولاً.");
+      const r = await apiFetch("/api/admin/licenses/generate", { method:"POST", body:{ planId, maxDevices, count }});
+      const created = r.created || [];
+      out.textContent = created.length ? ("تم توليد:\n" + created.join("\n")) : "لم يتم توليد شيء";
+      toast("تم توليد السيريالات ✅");
+      await loadLicenses();
+    }catch(e){
+      toast("فشل التوليد: " + e.message);
+    }
+  }
+
+  async function loadLicenses(){
+    const take = parseInt(document.getElementById("lTake").value||"200",10);
+    const body = document.getElementById("licBody");
+    body.innerHTML = "<tr><td colspan='8'>تحميل...</td></tr>";
+    try{
+      const r = await apiFetch(`/api/admin/licenses?take=${encodeURIComponent(take)}`);
+      const list = r.licenses || [];
+      body.innerHTML = list.map(x=>`
+        <tr>
+          <td>${x.id}</td>
+          <td style="font-family:ui-monospace,Consolas,monospace">${esc(x.serial)}</td>
+          <td>${esc(x.planName)}</td>
+          <td>${x.planDays}</td>
+          <td>${x.planPrice}</td>
+          <td>${x.maxDevices}</td>
+          <td>${x.isActive ? "نعم" : "لا"}</td>
+          <td>
+            <button class="${x.isActive ? "danger":"ghost"}" onclick="setLicActive(${x.id}, ${x.isActive ? "false":"true"})">
+              ${x.isActive ? "إيقاف":"تفعيل"}
+            </button>
+          </td>
+        </tr>
+      `).join("") || "<tr><td colspan='8'>لا يوجد سيريالات</td></tr>";
+    }catch(e){
+      body.innerHTML = "<tr><td colspan='8'>خطأ: " + esc(e.message) + "</td></tr>";
+    }
+  }
+
+  window.setLicActive = async function(id, isActive){
+    try{
+      await apiFetch(`/api/admin/licenses/${id}/set-active`, { method:"POST", body:{ isActive }});
+      toast("تم التحديث ✅");
+      await loadLicenses();
+    }catch(e){
+      toast("فشل التحديث: " + e.message);
+    }
+  }
+
+  function esc(s){ return String(s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  // events
+  document.getElementById("btnSaveKey").onclick = async ()=>{ setKey(document.getElementById("adminKey").value.trim()); toast("تم حفظ المفتاح"); await ping(); await loadPlans(); await loadLicenses(); };
+  document.getElementById("btnClearKey").onclick = ()=>{ clearKey(); document.getElementById("adminKey").value=""; setState(false,"غير متصل"); toast("تم مسح المفتاح"); };
+  document.getElementById("btnPing").onclick = ping;
+  document.getElementById("btnAddPlan").onclick = addPlan;
+  document.getElementById("btnGenerate").onclick = generate;
+  document.getElementById("btnLoadLic").onclick = loadLicenses;
+  document.getElementById("btnRefreshAll").onclick = async ()=>{ await loadPlans(); await loadLicenses(); };
+
+  // init
+  (async function(){
+    document.getElementById("keyLen").textContent = String(getKey().trim().length);
+    if(getKey()) await ping();
+    await loadPlans();
+    await loadLicenses();
+  })();
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+

@@ -1,0 +1,48 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>لوحة التحكم - تسجيل الدخول</title>
+  <link rel="stylesheet" href="/cp.css">
+</head>
+<body>
+  <div class="cp-wrap">
+    <div class="cp-card">
+      <div class="cp-head">
+        <div class="cp-logo">CP</div>
+        <div>
+          <div class="cp-title">لوحة التحكم</div>
+          <div class="cp-sub">تسجيل دخول المدير</div>
+        </div>
+      </div>
+
+      <div class="cp-alert" id="alert" hidden></div>
+
+      <label class="cp-label">اسم المستخدم</label>
+      <input class="cp-input" id="u" autocomplete="username" placeholder="مثال: admin" />
+
+      <label class="cp-label">كلمة المرور</label>
+      <div class="cp-pass">
+        <input class="cp-input" id="p" type="password" autocomplete="current-password" placeholder="••••••••" />
+        <button class="cp-eye" id="toggle" type="button" title="إظهار/إخفاء">👁️</button>
+      </div>
+
+      <button class="cp-btn" id="loginBtn">دخول</button>
+
+      <div class="cp-foot">
+        <span>لوحة التحكم (تجريبية)</span>
+        <span class="cp-dot">•</span>
+        <a class="cp-link" href="/" target="_blank">فتح النظام</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/cp.js"></script>
+  <script>
+    // Enter key support
+    document.getElementById('u').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('p').focus(); });
+    document.getElementById('p').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('loginBtn').click(); });
+  </script>
+</body>
+</html>
