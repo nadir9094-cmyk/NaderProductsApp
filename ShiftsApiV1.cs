@@ -2,7 +2,6 @@
 
 public static class ShiftsApiV1
 {
-    // الشفت الحالي
     public static void MapShiftsApi(WebApplication app)
     {
         app.MapGet("/api/shifts/current", (HttpRequest http) =>
@@ -15,7 +14,6 @@ public static class ShiftsApiV1
         });
     }
 
-    // سجل الشفتات (مؤقت)
     public static void MapShiftListApi(WebApplication app)
     {
         app.MapGet("/api/shifts/list", (HttpRequest http, int days = 60, int take = 200) =>
@@ -24,11 +22,7 @@ public static class ShiftsApiV1
             if (string.IsNullOrWhiteSpace(token))
                 return Results.Unauthorized();
 
-            return Results.Ok(new
-            {
-                total = 0,
-                items = Array.Empty<object>()
-            });
+            return Results.Ok(ShiftsStateV1.List(days, take));
         });
     }
 }

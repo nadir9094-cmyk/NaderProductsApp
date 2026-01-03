@@ -10,8 +10,9 @@ public static class ShiftsOpenApiV1
             if (string.IsNullOrWhiteSpace(token))
                 return Results.Unauthorized();
 
-            var r = ShiftsStateV1.Open();
-            return Results.Ok(r);
+            // اسم الكاشير (مؤقت)
+            var cashierName = "cashier";
+            return Results.Ok(ShiftsStateV1.Open(cashierName));
         });
 
         app.MapPost("/api/shifts/close", (HttpRequest http) =>
@@ -20,8 +21,7 @@ public static class ShiftsOpenApiV1
             if (string.IsNullOrWhiteSpace(token))
                 return Results.Unauthorized();
 
-            var r = ShiftsStateV1.Close();
-            return Results.Ok(r);
+            return Results.Ok(ShiftsStateV1.Close());
         });
     }
 }
