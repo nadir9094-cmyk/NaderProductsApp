@@ -542,6 +542,7 @@ app.Urls.Clear();
 app.Urls.Add($"http://0.0.0.0:{__bindPort}");
 AuthApiV1.MapAuthApi(app);
 DiagEnvApiV1.Map(app);
+DiagPatchDbApiV1.Map(app);
 DiagDbApi.Map(app);
 SettingsApiV1.Map(app);
 CashiersApiV1.Map(app);
@@ -551,6 +552,7 @@ ShiftsApiV1.MapShiftsApi(app);
 ShiftsApiV1.MapShiftListApi(app);
 DiagRoutesApiV1.Map(app);
 app.Run();
+
 
 
 
