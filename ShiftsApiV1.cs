@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using NaderProductsApp.Data;
 
 public static class ShiftsApiV1
 {
-    // الشفت الحالي (مؤقت)
+    // الشفت الحالي
     public static void MapShiftsApi(WebApplication app)
     {
         app.MapGet("/api/shifts/current", (HttpRequest http) =>
@@ -13,7 +11,7 @@ public static class ShiftsApiV1
             if (string.IsNullOrWhiteSpace(token))
                 return Results.Unauthorized();
 
-            return Results.Ok(new { open = false, id = 0 });
+            return Results.Ok(ShiftsStateV1.Current());
         });
     }
 

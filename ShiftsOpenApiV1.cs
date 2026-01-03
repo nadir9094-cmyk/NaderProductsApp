@@ -1,33 +1,27 @@
-﻿using Microsoft.EntityFrameworkCore;
-using NaderProductsApp.Data;
+﻿using Microsoft.AspNetCore.Mvc;
 
 public static class ShiftsOpenApiV1
 {
     public static void Map(WebApplication app)
     {
-        app.MapPost("/api/shifts/open", async (AppDbContext db, HttpRequest http) =>
+        app.MapPost("/api/shifts/open", (HttpRequest http) =>
         {
-            var emp = EmployeesApiV1.GetEmployeeFromRequest(http);
-            if (emp == null)
+            var token = EmployeesApiV1.ReadBearerToken(http);
+            if (string.IsNullOrWhiteSpace(token))
                 return Results.Unauthorized();
 
-            // لو عندك شفت مفتوح لا تفتح واحد جديد
-            var openShift = await db.Shifts.FirstOrDefaultAsync(s => s.ClosedAt == null);
-            if (openShift != null)
-                return Results.BadRequest(new { error = "SHIFT_ALREADY_OPEN", shiftId = openShift.Id });
+            var r = ShiftsStateV1.Open();
+            return Results.Ok(r);
+        });
 
-            var shift = new Shift
-            {
-                OpenedAt = DateTime.UtcNow,
-                ClosedAt = null,
-                EmployeeId = emp.Id,
-                EmployeeName = emp.FullName
-            };
+        app.MapPost("/api/shifts/close", (HttpRequest http) =>
+        {
+            var token = EmployeesApiV1.ReadBearerToken(http);
+            if (string.IsNullOrWhiteSpace(token))
+                return Results.Unauthorized();
 
-            db.Shifts.Add(shift);
-            await db.SaveChangesAsync();
-
-            return Results.Ok(new { ok = true, shiftId = shift.Id, openedAt = shift.OpenedAt });
+            var r = ShiftsStateV1.Close();
+            return Results.Ok(r);
         });
     }
 }
