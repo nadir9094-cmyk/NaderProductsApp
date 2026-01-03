@@ -548,8 +548,8 @@ ExpensesApiV1.Map(app);
 EmployeesApiV1.MapEmployeesApi(app);
 ShiftsApiV1.MapShiftsApi(app);
 ShiftsApiV1.MapShiftListApi(app);
-SeedProductsApiV1.Map(app);
 app.Run();
+
 
 
 
