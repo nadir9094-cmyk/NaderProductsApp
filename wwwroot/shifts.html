@@ -1,1362 +1,424 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>إقفال اليومية</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>إقفالات اليومية</title>
   <style>
-    :root{
-      --bg:#0b1220; --card: rgba(255,255,255,.10); --card2: rgba(255,255,255,.08);
-      --line: rgba(255,255,255,.14); --text:#e5e7eb; --muted:#9ca3af;
-      --good:#22c55e; --bad:#ef4444; --warn:#f59e0b; --sky:#38bdf8;
-      --radius:16px; --shadow: 0 14px 30px rgba(0,0,0,.22);
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial}
+    body{margin:0;background:#f4f6fb;color:#111827}
+    .topbar{position:sticky;top:0;z-index:5;background:#ffffffcc;backdrop-filter:blur(8px);border-bottom:1px solid #e5e7eb}
+    .topbar .row{max-width:1200px;margin:auto;padding:12px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .brand{display:flex;gap:10px;align-items:center}
+    .dot{width:10px;height:10px;border-radius:50%;background:#22c55e}
+    .title{font-weight:800}
+    .btn{border:0;border-radius:12px;padding:10px 12px;background:#111827;color:#fff;cursor:pointer}
+    .btn.secondary{background:#e5e7eb;color:#111827}
+    .btn.danger{background:#ef4444}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .page{max-width:1200px;margin:18px auto;padding:0 16px 24px}
+    .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}
+    @media(max-width:980px){.grid{grid-template-columns:1fr}}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;box-shadow:0 10px 25px rgba(17,24,39,.06)}
+    .card h3{margin:0;padding:14px 14px 0;font-size:16px}
+    .card .content{padding:14px}
+    .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    @media(max-width:560px){.kpis{grid-template-columns:1fr}}
+    .kpi{border:1px solid #e5e7eb;border-radius:14px;padding:12px}
+    .kpi .k{font-size:12px;color:#6b7280;margin-bottom:6px}
+    .kpi .v{font-size:18px;font-weight:800}
+    .muted{color:#6b7280;font-size:12px}
+    .fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field label{font-size:12px;color:#6b7280}
+    .field input,.field textarea,.field select{
+      border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff;font-size:14px;outline:none
     }
-    *{ box-sizing:border-box; font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial; }
-    body{
-      margin:0; color:var(--text);
-      background: radial-gradient(1000px 500px at 15% 0%, rgba(56,189,248,.25), transparent 60%),
-                  radial-gradient(900px 450px at 85% 0%, rgba(34,197,94,.18), transparent 60%),
-                  linear-gradient(180deg, #0b1220, #070b14 70%);
-    }
-    header{
-      position:sticky; top:0; z-index:10;
-      backdrop-filter: blur(12px);
-      background: rgba(3,7,18,.55);
-      border-bottom:1px solid var(--line);
-    }
-    .wrap{ max-width:1200px; margin:0 auto; padding:14px 14px 22px; }
-    .topbar{ display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
-    .brand{ display:flex; align-items:center; gap:10px; }
-    .logo{
-      width:38px; height:38px; border-radius:12px;
-      background: linear-gradient(135deg, rgba(56,189,248,.9), rgba(34,197,94,.75));
-      box-shadow: var(--shadow);
-    }
-    .brand h1{ margin:0; font-size:18px; }
-    .brand small{ display:block; color:var(--muted); margin-top:2px; }
-    .btn{
-      border:1px solid var(--line);
-      background: rgba(255,255,255,.10);
-      color:var(--text);
-      padding:10px 12px;
-      border-radius:12px;
-      cursor:pointer;
-      font-weight:800;
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      user-select:none;
-      gap:8px;
-      transition:.15s transform, .15s filter;
-      white-space:nowrap;
-    }
-    .btn:hover{ filter:brightness(1.08); transform: translateY(-1px); }
-    .btn.primary{ background: rgba(56,189,248,.18); border-color: rgba(56,189,248,.35); }
-    .btn.success{ background: rgba(34,197,94,.18); border-color: rgba(34,197,94,.35); }
-    .btn.danger{ background: rgba(239,68,68,.18); border-color: rgba(239,68,68,.35); }
-    .btn:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
-    .pill{
-      display:inline-flex; gap:8px; align-items:center;
-      padding:6px 10px; border-radius:999px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      color: var(--muted);
-      font-size:12px;
-      font-weight:900;
-    }
-    .pill.ok{ color: var(--good); border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.10); }
-    .pill.open{ color: var(--warn); border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.10); }
-    .pill.bad{ color: var(--bad); border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.10); }
-    .card{
-      background: var(--card);
-      border:1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-    .card .hd{
-      padding:12px;
-      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
-      border-bottom: 1px solid var(--line);
-      background: rgba(255,255,255,.06);
-    }
-    .card .bd{ padding:12px; }
-    label{ font-size:12px; color:var(--muted); font-weight:900; }
-    input,textarea{
-      width:100%;
-      padding:10px 10px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.16);
-      background: rgba(17,24,39,.45);
-      color:var(--text);
-      outline:none;
-      font-weight:800;
-    }
-    textarea{ min-height:90px; resize:vertical; }
-    input:focus, textarea:focus{ border-color: rgba(56,189,248,.65); box-shadow: 0 0 0 3px rgba(56,189,248,.12); }
-    .grid{ display:grid; grid-template-columns: 1.1fr .9fr; gap:12px; }
-    @media(max-width:980px){ .grid{ grid-template-columns:1fr; } }
-    .kpis{ display:grid; grid-template-columns: repeat(12, 1fr); gap:12px; }
-    .kpi{
-      grid-column: span 3;
-      padding:12px;
-      border-radius: 16px;
-      background: var(--card2);
-      border:1px solid rgba(255,255,255,.12);
-    }
-    @media(max-width:980px){ .kpi{ grid-column: span 6; } }
-    @media(max-width:520px){ .kpi{ grid-column: span 12; } }
-    .kpi .t{ font-size:12px; color:var(--muted); font-weight:900; }
-    .kpi .v{ font-size:22px; font-weight:950; margin-top:6px; }
-    .v.good{ color:var(--good); }
-    .v.warn{ color:var(--warn); }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
-    .col{ flex:1; min-width:220px; display:flex; flex-direction:column; gap:6px; }
-    table{ width:100%; border-collapse: collapse; }
-    th,td{ padding:10px 8px; border-bottom: 1px solid rgba(255,255,255,.10); text-align:right; font-size:13px; }
-    thead th{ background: rgba(255,255,255,.06); color: #dbeafe; font-weight:900; }
-    tbody tr:hover td{ background: rgba(255,255,255,.04); }
-    .msg{
-      padding:10px 12px; border-radius:14px;
-      border:1px dashed rgba(255,255,255,.18);
-      background: rgba(255,255,255,.05);
-      color: var(--muted);
-      white-space:pre-wrap;
-      font-weight:800;
-    }
-
-    /* Print */
-    .printOnly{ display:none; }
+    .field textarea{min-height:90px;resize:vertical}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    .hr{height:1px;background:#e5e7eb;margin:14px 0}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:right;font-size:13px}
+    th{color:#6b7280;font-weight:700}
+    tr:hover td{background:#fafafa}
+    .pill{display:inline-flex;gap:8px;align-items:center;border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px}
+    .pill .mini{border:0;border-radius:999px;padding:6px 10px;background:#f3f4f6;cursor:pointer}
+    .pill .mini.active{background:#111827;color:#fff}
+    .toast{position:fixed;left:16px;bottom:16px;z-index:10;background:#111827;color:#fff;padding:10px 12px;border-radius:12px;display:none;max-width:90vw}
+    /* print */
+    .printArea{display:none}
     @media print{
-      header, .noPrint{ display:none !important; }
-      body{ background:#fff; color:#111; }
-      .card{ box-shadow:none; border:0; background:#fff; }
-      .kpi{ background:#fff; border:1px solid #ddd; }
-      th,td{ border-bottom:1px solid #ddd; color:#111; }
-      .printOnly{ display:block !important; }
-      .printSheet80{ width:80mm; margin:0 auto; }
-      .printSheetA4{ width:210mm; margin:0 auto; }
+      body{background:#fff}
+      .topbar,.page{display:none!important}
+      .printArea{display:block}
+      .printPage{padding:10mm}
+      .print80{width:80mm;margin:auto}
+      .pTitle{font-size:16px;font-weight:800;margin-bottom:10px;text-align:center}
+      .pRow{display:flex;justify-content:space-between;gap:10px;font-size:12px;margin:6px 0}
+      .pRow .k{color:#6b7280}
+      .pRow .v{font-weight:700}
+      .pBox{border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-top:10px}
     }
   </style>
-<script>
-function getToken(){
-  return localStorage.getItem("token")
-      || localStorage.getItem("authToken")
-      || localStorage.getItem("nader_token")
-      || localStorage.getItem("jwt")
-      || "";
-};
-async function api(url, opt){
-  opt = opt || {};
-  opt.headers = opt.headers || {};
-  const t = getToken();
-  if(t) opt.headers["Authorization"] = "Bearer " + t;
-  if(!opt.headers["Content-Type"] && opt.method && opt.method.toUpperCase()!=="GET"){
-    opt.headers["Content-Type"] = "application/json";
-  }
-  const r = await fetch(url, opt);
-  const text = await r.text();
-  if(!r.ok) throw new Error("HTTP " + r.status + " • " + text);
-  try { return JSON.parse(text); } catch { return text; }
-}
-/* === SHIFTS AUTH+API FIX (2026-01-03) === */
-function getToken(){
-  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
-  for (const k of keys){
-    const v = localStorage.getItem(k);
-    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
-  }
-  return '';
-}
-function withAuthHeaders(h){
-  const t = getToken();
-  const out = Object.assign({}, h||{});
-  if(t) out['Authorization'] = 'Bearer ' + t;
-  return out;
-};`nasync function api(path, opt){
-  opt = opt || {};
-  opt.headers = withAuthHeaders(opt.headers);
-  const r = await fetch((window.apiBase||'') + path, opt);
-  const txt = await r.text();
-  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
-  try { return JSON.parse(txt); } catch { return txt; }
-}
-/* === END FIX === */
-</script>
-<script>
-/* === SHIFTS AUTH+FETCH PATCH (2026-01-03) === */
-(function(){
-  function readKey(k){
-    try{
-      let v = localStorage.getItem(k);
-      if(!v) v = sessionStorage.getItem(k);
-      if(!v) return "";
-      v = String(v).trim();
-      if(!v) return "";
-      // لو مخزن JSON مثل {"token":"..."} أو {"access_token":"..."}
-      if(v[0] === "{" && v[v.length-1] === "}"){
-        try{
-          const o = JSON.parse(v);
-          const cand = o.token || o.access_token || o.authToken || o.auth_token || o.nader_token;
-          if(cand) v = String(cand).trim();
-        }catch{}
-      }
-      return v.replace(/^Bearer\s+/i,"");
-    }catch{ return ""; }
-  }
-
-  function getToken(){
-    const keys = [
-      "token","authToken","auth_token","nader_token","access_token","emp_token",
-      "jwt","jwt_token","accessToken","AUTH","auth","session","user"
-    ];
-    for(const k of keys){
-      const v = readKey(k);
-      if(v) return v;
-    }
-    return "";
-  }
-
-  // اجبر apiBase لو الصفحة انفتحت من ملف أو دومين مختلف
-  if(!window.apiBase){
-    // لو على نفس الدومين خله فاضي، لو file:// خله production
-    window.apiBase = (location.protocol === "file:") ? "https://naderproductsapp-production.up.railway.app" : "";
-  }
-
-  const _fetch = window.fetch.bind(window);
-  window.fetch = function(input, init){
-    init = init || {};
-    const h = new Headers(init.headers || {});
-    const t = getToken();
-    if(t && !h.has("Authorization")) h.set("Authorization", "Bearer " + t);
-    init.headers = h;
-    return _fetch(input, init);
-  };
-
-  window.__getToken = getToken; // للتشخيص من الكونسول
-})();
- /* === END PATCH === */
-</script>
 </head>
+
 <body>
-<header class="noPrint">
-  <div class="wrap">
-    <div class="topbar">
+  <div class="topbar">
+    <div class="row">
       <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
+        <div class="dot" id="dot"></div>
         <div>
-          <h1>إقفال اليومية</h1>
-          <small id="who">—</small>
+          <div class="title">إقفالات اليومية (Shifts)</div>
+          <div class="muted" id="apiHint">API: <span id="apiBaseText"></span></div>
         </div>
       </div>
-
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <a class="btn" href="/index.html">🏠 الرئيسية</a>
-        <button class="btn primary" id="btnRefresh" type="button">🔄 تحديث</button>
-
-        <span class="pill" id="statusPill">—</span>
-        <span class="pill" id="idPill">#—</span>
-
-        <button class="btn" id="btnPrint80" type="button">🖨️ 80mm</button>
-        <button class="btn" id="btnPrintA4" type="button">🖨️ A4</button>
+      <div class="actions">
+        <button class="btn secondary" onclick="goHome()">الرئيسية</button>
+        <button class="btn" onclick="refresh()">تحديث</button>
+        <span class="pill" title="اختيار مقاس الطباعة">
+          <button id="btn80" class="mini active" onclick="setPrintMode('80')">80</button>
+          <button id="btnA4" class="mini" onclick="setPrintMode('A4')">A4</button>
+        </span>
+        <button class="btn secondary" onclick="print80()">طباعة 80</button>
+        <button class="btn secondary" onclick="printA4()">طباعة A4</button>
       </div>
     </div>
   </div>
-</header>
 
-<main class="wrap">
-  <div class="grid">
-    <section class="card">
-      <div class="hd">
-        <b>اليومية الحالية</b>
-        <span class="pill" id="rangePill">—</span>
-      </div>
-      <div class="bd">
-        <div class="kpis">
-          <div class="kpi"><div class="t">وقت الفتح</div><div class="v" id="openedAt">—</div><div class="t" id="openedIso">—</div></div>
-          <div class="kpi"><div class="t">عدد الفواتير</div><div class="v" id="invCount">0</div><div class="t">ضمن اليومية</div></div>
-          <div class="kpi"><div class="t">إجمالي المبيعات</div><div class="v good" id="salesTotal">0.00</div><div class="t">شامل الضريبة</div></div>
-          <div class="kpi"><div class="t">المرتجعات</div><div class="v warn" id="returnTotal">0.00</div><div class="t">Return Amount</div></div>
-          <div class="kpi"><div class="t">نقدي</div><div class="v" id="cashTotal">0.00</div><div class="t">داخل اليومية</div></div>
-          <div class="kpi"><div class="t">شبكة</div><div class="v" id="cardTotal">0.00</div><div class="t">داخل اليومية</div></div>
-          <div class="kpi"><div class="t">مؤجل</div><div class="v" id="deferredTotal">0.00</div><div class="t">داخل اليومية</div></div>
-          <div class="kpi"><div class="t">إجمالي الضريبة</div><div class="v" id="vatTotal">0.00</div><div class="t">VAT</div></div>
-        </div>
+  <div class="page">
+    <div class="grid">
 
-        <div style="height:12px"></div>
-
-        <div class="row">
-          <div class="col">
-            <label>رصيد افتتاحية الكاش</label>
-            <input type="number" id="openingCash" min="0" step="0.01" value="0"/>
+      <div class="card">
+        <h3>الوردية الحالية</h3>
+        <div class="content">
+          <div class="kpis">
+            <div class="kpi"><div class="k">الحالة</div><div class="v" id="kStatus">—</div></div>
+            <div class="kpi"><div class="k">فتح</div><div class="v" id="kOpen">—</div></div>
+            <div class="kpi"><div class="k">إقفال</div><div class="v" id="kClose">—</div></div>
+            <div class="kpi"><div class="k">المبيعات</div><div class="v" id="kSales">0.00</div></div>
+            <div class="kpi"><div class="k">نقدي</div><div class="v" id="kCash">0.00</div></div>
+            <div class="kpi"><div class="k">شبكة</div><div class="v" id="kCard">0.00</div></div>
           </div>
-          <div class="col">
-            <label>رصيد إقفال الكاش</label>
-            <input type="number" id="closingCash" min="0" step="0.01" value="0"/>
+
+          <div class="hr"></div>
+
+          <div class="fields">
+            <div class="field">
+              <label>عهدة بداية الوردية</label>
+              <input id="openCash" type="number" step="0.01" value="0" />
+            </div>
+            <div class="field">
+              <label>المبلغ المعدود (عند الإقفال)</label>
+              <input id="countedCash" type="number" step="0.01" value="0" />
+            </div>
+            <div class="field">
+              <label>فرق/تسوية (اختياري)</label>
+              <input id="adjustment" type="number" step="0.01" value="0" />
+            </div>
+            <div class="field" style="grid-column:1 / -1">
+              <label>ملاحظة الإقفال</label>
+              <textarea id="note" placeholder="مثال: نقص كاش 5 ريال بسبب..."></textarea>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="actions">
+            <button class="btn" onclick="openShift()">فتح الوردية</button>
+            <button class="btn danger" onclick="closeShift()">إقفال الوردية</button>
+            <span class="muted" id="authState"></span>
           </div>
         </div>
-
-        <div style="height:10px"></div>
-
-        <div class="col" style="min-width:100%">
-          <label>ملاحظات الإقفال</label>
-          <textarea id="note" placeholder="ملاحظة خفيفة… بدون رعب محاسبي 😄"></textarea>
-        </div>
-
-        <div style="height:10px"></div>
-
-        <div class="row">
-          <button class="btn success" id="btnOpen" type="button">🟢 فتح يومية</button>
-          <button class="btn danger" id="btnClose" type="button">🔴 إقفال يومية</button>
-        </div>
-
-        <div style="height:10px"></div>
-        <div class="msg" id="msg">—</div>
       </div>
-    </section>
 
-    <section class="card">
-      <div class="hd">
-        <b>سجل الإقفالات</b>
-        <span class="pill">آخر 60 يوم</span>
-      </div>
-      <div class="bd">
-        <div style="overflow:auto">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th><th>الحالة</th><th>فتح</th><th>إقفال</th><th>مبيعات</th><th>ملاحظة</th><th class="noPrint">طباعة</th>
-              </tr>
-            </thead>
-            <tbody id="historyBody">
-              <tr><td colspan="7">جارٍ التحميل…</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div style="font-size:12px;margin-top:10px;font-weight:800;color:var(--muted)">
-          * المبيعات في السجل تُحسب من فواتير الفترة (فتح → إقفال/الآن).
+      <div class="card">
+        <h3>سجل الوردّيات (آخر 60 يوم)</h3>
+        <div class="content">
+          <div class="muted" id="listMeta">—</div>
+          <div class="hr"></div>
+          <div style="overflow:auto;max-height:520px">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>فتح</th>
+                  <th>إقفال</th>
+                  <th>مبيعات</th>
+                  <th>نقدي</th>
+                  <th>شبكة</th>
+                </tr>
+              </thead>
+              <tbody id="listBody">
+                <tr><td colspan="6" class="muted">—</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </section>
+
+    </div>
   </div>
 
-  <!-- Print sheet -->
-  <section class="printOnly" id="printArea">
-    <div id="print80" class="printSheet80" style="display:none">
-      <div style="text-align:center;margin-bottom:8px">
-        <div style="font-size:16px;font-weight:900">سند إقفال اليومية</div>
-        <div style="font-size:11px;color:#666;font-weight:800" id="p80PrintedAt">—</div>
+  <div class="toast" id="toast"></div>
+
+  <!-- PRINT AREAS -->
+  <div class="printArea">
+    <div id="print80" class="printPage print80">
+      <div class="pTitle">إقفال اليومية</div>
+      <div class="pBox">
+        <div class="pRow"><span class="k">تاريخ/وقت الطباعة</span><span class="v" id="p80PrintedAt">—</span></div>
+        <div class="pRow"><span class="k">رقم اليومية</span><span class="v" id="p80Id">—</span></div>
+        <div class="pRow"><span class="k">فتح</span><span class="v" id="p80Open">—</span></div>
+        <div class="pRow"><span class="k">إقفال</span><span class="v" id="p80Close">—</span></div>
       </div>
-      <div style="border-top:1px dashed #999;margin:8px 0"></div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <tbody>
-          <tr><td style="padding:5px 0;font-weight:900">رقم اليومية</td><td style="padding:5px 0;text-align:left" id="p80Id">—</td></tr>
-          <tr><td style="padding:5px 0;font-weight:900">وقت الفتح</td><td style="padding:5px 0;text-align:left" id="p80Open">—</td></tr>
-          <tr><td style="padding:5px 0;font-weight:900">وقت الإقفال</td><td style="padding:5px 0;text-align:left" id="p80Close">—</td></tr>
-          <tr><td style="padding:5px 0;font-weight:900">عدد الفواتير</td><td style="padding:5px 0;text-align:left" id="p80Count">—</td></tr>
-          <tr><td style="padding:5px 0;font-weight:900">إجمالي المبيعات</td><td style="padding:5px 0;text-align:left" id="p80Sales">—</td></tr>
-          <tr><td style="padding:5px 0;font-weight:900">إجمالي الضريبة</td><td style="padding:5px 0;text-align:left" id="p80Vat">—</td></tr>
-          <tr><td style="padding:5px 0;font-weight:900">المرتجعات</td><td style="padding:5px 0;text-align:left" id="p80Return">—</td></tr>
-          <tr><td style="padding:5px 0;font-weight:900">نقدي</td><td style="padding:5px 0;text-align:left" id="p80Cash">—</td></tr>
-          <tr><td style="padding:5px 0;font-weight:900">شبكة</td><td style="padding:5px 0;text-align:left" id="p80Card">—</td></tr>
-          <tr><td style="padding:5px 0;font-weight:900">مؤجل</td><td style="padding:5px 0;text-align:left" id="p80Deferred">—</td></tr>
-          <tr><td style="padding:5px 0;font-weight:900">افتتاحية الكاش</td><td style="padding:5px 0;text-align:left" id="p80OpenCash">—</td></tr>
-          <tr><td style="padding:5px 0;font-weight:900">إقفال الكاش</td><td style="padding:5px 0;text-align:left" id="p80CloseCash">—</td></tr>
-        </tbody>
-      </table>
-      <div style="border-top:1px dashed #999;margin:8px 0"></div>
-      <div style="font-size:12px;font-weight:900">ملاحظات الإقفال</div>
-      <div id="p80Note" style="margin-top:6px;font-size:12px;white-space:pre-wrap">—</div>
-      <div style="margin-top:10px;font-size:11px;color:#666;font-weight:800;text-align:center">— نظام نادر —</div>
+      <div class="pBox">
+        <div class="pRow"><span class="k">مبيعات</span><span class="v" id="p80Sales">0.00</span></div>
+        <div class="pRow"><span class="k">ضريبة</span><span class="v" id="p80Vat">0.00</span></div>
+        <div class="pRow"><span class="k">مرتجع</span><span class="v" id="p80Return">0.00</span></div>
+        <div class="pRow"><span class="k">نقدي</span><span class="v" id="p80Cash">0.00</span></div>
+        <div class="pRow"><span class="k">شبكة</span><span class="v" id="p80Card">0.00</span></div>
+        <div class="pRow"><span class="k">آجل</span><span class="v" id="p80Deferred">0.00</span></div>
+      </div>
+      <div class="pBox">
+        <div class="pRow"><span class="k">عهدة بداية</span><span class="v" id="p80OpenCash">0.00</span></div>
+        <div class="pRow"><span class="k">عهدة نهاية</span><span class="v" id="p80CloseCash">0.00</span></div>
+        <div class="pRow"><span class="k">ملاحظة</span><span class="v" id="p80Note">—</span></div>
+      </div>
     </div>
 
-    <div id="printA4" class="printSheetA4" style="display:none">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-        <div>
-          <div style="font-size:20px;font-weight:900">تقرير إقفال اليومية</div>
-          <div style="font-size:12px;color:#666;font-weight:800" id="pA4PrintedAt">—</div>
-        </div>
-        <div style="text-align:left;font-weight:900">
-          <div id="pA4Id" style="font-size:16px">—</div>
-        </div>
+    <div id="printA4" class="printPage">
+      <div class="pTitle">تقرير إقفال اليومية (A4)</div>
+      <div class="pBox">
+        <div class="pRow"><span class="k">تاريخ/وقت الطباعة</span><span class="v" id="pA4PrintedAt">—</span></div>
+        <div class="pRow"><span class="k">اليومية</span><span class="v" id="pA4Id">—</span></div>
+        <div class="pRow"><span class="k">فتح</span><span class="v" id="pA4Open">—</span></div>
+        <div class="pRow"><span class="k">إقفال</span><span class="v" id="pA4Close">—</span></div>
       </div>
-
-      <div style="height:10px"></div>
-
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <tbody>
-          <tr>
-            <td style="padding:8px;border:1px solid #ddd;font-weight:900;width:25%">وقت الفتح</td>
-            <td style="padding:8px;border:1px solid #ddd" id="pA4Open">—</td>
-            <td style="padding:8px;border:1px solid #ddd;font-weight:900;width:25%">وقت الإقفال</td>
-            <td style="padding:8px;border:1px solid #ddd" id="pA4Close">—</td>
-          </tr>
-          <tr>
-            <td style="padding:8px;border:1px solid #ddd;font-weight:900">عدد الفواتير</td>
-            <td style="padding:8px;border:1px solid #ddd" id="pA4Count">—</td>
-            <td style="padding:8px;border:1px solid #ddd;font-weight:900">إجمالي المبيعات</td>
-            <td style="padding:8px;border:1px solid #ddd" id="pA4Sales">—</td>
-          </tr>
-          <tr>
-            <td style="padding:8px;border:1px solid #ddd;font-weight:900">إجمالي الضريبة</td>
-            <td style="padding:8px;border:1px solid #ddd" id="pA4Vat">—</td>
-            <td style="padding:8px;border:1px solid #ddd;font-weight:900">المرتجعات</td>
-            <td style="padding:8px;border:1px solid #ddd" id="pA4Return">—</td>
-          </tr>
-          <tr>
-            <td style="padding:8px;border:1px solid #ddd;font-weight:900">نقدي</td>
-            <td style="padding:8px;border:1px solid #ddd" id="pA4Cash">—</td>
-            <td style="padding:8px;border:1px solid #ddd;font-weight:900">شبكة</td>
-            <td style="padding:8px;border:1px solid #ddd" id="pA4Card">—</td>
-          </tr>
-          <tr>
-            <td style="padding:8px;border:1px solid #ddd;font-weight:900">مؤجل</td>
-            <td style="padding:8px;border:1px solid #ddd" id="pA4Deferred">—</td>
-            <td style="padding:8px;border:1px solid #ddd;font-weight:900">افتتاحية / إقفال الكاش</td>
-            <td style="padding:8px;border:1px solid #ddd" id="pA4CashMeta">—</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div style="height:10px"></div>
-
-      <div style="font-size:13px;font-weight:900;margin-bottom:6px">ملاحظات الإقفال</div>
-      <div id="pA4Note" style="border:1px solid #ddd;padding:10px;min-height:80px;white-space:pre-wrap">—</div>
+      <div class="pBox">
+        <div class="pRow"><span class="k">عدد الفواتير</span><span class="v" id="pA4Count">0</span></div>
+        <div class="pRow"><span class="k">مبيعات</span><span class="v" id="pA4Sales">0.00</span></div>
+        <div class="pRow"><span class="k">ضريبة</span><span class="v" id="pA4Vat">0.00</span></div>
+        <div class="pRow"><span class="k">مرتجع</span><span class="v" id="pA4Return">0.00</span></div>
+        <div class="pRow"><span class="k">نقدي</span><span class="v" id="pA4Cash">0.00</span></div>
+        <div class="pRow"><span class="k">شبكة</span><span class="v" id="pA4Card">0.00</span></div>
+        <div class="pRow"><span class="k">آجل</span><span class="v" id="pA4Deferred">0.00</span></div>
+        <div class="pRow"><span class="k">عهدة (بداية/نهاية)</span><span class="v" id="pA4CashMeta">0.00 / 0.00</span></div>
+      </div>
+      <div class="pBox">
+        <div class="pRow"><span class="k">ملاحظة</span><span class="v" id="pA4Note">—</span></div>
+      </div>
     </div>
-  </section>
-</main>
+  </div>
 
-<script>
+  <script>
+    // ===== Config =====
+    const apiBase = location.origin;
+    document.getElementById('apiBaseText').textContent = apiBase;
 
-// ===== KSA Date Fix (treat ISO without TZ as UTC; display in Asia/Riyadh) =====
-function normIsoForParse(iso){
-  if(!iso) return null;
-  const s = String(iso).trim();
-  // keep if already has timezone suffix
-  if(/[zZ]$/.test(s) || /[+\-]\d{2}:\d{2}$/.test(s)) return s;
-  return s + "Z";
-}
-function dtKSA(iso){
-  const s = normIsoForParse(iso);
-  if(!s) return "—";
-  const d = new Date(s);
-  if(isNaN(d.getTime())) return "—";
-  return d.toLocaleString("ar-SA", { hour12:false, timeZone:"Asia/Riyadh" });
-}
-// ===========================================================================
-
-window.NaderAuth = window.NaderAuth || {
-  token(){ try{ return localStorage.getItem("emp_token") || localStorage.getItem("token") || localStorage.getItem("EMP_TOKEN") || ""; }catch(_){ return ""; } },
-  me(){ try{ const s = localStorage.getItem("emp_me"); return s ? JSON.parse(s) : null; }catch(_){ return null; } }
-};
-
-async function api(url, opts){
-  opts = opts || {};
-  opts.headers = opts.headers || {};
-  const t = NaderAuth.token();
-  if(t) opts.headers["Authorization"] = "Bearer " + t;
-  if(opts.json){
-    opts.headers["Content-Type"] = "application/json";
-    opts.body = JSON.stringify(opts.json);
-    delete opts.json;
-  }
-  const r = await fetch(url, opts);
-  if(!r.ok){
-    let msg = "HTTP " + r.status;
-    try{ msg += " • " + await r.text(); }catch(_){}
-    throw new Error(msg);
-  }
-  const ct = (r.headers.get("content-type") || "");
-  if(ct.includes("application/json")) return await r.json();
-  return await r.text();
-}
-
-function money(v){
-  const n = Number(v || 0);
-  return n.toLocaleString("ar-SA", { minimumFractionDigits:2, maximumFractionDigits:2 }) + " ر.س";
-}
-function normIsoForParse(iso){
-  if(!iso) return null;
-  // if already has timezone (Z or +03:00 etc) keep it
-  if(/[zZ]$/.test(iso) || /[+\-]\d{2}:\d{2}$/.test(iso)) return iso;
-  // Backend often returns UTC without timezone; treat it as UTC to avoid -3h shift
-  return iso + "Z";
-}
-function dtText(iso){ return dtKSA(iso); }
-function toApiIso(iso){
-  if(!iso) return null;
-  if(/[zZ]$/.test(iso) || /[+\-]\d{2}:\d{2}$/.test(iso)) return iso;
-  return iso + "+03:00";
-}
-function setMsg(s){ document.getElementById("msg").textContent = s || "—"; }
-function setPill(el, text, cls){
-  el.textContent = text;
-  el.classList.remove("ok","open","bad");
-  if(cls) el.classList.add(cls);
-};
-async function getCurrentShift(){ return await api("/api/shifts/current"); };
-async function getShiftHistory(){
-  const data = await api("/api/shifts/list?days=60&take=200");
-  // يدعم: {total,items} أو Array
-  if(Array.isArray(data)) return { total: data.length, items: data };
-  return data;
-};
-async function loadInvoicesForRange(fromIso, toIso){
-  const from = encodeURIComponent(toApiIso(fromIso));
-  const to   = encodeURIComponent(toApiIso(toIso));
-  const res = await api(`/api/cashier/invoices/report?from=${from}&to=${to}`);
-  // API sometimes returns { value: [...] , Count: n }
-  if(Array.isArray(res)) return res;
-  if(res && Array.isArray(res.value)) return res.value;
-  if(res && Array.isArray(res.items)) return res.items;
-  if(res && res.data && Array.isArray(res.data.value)) return res.data.value;
-  return [];
-}
-
-function sumByPayment(list){
-  let cash=0, card=0, deferred=0, vat=0, grand=0, ret=0, count=0;
-  for(const x of (list || [])){
-    count++;
-    const g = Number(x.grandTotal || 0);
-    const v = Number(x.vatTotal || 0);
-    const r = Number(x.returnAmount || 0);
-    grand += g; vat += v; ret += r;
-    const pm = String(x.paymentMethod || "").toLowerCase();
-    if(pm === "cash") cash += g;
-    else if(pm === "card") card += g;
-    else if(pm === "deferred") deferred += g;
-  }
-  return { count, grand, vat, ret, cash, card, deferred };
-};
-async function calcTotals(fromIso, toIso){
-  const list = await loadInvoicesForRange(fromIso, toIso);
-  return sumByPayment(list);
-}
-
-function renderCurrent(cur, totals){
-  const statusPill = document.getElementById("statusPill");
-  const idPill = document.getElementById("idPill");
-  const rangePill = document.getElementById("rangePill");
-
-  const has = !!cur?.hasShift;
-  if(has){
-    setPill(statusPill, "مفتوحة", "open");
-    idPill.textContent = "#" + cur.id;
-  }else{
-    setPill(statusPill, "لا توجد يومية", "bad");
-    idPill.textContent = "#—";
-  }
-
-  document.getElementById("openedAt").textContent = has ? dtText(toApiIso(cur.openedAt)) : "—";
-  document.getElementById("openedIso").textContent = has ? (normIsoForParse(cur.openedAt) || "—") : "—";
-
-  document.getElementById("invCount").textContent = String(totals?.count ?? 0);
-  document.getElementById("salesTotal").textContent = money(totals?.grand ?? 0);
-  document.getElementById("returnTotal").textContent = money(totals?.ret ?? 0);
-  document.getElementById("vatTotal").textContent = money(totals?.vat ?? 0);
-
-  document.getElementById("cashTotal").textContent = money(totals?.cash ?? 0);
-  document.getElementById("cardTotal").textContent = money(totals?.card ?? 0);
-  document.getElementById("deferredTotal").textContent = money(totals?.deferred ?? 0);
-
-  document.getElementById("openingCash").value = has ? (cur.openingCash ?? 0) : 0;
-  document.getElementById("closingCash").value = has ? (cur.closingCash ?? 0) : 0;
-  document.getElementById("note").value = has ? (cur.note || "") : "";
-
-  document.getElementById("btnOpen").disabled = has;
-  document.getElementById("btnClose").disabled = !has;
-
-  const from = has ? (normIsoForParse(cur.openedAt) || "—") : "—";
-  rangePill.textContent = has ? (from + " → " + (cur.closedAt ? toApiIso(cur.closedAt) : "الآن")) : "—";
-};
-async function renderHistory(rows){
-  const tb = document.getElementById("historyBody");
-  if(!rows || rows.length === 0){
-    tb.innerHTML = '<tr><td colspan="7">لا يوجد إقفالات حتى الآن.</td></tr>';
-    return;
-  }
-
-  tb.innerHTML = rows.map(r=>{
-    const st = r.isClosed ? '<span class="pill ok">مقفلة</span>' : '<span class="pill open">مفتوحة</span>';
-    const op = dtText(toApiIso(r.openedAt));
-    const cl = r.closedAt ? dtText(toApiIso(r.closedAt)) : "—";
-    const note = (r.note || "").toString().replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
-    return `
-      <tr data-id="${r.id}">
-        <td>#${r.id}</td>
-        <td>${st}</td>
-        <td>${op}</td>
-        <td>${cl}</td>
-        <td id="hSales_${r.id}">…</td>
-        <td>${note || '<span style="color:#9ca3af">—</span>'}</td>
-        <td class="noPrint"><button class="btn" style="padding:8px 10px" onclick="printShift(${r.id})">🖨️</button></td>
-      </tr>`;
-  }).join("");
-
-  for(const r of rows){
-    try{
-      const toIso = r.closedAt ? toApiIso(r.closedAt) : new Date().toISOString();
-      const totals = await calcTotals(r.openedAt, toIso);
-      const el = document.getElementById("hSales_" + r.id);
-      if(el) el.textContent = money(totals.grand);
-    }catch(_){
-      const el = document.getElementById("hSales_" + r.id);
-      if(el) el.textContent = "—";
-    }
-  }
-}
-
-function setPrintMode(m){
-  document.getElementById("print80").style.display = (m === "80") ? "block" : "none";
-  document.getElementById("printA4").style.display = (m === "A4") ? "block" : "none";
-}
-
-function fillPrint(cur, totals){
-  const printedAt = new Date().toLocaleString("ar-SA", {hour12:false, timeZone:"Asia/Riyadh" });
-  const openText = dtText(toApiIso(cur.openedAt));
-  const closeText = cur.closedAt ? dtText(toApiIso(cur.closedAt)) : "—";
-
-  document.getElementById("p80PrintedAt").textContent = "تاريخ/وقت الطباعة: " + printedAt;
-  document.getElementById("p80Id").textContent = "#" + (cur.id ?? "—");
-  document.getElementById("p80Open").textContent = openText;
-  document.getElementById("p80Close").textContent = closeText;
-  document.getElementById("p80Count").textContent = String(totals.count ?? 0);
-  document.getElementById("p80Sales").textContent = money(totals.grand ?? 0);
-  document.getElementById("p80Vat").textContent = money(totals.vat ?? 0);
-  document.getElementById("p80Return").textContent = money(totals.ret ?? 0);
-  document.getElementById("p80Cash").textContent = money(totals.cash ?? 0);
-  document.getElementById("p80Card").textContent = money(totals.card ?? 0);
-  document.getElementById("p80Deferred").textContent = money(totals.deferred ?? 0);
-  document.getElementById("p80OpenCash").textContent = money(cur.openingCash ?? 0);
-  document.getElementById("p80CloseCash").textContent = money(cur.closingCash ?? 0);
-  document.getElementById("p80Note").textContent = cur.note || "—";
-
-  document.getElementById("pA4PrintedAt").textContent = "تاريخ/وقت الطباعة: " + printedAt;
-  document.getElementById("pA4Id").textContent = "اليومية رقم: #" + (cur.id ?? "—");
-  document.getElementById("pA4Open").textContent = openText;
-  document.getElementById("pA4Close").textContent = closeText;
-  document.getElementById("pA4Count").textContent = String(totals.count ?? 0);
-  document.getElementById("pA4Sales").textContent = money(totals.grand ?? 0);
-  document.getElementById("pA4Vat").textContent = money(totals.vat ?? 0);
-  document.getElementById("pA4Return").textContent = money(totals.ret ?? 0);
-  document.getElementById("pA4Cash").textContent = money(totals.cash ?? 0);
-  document.getElementById("pA4Card").textContent = money(totals.card ?? 0);
-  document.getElementById("pA4Deferred").textContent = money(totals.deferred ?? 0);
-  document.getElementById("pA4CashMeta").textContent = money(cur.openingCash ?? 0) + " / " + money(cur.closingCash ?? 0);
-  document.getElementById("pA4Note").textContent = cur.note || "—";
-};
-async function printCurrent(mode){
-  const cur = await getCurrentShift();
-  if(!cur?.hasShift){ setMsg("لا توجد يومية مفتوحة للطباعة."); return; }
-  const toIso = cur.closedAt ? toApiIso(cur.closedAt) : new Date().toISOString();
-  const totals = await calcTotals(cur.openedAt, toIso);
-  setPrintMode(mode);
-  fillPrint(cur, totals);
-  window.print();
-}
-
-window.printShift = async function(id){
-  const rows = await getShiftHistory();
-  const s = (rows || []).find(x => Number(x.id) === Number(id));
-  if(!s){ setMsg("لم يتم العثور على اليومية."); return; }
-  const toIso = s.closedAt ? toApiIso(s.closedAt) : new Date().toISOString();
-  const totals = await calcTotals(s.openedAt, toIso);
-  setPrintMode("A4");
-  fillPrint(s, totals);
-  window.print();
-};
-
-async async function openShift(){
-  const res = await api("/api/shifts/open", { method:"POST" });
-  await refresh();
-  return res;
-} });
-  setMsg("تم فتح اليومية ✅");
-  await refresh();
-};
-async function closeShift(){
-  const closingCash = Number(document.getElementById("closingCash").value || 0);
-  const note = (document.getElementById("note").value || "").trim();
-  await api("/api/shifts/close", { method:"POST", json:{ closingCash, note } });
-  setMsg("تم إقفال اليومية ✅");
-  await refresh();
-};
-async function refresh(){
-  const curr = await api("/api/shifts/current");
-  const hist = await getShiftHistory();
-
-  // عرض الحالة الحالية (لو عندك عنصر بالصفحة id="shiftStatus")
-  const el = document.getElementById("shiftStatus");
-  if(el){
-    el.textContent = curr && curr.open ? ("مفتوح • #" + curr.id) : "مغلق";
-  }
-
-  // تعبئة الجدول (لو عندك tbody id="shiftTableBody")
-  const tb = document.getElementById("shiftTableBody");
-  if(tb){
-    tb.innerHTML = "";
-    (hist.items || []).forEach(x=>{
-      const tr = document.createElement("tr");
-      const opened = x.openedAtUtc ? new Date(x.openedAtUtc).toLocaleString("ar-SA") : "";
-      const closed = x.closedAtUtc ? new Date(x.closedAtUtc).toLocaleString("ar-SA") : "";
-      tr.innerHTML = `
-        <td>${x.id ?? ""}</td>
-        <td>${opened}</td>
-        <td>${closed}</td>
-        <td>${x.cashierName ?? ""}</td>
-        <td>${x.status ?? ""}</td>
-      `;
-      tb.appendChild(tr);
-    });
-  }
-}else{
-      renderCurrent(cur, {count:0, grand:0, vat:0, ret:0, cash:0, card:0, deferred:0});
-      setMsg("لا توجد يومية مفتوحة الآن.");
+    let printMode = '80';
+    function setPrintMode(m){
+      printMode = m;
+      document.getElementById('btn80').classList.toggle('active', m==='80');
+      document.getElementById('btnA4').classList.toggle('active', m==='A4');
     }
 
-    try{
-      const rows = await getShiftHistory();
-      await renderHistory(rows);
-    }catch(_){
-      document.getElementById("historyBody").innerHTML =
-        '<tr><td colspan="7">السجل يحتاج Endpoint: /api/shifts/list</td></tr>';
-    }
-  }catch(e){
-    console.error(e);
-    setMsg("خطأ: " + (e.message || e));
-  }
-}
-
-let __autoShiftTimer = null;
-function startAutoRefresh(){
-  if(__autoShiftTimer) return;
-  __autoShiftTimer = setInterval(async () => {
-    try{ if(!document.hidden) await refresh(); }catch(_){}
-  }, 15000);
-}
-
-document.getElementById("btnRefresh").addEventListener("click", ()=> refresh());
-document.getElementById("btnOpen").addEventListener("click", ()=> openShift());
-document.getElementById("btnClose").addEventListener("click", ()=> closeShift());
-document.getElementById("btnPrint80").addEventListener("click", ()=> printCurrent("80"));
-document.getElementById("btnPrintA4").addEventListener("click", ()=> printCurrent("A4"));
-
-startAutoRefresh();
-refresh();
-/* === SHIFTS AUTH+API FIX (2026-01-03) === */
-function getToken(){
-  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
-  for (const k of keys){
-    const v = localStorage.getItem(k);
-    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
-  }
-  return '';
-}
-function withAuthHeaders(h){
-  const t = getToken();
-  const out = Object.assign({}, h||{});
-  if(t) out['Authorization'] = 'Bearer ' + t;
-  return out;
-};`nasync function api(path, opt){
-  opt = opt || {};
-  opt.headers = withAuthHeaders(opt.headers);
-  const r = await fetch((window.apiBase||'') + path, opt);
-  const txt = await r.text();
-  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
-  try { return JSON.parse(txt); } catch { return txt; }
-}
-/* === END FIX === */
-</script>
-<script src="/js/auth.js">/* === SHIFTS AUTH+API FIX (2026-01-03) === */
-function getToken(){
-  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
-  for (const k of keys){
-    const v = localStorage.getItem(k);
-    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
-  }
-  return '';
-}
-function withAuthHeaders(h){
-  const t = getToken();
-  const out = Object.assign({}, h||{});
-  if(t) out['Authorization'] = 'Bearer ' + t;
-  return out;
-};`nasync function api(path, opt){
-  opt = opt || {};
-  opt.headers = withAuthHeaders(opt.headers);
-  const r = await fetch((window.apiBase||'') + path, opt);
-  const txt = await r.text();
-  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
-  try { return JSON.parse(txt); } catch { return txt; }
-}
-/* === END FIX === */
-</script>
-<script>
-(async ()=>{
-  await window.NaderAuth?.requireAuth({ permissionBit: 512, redirect:"/login.html" });
-})();
-/* === SHIFTS AUTH+API FIX (2026-01-03) === */
-function getToken(){
-  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
-  for (const k of keys){
-    const v = localStorage.getItem(k);
-    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
-  }
-  return '';
-}
-function withAuthHeaders(h){
-  const t = getToken();
-  const out = Object.assign({}, h||{});
-  if(t) out['Authorization'] = 'Bearer ' + t;
-  return out;
-};`nasync function api(path, opt){
-  opt = opt || {};
-  opt.headers = withAuthHeaders(opt.headers);
-  const r = await fetch((window.apiBase||'') + path, opt);
-  const txt = await r.text();
-  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
-  try { return JSON.parse(txt); } catch { return txt; }
-}
-/* === END FIX === */
-</script>
-
-<script>
-(function(){
-  // توكن: يدعم أكثر من اسم
-  function getToken(){
-    return localStorage.getItem("token")
-        || localStorage.getItem("authToken")
-        || localStorage.getItem("nader_token")
-        || localStorage.getItem("jwt")
-        || "";
-  };
-async function api(url, opt){
-    opt = opt || {};
-    opt.headers = opt.headers || {};
-    const t = getToken();
-    if(t) opt.headers["Authorization"] = "Bearer " + t;
-    if(opt.method && opt.method.toUpperCase() !== "GET" && !opt.headers["Content-Type"]){
-      opt.headers["Content-Type"] = "application/json";
-    }
-    const r = await fetch(url, opt);
-    const text = await r.text();
-    if(!r.ok) throw new Error("HTTP " + r.status + " • " + text);
-    try { return JSON.parse(text); } catch { return text; }
-  }
-
-  function fmt(dt){
-    if(!dt) return "";
-    try { return new Date(dt).toLocaleString("ar-SA"); } catch { return String(dt); }
-  }
-
-  function escapeHtml(s){
-    if(s === null || s === undefined) return "";
-    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  }
-
-  function renderHistory(list){
-    const tb = document.getElementById("historyBody");
-    if(!tb) return;
-
-    const items = (list && list.items) ? list.items : (Array.isArray(list) ? list : []);
-    if(!items.length){
-      tb.innerHTML = `<tr><td colspan="7">لا يوجد سجل حتى الآن.</td></tr>`;
-      return;
-    }
-
-    tb.innerHTML = "";
-    for(const x of items){
-      const id = x.id ?? "";
-      const status = x.status ?? (x.closedAtUtc ? "closed" : "open");
-      const statusAr = status === "open" ? "مفتوح" : (status === "closed" ? "مغلق" : status);
-
-      const opened = fmt(x.openedAtUtc);
-      const closed = fmt(x.closedAtUtc);
-
-      // مبيعات: لو ما عندنا رقم جاهز نخليها 0 (لين نربطها بتقرير لاحقاً)
-      const sales = (x.salesTotal ?? x.sales ?? x.total ?? 0);
-      const note  = x.note ?? x.notes ?? "";
-
-      tb.insertAdjacentHTML("beforeend", `
-        <tr>
-          <td>${escapeHtml(id)}</td>
-          <td>${escapeHtml(statusAr)}</td>
-          <td>${escapeHtml(opened)}</td>
-          <td>${escapeHtml(closed)}</td>
-          <td>${escapeHtml(sales)}</td>
-          <td>${escapeHtml(note)}</td>
-          <td class="noPrint"><button type="button" onclick="window.print()">طباعة</button></td>
-        </tr>
-      `);
-    }
-  };
-async function refresh(){
-    // تاريخ الشفتات
-    const hist = await api("/api/shifts/list?days=60&take=200");
-    renderHistory(hist);
-
-    // (اختياري) حالة الشفت الحالي لو عندك مكان يعرضها
-    const el = document.getElementById("shiftStatus");
-    if(el){
-      const curr = await api("/api/shifts/current");
-      el.textContent = (curr && curr.open) ? ("مفتوح • #" + curr.id) : "مغلق";
-    }
-  }
-
-  // نعرّف دوال عامة لو الصفحة تناديها
-  window.openShift = async function(){
-    await api("/api/shifts/open", { method:"POST" });
-    await refresh();
-  };
-
-  window.closeShift = async function(){
-    await api("/api/shifts/close", { method:"POST" });
-    await refresh();
-  };
-
-  window.refresh = refresh;
-
-  // أول تحميل
-  document.addEventListener("DOMContentLoaded", function(){
-    refresh().catch(err => console.error(err));
-  });
-})();
-/* === SHIFTS AUTH+API FIX (2026-01-03) === */
-function getToken(){
-  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
-  for (const k of keys){
-    const v = localStorage.getItem(k);
-    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
-  }
-  return '';
-}
-function withAuthHeaders(h){
-  const t = getToken();
-  const out = Object.assign({}, h||{});
-  if(t) out['Authorization'] = 'Bearer ' + t;
-  return out;
-};`nasync function api(path, opt){
-  opt = opt || {};
-  opt.headers = withAuthHeaders(opt.headers);
-  const r = await fetch((window.apiBase||'') + path, opt);
-  const txt = await r.text();
-  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
-  try { return JSON.parse(txt); } catch { return txt; }
-}
-/* === END FIX === */
-</script>
-<script>
-(function(){
-  // يحدد الـ API BASE: لو الصفحة محلية (file://) استخدم Railway
-  function apiBase(){
-    try{
-      if(location.protocol === "file:") return "https://naderproductsapp-production.up.railway.app";
-      return location.origin;
-    } catch { return "https://naderproductsapp-production.up.railway.app"; }
-  }
-
-  function getToken(){
-    return localStorage.getItem("token")
-        || localStorage.getItem("authToken")
-        || localStorage.getItem("nader_token")
-        || localStorage.getItem("jwt")
-        || "";
-  };
-async function api(path, opt){
-    opt = opt || {};
-    opt.headers = opt.headers || {};
-    const t = getToken();
-    if(t) opt.headers["Authorization"] = "Bearer " + t;
-    if(opt.method && opt.method.toUpperCase() !== "GET" && !opt.headers["Content-Type"]){
-      opt.headers["Content-Type"] = "application/json";
-    }
-    const url = apiBase() + path;
-    const r = await fetch(url, opt);
-    const text = await r.text();
-    if(!r.ok) throw new Error("HTTP " + r.status + " • " + text);
-    try { return JSON.parse(text); } catch { return text; }
-  }
-
-  function fmt(dt){
-    if(!dt) return "";
-    try { return new Date(dt).toLocaleString("ar-SA"); } catch { return String(dt); }
-  }
-
-  function setAny(selectors, text){
-    for(const sel of selectors){
-      const el = document.querySelector(sel);
-      if(el){ el.textContent = text; return true; }
-    }
-    return false;
-  }
-
-  function replaceTextEverywhere(findText, newText){
-    // يستهدف عناصر نصية بسيطة بدون ما يعبث بالـHTML
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
-    const nodes = [];
-    while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n=>{
-      if((n.nodeValue||"").includes(findText)) n.nodeValue = n.nodeValue.replace(findText, newText);
-    });
-  }
-
-  function escapeHtml(s){
-    if(s === null || s === undefined) return "";
-    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  }
-
-  function renderHistory(list){
-    const tb = document.getElementById("historyBody");
-    if(!tb) return;
-
-    const items = (list && list.items) ? list.items : (Array.isArray(list) ? list : []);
-    if(!items.length){
-      tb.innerHTML = `<tr><td colspan="7">لا يوجد سجل حتى الآن.</td></tr>`;
-      return;
-    }
-
-    tb.innerHTML = "";
-    for(const x of items){
-      const status = x.status ?? (x.closedAtUtc ? "closed" : "open");
-      const statusAr = status === "open" ? "مفتوح" : (status === "closed" ? "مغلق" : status);
-
-      tb.insertAdjacentHTML("beforeend", `
-        <tr>
-          <td>${escapeHtml(x.id ?? "")}</td>
-          <td>${escapeHtml(statusAr)}</td>
-          <td>${escapeHtml(fmt(x.openedAtUtc))}</td>
-          <td>${escapeHtml(fmt(x.closedAtUtc))}</td>
-          <td>${escapeHtml(x.salesTotal ?? x.sales ?? 0)}</td>
-          <td>${escapeHtml(x.note ?? x.notes ?? "")}</td>
-          <td class="noPrint"><button type="button" onclick="window.print()">طباعة</button></td>
-        </tr>
-      `);
-    }
-  };
-async function refreshHard(){
-    // 1) current
-    let curr = null;
-    try{ curr = await api("/api/shifts/current", { method:"GET" }); } catch(e){ console.error(e); }
-
-    if(curr && curr.open){
-      const msg = `يوجد يومية مفتوحة (#${curr.id}) • فتح: ${fmt(curr.openedAtUtc)}`;
-      // حدّث أي مكان محتمل يعرض الحالة
-      setAny(
-        ["#shiftStatus","#currentShift","#currentStatus","#shiftCurrent","#currState","#currStatus","[data-current-shift]"],
-        msg
-      );
-      // وبدّل النص الافتراضي لو كان موجود
-      replaceTextEverywhere("لا توجد يومية مفتوحة الآن.", msg);
-    } else {
-      // رجّع النص لو فعلاً مغلق
-      setAny(
-        ["#shiftStatus","#currentShift","#currentStatus","#shiftCurrent","#currState","#currStatus","[data-current-shift]"],
-        "لا توجد يومية مفتوحة الآن."
-      );
-    }
-
-    // 2) list
-    try{
-      const hist = await api("/api/shifts/list?days=60&take=200", { method:"GET" });
-      renderHistory(hist);
-    } catch(e){
-      console.error(e);
-    }
-  };
-async function openShiftHard(){
-    const r = await api("/api/shifts/open", { method:"POST" });
-    console.log("OPEN_SHIFT_OK", r);
-    await refreshHard();
-  };
-async function closeShiftHard(){
-    const r = await api("/api/shifts/close", { method:"POST" });
-    console.log("CLOSE_SHIFT_OK", r);
-    await refreshHard();
-  }
-
-  // 1) افرض دوالنا حتى لو سكربت الصفحة يعيد تعريفها
-  function enforce(){
-    window.openShift  = openShiftHard;
-    window.closeShift = closeShiftHard;
-    window.refresh    = refreshHard;
-
-    // 2) اخطف أي زر onclick فيه openShift/closeShift
-    document.querySelectorAll("button,[role='button'],a").forEach(el=>{
-      const oc = (el.getAttribute("onclick")||"");
-      if(/openShift\s*\(/i.test(oc)) el.onclick = (e)=>{ e.preventDefault(); openShiftHard().catch(err=>alert(err.message||err)); };
-      if(/closeShift\s*\(/i.test(oc)) el.onclick = (e)=>{ e.preventDefault(); closeShiftHard().catch(err=>alert(err.message||err)); };
-    });
-  }
-
-  document.addEventListener("DOMContentLoaded", ()=>{
-    enforce();
-    refreshHard().catch(console.error);
-    // كل 3 ثواني ثبت الدوال (عشان لو الصفحة تحاول “تخربط”)
-    setInterval(enforce, 3000);
-  });
-})();
-/* === SHIFTS AUTH+API FIX (2026-01-03) === */
-function getToken(){
-  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
-  for (const k of keys){
-    const v = localStorage.getItem(k);
-    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
-  }
-  return '';
-}
-function withAuthHeaders(h){
-  const t = getToken();
-  const out = Object.assign({}, h||{});
-  if(t) out['Authorization'] = 'Bearer ' + t;
-  return out;
-};`nasync function api(path, opt){
-  opt = opt || {};
-  opt.headers = withAuthHeaders(opt.headers);
-  const r = await fetch((window.apiBase||'') + path, opt);
-  const txt = await r.text();
-  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
-  try { return JSON.parse(txt); } catch { return txt; }
-}
-/* === END FIX === */
-</script>
-<script>
-(function(){
-  const API_BASE = "https://naderproductsapp-production.up.railway.app";
-
-  function pickToken(){
-    const keys = ["token","authToken","jwt","nader_token","access_token","sessionToken"];
-    for (const k of keys){
-      const v = localStorage.getItem(k);
-      if (v && v.trim()) return v.trim();
-    }
-    // أحياناً يخزن كـ JSON
-    try {
-      const s = localStorage.getItem("auth");
-      if (s){
-        const o = JSON.parse(s);
-        if (o && o.token) return String(o.token).trim();
+    function getToken(){
+      const keys = ['emp_token','token','authToken','auth_token','nader_token','access_token'];
+      for (const k of keys){
+        const v = localStorage.getItem(k);
+        if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
       }
-    } catch {}
-    return "";
-  };
-async function api(path, opt){
-    opt = opt || {};
-    opt.headers = opt.headers || {};
-    let t = pickToken();
-    if (t){
-      if (!/^bearer\s+/i.test(t)) t = "Bearer " + t;
-      opt.headers["Authorization"] = t;
+      return '';
     }
-    if (opt.method && opt.method.toUpperCase() !== "GET" && !opt.headers["Content-Type"]){
-      opt.headers["Content-Type"] = "application/json";
+
+    async function api(path, opt){
+      opt = opt || {};
+      const headers = Object.assign({'Content-Type':'application/json'}, opt.headers || {});
+      const t = getToken();
+      if(t) headers['Authorization'] = 'Bearer ' + t;
+      opt.headers = headers;
+
+      const r = await fetch(apiBase + path, opt);
+      const txt = await r.text();
+      if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt || ''));
+      try { return JSON.parse(txt); } catch { return txt; }
     }
-    const r = await fetch(API_BASE + path, opt);
-    const text = await r.text();
-    if(!r.ok) throw new Error("HTTP " + r.status + " • " + text);
-    try { return JSON.parse(text); } catch { return text; }
-  }
 
-  function fmt(dt){
-    if(!dt) return "";
-    try { return new Date(dt).toLocaleString("ar-SA"); } catch { return String(dt); }
-  }
-
-  function esc(s){
-    return String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  }
-
-  function findButtonByText(words){
-    const btns = Array.from(document.querySelectorAll("button,a,[role='button']"));
-    return btns.find(b => {
-      const t = (b.textContent||"").trim();
-      return words.every(w => t.includes(w));
-    });
-  }
-
-  function setStatusText(msg){
-    // جرّب أكثر من مكان محتمل، ولو ما لقينا نكتفي بتغيير النص الموجود
-    const ids = ["shiftStatus","currentShift","currentStatus","shiftCurrent","currState","currStatus"];
-    for(const id of ids){
-      const el = document.getElementById(id);
-      if(el){ el.textContent = msg; return; }
+    // ===== UI helpers =====
+    function money(x){
+      return Number(x||0).toLocaleString('ar-SA',{minimumFractionDigits:2, maximumFractionDigits:2});
     }
-    // بدّل النص الافتراضي داخل الصفحة لو موجود
-    const needles = ["لا توجد يومية مفتوحة الآن.", "لا توجد يومية مفتوحة"];
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    const nodes=[];
-    while(walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n=>{
-      for(const nd of needles){
-        if((n.nodeValue||"").includes(nd)){
-          n.nodeValue = msg;
-          return;
-        }
+    function dt(x){
+      return x ? new Date(x).toLocaleString('ar-SA',{hour12:false}) : '—';
+    }
+    function showToast(msg){
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(()=> t.style.display='none', 3000);
+    }
+
+    // ===== State =====
+    let current = null;
+    let list = [];
+
+    function setAuthState(){
+      const t = getToken();
+      const el = document.getElementById('authState');
+      if(t) { el.textContent = 'تم العثور على توكن ✅'; document.getElementById('dot').style.background = '#22c55e'; }
+      else  { el.textContent = 'لا يوجد توكن — سجّل دخول أولاً'; document.getElementById('dot').style.background = '#f59e0b'; }
+    }
+
+    function renderCurrent(){
+      const shift = current?.shift || current || null;
+      const sum = current?.summary || current?.totals || {};
+
+      const hasShift = !!shift && (shift.openedAt || shift.openedAtUtc || shift.open);
+      const isClosed = !!(shift?.closedAt || shift?.closedAtUtc);
+
+      document.getElementById('kStatus').textContent = hasShift ? (isClosed ? 'مقفلة' : 'مفتوحة') : 'لا توجد وردية';
+      document.getElementById('kOpen').textContent   = dt(shift?.openedAt || shift?.openedAtUtc);
+      document.getElementById('kClose').textContent  = dt(shift?.closedAt  || shift?.closedAtUtc);
+
+      document.getElementById('kSales').textContent  = money(sum.salesTotal ?? sum.grand ?? sum.grandTotal ?? 0);
+      document.getElementById('kCash').textContent   = money(sum.cashTotal  ?? sum.cash ?? 0);
+      document.getElementById('kCard').textContent   = money(sum.cardTotal  ?? sum.card ?? 0);
+
+      // fill print
+      const printedAt = dt(new Date().toISOString());
+      const id = shift?.id ?? '—';
+
+      const vat = sum.vatTotal ?? sum.vat ?? 0;
+      const ret = sum.returnTotal ?? sum.ret ?? 0;
+      const def = sum.deferredTotal ?? sum.deferred ?? 0;
+
+      document.getElementById('p80PrintedAt').textContent = printedAt;
+      document.getElementById('p80Id').textContent = '#' + id;
+      document.getElementById('p80Open').textContent = dt(shift?.openedAt || shift?.openedAtUtc);
+      document.getElementById('p80Close').textContent = dt(shift?.closedAt || shift?.closedAtUtc);
+      document.getElementById('p80Sales').textContent = money(sum.salesTotal ?? sum.grand ?? 0);
+      document.getElementById('p80Vat').textContent = money(vat);
+      document.getElementById('p80Return').textContent = money(ret);
+      document.getElementById('p80Cash').textContent = money(sum.cashTotal ?? sum.cash ?? 0);
+      document.getElementById('p80Card').textContent = money(sum.cardTotal ?? sum.card ?? 0);
+      document.getElementById('p80Deferred').textContent = money(def);
+      document.getElementById('p80OpenCash').textContent = money(shift?.openingCash ?? 0);
+      document.getElementById('p80CloseCash').textContent = money(shift?.closingCash ?? 0);
+      document.getElementById('p80Note').textContent = shift?.note || '—';
+
+      document.getElementById('pA4PrintedAt').textContent = printedAt;
+      document.getElementById('pA4Id').textContent = 'اليومية رقم: #' + id;
+      document.getElementById('pA4Open').textContent = dt(shift?.openedAt || shift?.openedAtUtc);
+      document.getElementById('pA4Close').textContent = dt(shift?.closedAt || shift?.closedAtUtc);
+      document.getElementById('pA4Count').textContent = String(sum.count ?? sum.invoiceCount ?? 0);
+      document.getElementById('pA4Sales').textContent = money(sum.salesTotal ?? sum.grand ?? 0);
+      document.getElementById('pA4Vat').textContent = money(vat);
+      document.getElementById('pA4Return').textContent = money(ret);
+      document.getElementById('pA4Cash').textContent = money(sum.cashTotal ?? sum.cash ?? 0);
+      document.getElementById('pA4Card').textContent = money(sum.cardTotal ?? sum.card ?? 0);
+      document.getElementById('pA4Deferred').textContent = money(def);
+      document.getElementById('pA4CashMeta').textContent = money(shift?.openingCash ?? 0) + ' / ' + money(shift?.closingCash ?? 0);
+      document.getElementById('pA4Note').textContent = shift?.note || '—';
+    }
+
+    function renderList(){
+      const tb = document.getElementById('listBody');
+      tb.innerHTML = '';
+      if(!Array.isArray(list) || list.length === 0){
+        tb.innerHTML = `<tr><td colspan="6" class="muted">لا توجد بيانات</td></tr>`;
+        document.getElementById('listMeta').textContent = '0 صف';
+        return;
       }
-    });
-  }
-
-  function renderHistory(data){
-    const tb = document.getElementById("historyBody");
-    if(!tb) return;
-    const items = data?.items || [];
-    if(!items.length){
-      tb.innerHTML = `<tr><td colspan="7">لا يوجد سجل حتى الآن.</td></tr>`;
-      return;
-    }
-    tb.innerHTML = "";
-    for(const x of items){
-      const status = x.status || (x.closedAtUtc ? "closed" : "open");
-      const statusAr = status==="open" ? "مفتوح" : (status==="closed" ? "مغلق" : status);
-      tb.insertAdjacentHTML("beforeend", `
-        <tr>
-          <td>${esc(x.id)}</td>
-          <td>${esc(statusAr)}</td>
-          <td>${esc(fmt(x.openedAtUtc))}</td>
-          <td>${esc(fmt(x.closedAtUtc))}</td>
-          <td>${esc(x.salesTotal ?? 0)}</td>
-          <td>${esc(x.note ?? "")}</td>
-          <td class="noPrint"><button type="button" onclick="window.print()">طباعة</button></td>
-        </tr>
-      `);
-    }
-  };
-async function refreshAll(){
-    // current
-    try{
-      const c = await api("/api/shifts/current", {method:"GET"});
-      if(c && c.open){
-        setStatusText(`يوجد يومية مفتوحة (#${c.id}) • فتح: ${fmt(c.openedAtUtc)}`);
-      } else {
-        setStatusText("لا توجد يومية مفتوحة الآن.");
+      document.getElementById('listMeta').textContent = `${list.length} صف`;
+      for(const s of list){
+        const sum = s.summary || s.totals || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${s.id ?? ''}</td>
+          <td>${dt(s.openedAt || s.openedAtUtc)}</td>
+          <td>${dt(s.closedAt || s.closedAtUtc)}</td>
+          <td>${money(sum.salesTotal ?? sum.grand ?? 0)}</td>
+          <td>${money(sum.cashTotal ?? sum.cash ?? 0)}</td>
+          <td>${money(sum.cardTotal ?? sum.card ?? 0)}</td>
+        `;
+        tb.appendChild(tr);
       }
-    } catch(e){
-      console.error(e);
     }
 
-    // list
-    try{
-      const list = await api("/api/shifts/list?days=60&take=200", {method:"GET"});
-      renderHistory(list);
-    } catch(e){
-      console.error(e);
-      const tb = document.getElementById("historyBody");
-      if(tb) tb.innerHTML = `<tr><td colspan="7">تعذر جلب السجل (راجع Console).</td></tr>`;
+    // ===== Actions =====
+    async function refresh(){
+      try{
+        setAuthState();
+        current = await api('/api/shifts/current');
+        renderCurrent();
+      }catch(e){
+        showToast(String(e.message || e));
+      }
+
+      try{
+        list = await api('/api/shifts/list?days=60&take=200');
+        // بعض الـ APIs ترجع {items:[...]} بدل array
+        if(list && list.items) list = list.items;
+        renderList();
+      }catch(e){
+        showToast(String(e.message || e));
+      }
     }
-  };
-async function openShift(){
-    await api("/api/shifts/open", {method:"POST"});
-    await refreshAll();
-  };
-async function closeShift(){
-    await api("/api/shifts/close", {method:"POST"});
-    await refreshAll();
-  }
 
-  function wire(){
-    // اربط أزرار حسب النص (بدون ما نحتاج IDs)
-    const openBtn  = findButtonByText(["فتح","يومية"]) || findButtonByText(["فتح","اليومية"]);
-    const closeBtn = findButtonByText(["إقفال","يومية"]) || findButtonByText(["اقفال","يومية"]) || findButtonByText(["إغلاق","يومية"]);
-
-    if(openBtn){
-      openBtn.onclick = (e)=>{ e.preventDefault(); openShift().catch(err=>alert(err.message||err)); };
+    async function openShift(){
+      try{
+        const openingCash = Number(document.getElementById('openCash').value || 0);
+        await api('/api/shifts/open', {method:'POST', body: JSON.stringify({openingCash})});
+        showToast('تم فتح الوردية ✅');
+        refresh();
+      }catch(e){
+        showToast(String(e.message || e));
+      }
     }
-    if(closeBtn){
-      closeBtn.onclick = (e)=>{ e.preventDefault(); closeShift().catch(err=>alert(err.message||err)); };
+
+    async function closeShift(){
+      try{
+        const countedCash = Number(document.getElementById('countedCash').value || 0);
+        const adjustment  = Number(document.getElementById('adjustment').value || 0);
+        const note        = String(document.getElementById('note').value || '');
+        await api('/api/shifts/close', {method:'POST', body: JSON.stringify({countedCash, adjustment, note})});
+        showToast('تم إقفال الوردية ✅');
+        refresh();
+      }catch(e){
+        showToast(String(e.message || e));
+      }
     }
-  }
 
-  document.addEventListener("DOMContentLoaded", ()=>{
-    wire();
-    refreshAll();
-    // ثبت الربط كل شوي (لو سكربت الصفحة يعيد تعريف الأحداث)
-    setInterval(wire, 2000);
-  });
+    function print80(){
+      setPrintMode('80');
+      document.getElementById('print80').style.display = 'block';
+      document.getElementById('printA4').style.display = 'none';
+      window.print();
+    }
+    function printA4(){
+      setPrintMode('A4');
+      document.getElementById('printA4').style.display = 'block';
+      document.getElementById('print80').style.display = 'none';
+      window.print();
+    }
 
-  // expose for debugging
-  window.__shiftsRefresh = refreshAll;
-})();
-/* === SHIFTS AUTH+API FIX (2026-01-03) === */
-function getToken(){
-  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
-  for (const k of keys){
-    const v = localStorage.getItem(k);
-    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
-  }
-  return '';
-}
-function withAuthHeaders(h){
-  const t = getToken();
-  const out = Object.assign({}, h||{});
-  if(t) out['Authorization'] = 'Bearer ' + t;
-  return out;
-};`nasync function api(path, opt){
-  opt = opt || {};
-  opt.headers = withAuthHeaders(opt.headers);
-  const r = await fetch((window.apiBase||'') + path, opt);
-  const txt = await r.text();
-  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
-  try { return JSON.parse(txt); } catch { return txt; }
-}
-/* === END FIX === */
-</script>
-<script>
-/* === AUTH+API FIX (2026-01-03) === */
-function getToken(){
-  const keys = ['token','authToken','auth_token','nader_token','access_token'];
-  for (const k of keys){
-    const v = localStorage.getItem(k);
-    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
-  }
-  return '';
-}
-function authHeaders(extra){
-  const t = getToken();
-  const h = Object.assign({ 'Content-Type':'application/json' }, extra||{});
-  if(t) h['Authorization'] = 'Bearer ' + t;
-  return h;
-};
-async function api(url, opt){
-  opt = opt || {};
-  opt.headers = authHeaders(opt.headers);
-  const r = await fetch(url, opt);
-  const txt = await r.text();
-  if(!r.ok) throw new Error("HTTP " + r.status + " • " + (txt||""));
-  try { return JSON.parse(txt); } catch { return txt; }
-}
-/* === END FIX === */
-/* === SHIFTS AUTH+API FIX (2026-01-03) === */
-function getToken(){
-  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
-  for (const k of keys){
-    const v = localStorage.getItem(k);
-    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
-  }
-  return '';
-}
-function withAuthHeaders(h){
-  const t = getToken();
-  const out = Object.assign({}, h||{});
-  if(t) out['Authorization'] = 'Bearer ' + t;
-  return out;
-};`nasync function api(path, opt){
-  opt = opt || {};
-  opt.headers = withAuthHeaders(opt.headers);
-  const r = await fetch((window.apiBase||'') + path, opt);
-  const txt = await r.text();
-  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
-  try { return JSON.parse(txt); } catch { return txt; }
-}
-/* === END FIX === */
-</script>
+    function goHome(){
+      location.href = 'index.html';
+    }
+
+    // expose for inline onclick (لو احتجتها)
+    window.refresh = refresh;
+    window.openShift = openShift;
+    window.closeShift = closeShift;
+    window.print80 = print80;
+    window.printA4 = printA4;
+    window.goHome = goHome;
+    window.setPrintMode = setPrintMode;
+
+    // init
+    setAuthState();
+    refresh();
+  </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
