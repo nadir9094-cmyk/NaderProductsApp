@@ -10,9 +10,7 @@ public static class ShiftsOpenApiV1
             if (string.IsNullOrWhiteSpace(token))
                 return Results.Unauthorized();
 
-            // اسم الكاشير (مؤقت)
-            var cashierName = "cashier";
-            return Results.Ok(ShiftsStateV1.Open(cashierName));
+            return Results.Ok(ShiftsStateV1.Open("cashier"));
         });
 
         app.MapPost("/api/shifts/close", (HttpRequest http) =>
