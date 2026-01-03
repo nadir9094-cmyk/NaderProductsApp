@@ -146,7 +146,7 @@ function getToken(){
       || localStorage.getItem("nader_token")
       || localStorage.getItem("jwt")
       || "";
-}
+};
 async function api(url, opt){
   opt = opt || {};
   opt.headers = opt.headers || {};
@@ -160,6 +160,83 @@ async function api(url, opt){
   if(!r.ok) throw new Error("HTTP " + r.status + " • " + text);
   try { return JSON.parse(text); } catch { return text; }
 }
+/* === SHIFTS AUTH+API FIX (2026-01-03) === */
+function getToken(){
+  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
+  for (const k of keys){
+    const v = localStorage.getItem(k);
+    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
+  }
+  return '';
+}
+function withAuthHeaders(h){
+  const t = getToken();
+  const out = Object.assign({}, h||{});
+  if(t) out['Authorization'] = 'Bearer ' + t;
+  return out;
+};`nasync function api(path, opt){
+  opt = opt || {};
+  opt.headers = withAuthHeaders(opt.headers);
+  const r = await fetch((window.apiBase||'') + path, opt);
+  const txt = await r.text();
+  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+/* === END FIX === */
+</script>
+<script>
+/* === SHIFTS AUTH+FETCH PATCH (2026-01-03) === */
+(function(){
+  function readKey(k){
+    try{
+      let v = localStorage.getItem(k);
+      if(!v) v = sessionStorage.getItem(k);
+      if(!v) return "";
+      v = String(v).trim();
+      if(!v) return "";
+      // لو مخزن JSON مثل {"token":"..."} أو {"access_token":"..."}
+      if(v[0] === "{" && v[v.length-1] === "}"){
+        try{
+          const o = JSON.parse(v);
+          const cand = o.token || o.access_token || o.authToken || o.auth_token || o.nader_token;
+          if(cand) v = String(cand).trim();
+        }catch{}
+      }
+      return v.replace(/^Bearer\s+/i,"");
+    }catch{ return ""; }
+  }
+
+  function getToken(){
+    const keys = [
+      "token","authToken","auth_token","nader_token","access_token","emp_token",
+      "jwt","jwt_token","accessToken","AUTH","auth","session","user"
+    ];
+    for(const k of keys){
+      const v = readKey(k);
+      if(v) return v;
+    }
+    return "";
+  }
+
+  // اجبر apiBase لو الصفحة انفتحت من ملف أو دومين مختلف
+  if(!window.apiBase){
+    // لو على نفس الدومين خله فاضي، لو file:// خله production
+    window.apiBase = (location.protocol === "file:") ? "https://naderproductsapp-production.up.railway.app" : "";
+  }
+
+  const _fetch = window.fetch.bind(window);
+  window.fetch = function(input, init){
+    init = init || {};
+    const h = new Headers(init.headers || {});
+    const t = getToken();
+    if(t && !h.has("Authorization")) h.set("Authorization", "Bearer " + t);
+    init.headers = h;
+    return _fetch(input, init);
+  };
+
+  window.__getToken = getToken; // للتشخيص من الكونسول
+})();
+ /* === END PATCH === */
 </script>
 </head>
 <body>
@@ -417,16 +494,14 @@ function setPill(el, text, cls){
   el.textContent = text;
   el.classList.remove("ok","open","bad");
   if(cls) el.classList.add(cls);
-}
-
-async function getCurrentShift(){ return await api("/api/shifts/current"); }
+};
+async function getCurrentShift(){ return await api("/api/shifts/current"); };
 async function getShiftHistory(){
   const data = await api("/api/shifts/list?days=60&take=200");
   // يدعم: {total,items} أو Array
   if(Array.isArray(data)) return { total: data.length, items: data };
   return data;
-}
-
+};
 async function loadInvoicesForRange(fromIso, toIso){
   const from = encodeURIComponent(toApiIso(fromIso));
   const to   = encodeURIComponent(toApiIso(toIso));
@@ -453,8 +528,7 @@ function sumByPayment(list){
     else if(pm === "deferred") deferred += g;
   }
   return { count, grand, vat, ret, cash, card, deferred };
-}
-
+};
 async function calcTotals(fromIso, toIso){
   const list = await loadInvoicesForRange(fromIso, toIso);
   return sumByPayment(list);
@@ -495,8 +569,7 @@ function renderCurrent(cur, totals){
 
   const from = has ? (normIsoForParse(cur.openedAt) || "—") : "—";
   rangePill.textContent = has ? (from + " → " + (cur.closedAt ? toApiIso(cur.closedAt) : "الآن")) : "—";
-}
-
+};
 async function renderHistory(rows){
   const tb = document.getElementById("historyBody");
   if(!rows || rows.length === 0){
@@ -572,8 +645,7 @@ function fillPrint(cur, totals){
   document.getElementById("pA4Deferred").textContent = money(totals.deferred ?? 0);
   document.getElementById("pA4CashMeta").textContent = money(cur.openingCash ?? 0) + " / " + money(cur.closingCash ?? 0);
   document.getElementById("pA4Note").textContent = cur.note || "—";
-}
-
+};
 async function printCurrent(mode){
   const cur = await getCurrentShift();
   if(!cur?.hasShift){ setMsg("لا توجد يومية مفتوحة للطباعة."); return; }
@@ -602,15 +674,14 @@ async async function openShift(){
 } });
   setMsg("تم فتح اليومية ✅");
   await refresh();
-}
+};
 async function closeShift(){
   const closingCash = Number(document.getElementById("closingCash").value || 0);
   const note = (document.getElementById("note").value || "").trim();
   await api("/api/shifts/close", { method:"POST", json:{ closingCash, note } });
   setMsg("تم إقفال اليومية ✅");
   await refresh();
-}
-
+};
 async function refresh(){
   const curr = await api("/api/shifts/current");
   const hist = await getShiftHistory();
@@ -673,12 +744,81 @@ document.getElementById("btnPrintA4").addEventListener("click", ()=> printCurren
 
 startAutoRefresh();
 refresh();
+/* === SHIFTS AUTH+API FIX (2026-01-03) === */
+function getToken(){
+  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
+  for (const k of keys){
+    const v = localStorage.getItem(k);
+    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
+  }
+  return '';
+}
+function withAuthHeaders(h){
+  const t = getToken();
+  const out = Object.assign({}, h||{});
+  if(t) out['Authorization'] = 'Bearer ' + t;
+  return out;
+};`nasync function api(path, opt){
+  opt = opt || {};
+  opt.headers = withAuthHeaders(opt.headers);
+  const r = await fetch((window.apiBase||'') + path, opt);
+  const txt = await r.text();
+  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+/* === END FIX === */
 </script>
-<script src="/js/auth.js"></script>
+<script src="/js/auth.js">/* === SHIFTS AUTH+API FIX (2026-01-03) === */
+function getToken(){
+  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
+  for (const k of keys){
+    const v = localStorage.getItem(k);
+    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
+  }
+  return '';
+}
+function withAuthHeaders(h){
+  const t = getToken();
+  const out = Object.assign({}, h||{});
+  if(t) out['Authorization'] = 'Bearer ' + t;
+  return out;
+};`nasync function api(path, opt){
+  opt = opt || {};
+  opt.headers = withAuthHeaders(opt.headers);
+  const r = await fetch((window.apiBase||'') + path, opt);
+  const txt = await r.text();
+  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+/* === END FIX === */
+</script>
 <script>
 (async ()=>{
   await window.NaderAuth?.requireAuth({ permissionBit: 512, redirect:"/login.html" });
 })();
+/* === SHIFTS AUTH+API FIX (2026-01-03) === */
+function getToken(){
+  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
+  for (const k of keys){
+    const v = localStorage.getItem(k);
+    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
+  }
+  return '';
+}
+function withAuthHeaders(h){
+  const t = getToken();
+  const out = Object.assign({}, h||{});
+  if(t) out['Authorization'] = 'Bearer ' + t;
+  return out;
+};`nasync function api(path, opt){
+  opt = opt || {};
+  opt.headers = withAuthHeaders(opt.headers);
+  const r = await fetch((window.apiBase||'') + path, opt);
+  const txt = await r.text();
+  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+/* === END FIX === */
 </script>
 
 <script>
@@ -690,9 +830,8 @@ refresh();
         || localStorage.getItem("nader_token")
         || localStorage.getItem("jwt")
         || "";
-  }
-
-  async function api(url, opt){
+  };
+async function api(url, opt){
     opt = opt || {};
     opt.headers = opt.headers || {};
     const t = getToken();
@@ -751,9 +890,8 @@ refresh();
         </tr>
       `);
     }
-  }
-
-  async function refresh(){
+  };
+async function refresh(){
     // تاريخ الشفتات
     const hist = await api("/api/shifts/list?days=60&take=200");
     renderHistory(hist);
@@ -784,6 +922,29 @@ refresh();
     refresh().catch(err => console.error(err));
   });
 })();
+/* === SHIFTS AUTH+API FIX (2026-01-03) === */
+function getToken(){
+  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
+  for (const k of keys){
+    const v = localStorage.getItem(k);
+    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
+  }
+  return '';
+}
+function withAuthHeaders(h){
+  const t = getToken();
+  const out = Object.assign({}, h||{});
+  if(t) out['Authorization'] = 'Bearer ' + t;
+  return out;
+};`nasync function api(path, opt){
+  opt = opt || {};
+  opt.headers = withAuthHeaders(opt.headers);
+  const r = await fetch((window.apiBase||'') + path, opt);
+  const txt = await r.text();
+  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+/* === END FIX === */
 </script>
 <script>
 (function(){
@@ -801,9 +962,8 @@ refresh();
         || localStorage.getItem("nader_token")
         || localStorage.getItem("jwt")
         || "";
-  }
-
-  async function api(path, opt){
+  };
+async function api(path, opt){
     opt = opt || {};
     opt.headers = opt.headers || {};
     const t = getToken();
@@ -873,9 +1033,8 @@ refresh();
         </tr>
       `);
     }
-  }
-
-  async function refreshHard(){
+  };
+async function refreshHard(){
     // 1) current
     let curr = null;
     try{ curr = await api("/api/shifts/current", { method:"GET" }); } catch(e){ console.error(e); }
@@ -904,15 +1063,13 @@ refresh();
     } catch(e){
       console.error(e);
     }
-  }
-
-  async function openShiftHard(){
+  };
+async function openShiftHard(){
     const r = await api("/api/shifts/open", { method:"POST" });
     console.log("OPEN_SHIFT_OK", r);
     await refreshHard();
-  }
-
-  async function closeShiftHard(){
+  };
+async function closeShiftHard(){
     const r = await api("/api/shifts/close", { method:"POST" });
     console.log("CLOSE_SHIFT_OK", r);
     await refreshHard();
@@ -939,6 +1096,29 @@ refresh();
     setInterval(enforce, 3000);
   });
 })();
+/* === SHIFTS AUTH+API FIX (2026-01-03) === */
+function getToken(){
+  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
+  for (const k of keys){
+    const v = localStorage.getItem(k);
+    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
+  }
+  return '';
+}
+function withAuthHeaders(h){
+  const t = getToken();
+  const out = Object.assign({}, h||{});
+  if(t) out['Authorization'] = 'Bearer ' + t;
+  return out;
+};`nasync function api(path, opt){
+  opt = opt || {};
+  opt.headers = withAuthHeaders(opt.headers);
+  const r = await fetch((window.apiBase||'') + path, opt);
+  const txt = await r.text();
+  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+/* === END FIX === */
 </script>
 <script>
 (function(){
@@ -959,9 +1139,8 @@ refresh();
       }
     } catch {}
     return "";
-  }
-
-  async function api(path, opt){
+  };
+async function api(path, opt){
     opt = opt || {};
     opt.headers = opt.headers || {};
     let t = pickToken();
@@ -1041,9 +1220,8 @@ refresh();
         </tr>
       `);
     }
-  }
-
-  async function refreshAll(){
+  };
+async function refreshAll(){
     // current
     try{
       const c = await api("/api/shifts/current", {method:"GET"});
@@ -1065,13 +1243,12 @@ refresh();
       const tb = document.getElementById("historyBody");
       if(tb) tb.innerHTML = `<tr><td colspan="7">تعذر جلب السجل (راجع Console).</td></tr>`;
     }
-  }
-
-  async function openShift(){
+  };
+async function openShift(){
     await api("/api/shifts/open", {method:"POST"});
     await refreshAll();
-  }
-  async function closeShift(){
+  };
+async function closeShift(){
     await api("/api/shifts/close", {method:"POST"});
     await refreshAll();
   }
@@ -1099,9 +1276,86 @@ refresh();
   // expose for debugging
   window.__shiftsRefresh = refreshAll;
 })();
+/* === SHIFTS AUTH+API FIX (2026-01-03) === */
+function getToken(){
+  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
+  for (const k of keys){
+    const v = localStorage.getItem(k);
+    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
+  }
+  return '';
+}
+function withAuthHeaders(h){
+  const t = getToken();
+  const out = Object.assign({}, h||{});
+  if(t) out['Authorization'] = 'Bearer ' + t;
+  return out;
+};`nasync function api(path, opt){
+  opt = opt || {};
+  opt.headers = withAuthHeaders(opt.headers);
+  const r = await fetch((window.apiBase||'') + path, opt);
+  const txt = await r.text();
+  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+/* === END FIX === */
+</script>
+<script>
+/* === AUTH+API FIX (2026-01-03) === */
+function getToken(){
+  const keys = ['token','authToken','auth_token','nader_token','access_token'];
+  for (const k of keys){
+    const v = localStorage.getItem(k);
+    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
+  }
+  return '';
+}
+function authHeaders(extra){
+  const t = getToken();
+  const h = Object.assign({ 'Content-Type':'application/json' }, extra||{});
+  if(t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+};
+async function api(url, opt){
+  opt = opt || {};
+  opt.headers = authHeaders(opt.headers);
+  const r = await fetch(url, opt);
+  const txt = await r.text();
+  if(!r.ok) throw new Error("HTTP " + r.status + " • " + (txt||""));
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+/* === END FIX === */
+/* === SHIFTS AUTH+API FIX (2026-01-03) === */
+function getToken(){
+  const keys = ['token','authToken','auth_token','nader_token','access_token','emp_token'];
+  for (const k of keys){
+    const v = localStorage.getItem(k);
+    if(v && String(v).trim()) return String(v).trim().replace(/^Bearer\s+/i,'');
+  }
+  return '';
+}
+function withAuthHeaders(h){
+  const t = getToken();
+  const out = Object.assign({}, h||{});
+  if(t) out['Authorization'] = 'Bearer ' + t;
+  return out;
+};`nasync function api(path, opt){
+  opt = opt || {};
+  opt.headers = withAuthHeaders(opt.headers);
+  const r = await fetch((window.apiBase||'') + path, opt);
+  const txt = await r.text();
+  if(!r.ok) throw new Error('HTTP ' + r.status + ' • ' + (txt||''));
+  try { return JSON.parse(txt); } catch { return txt; }
+}
+/* === END FIX === */
 </script>
 </body>
 </html>
+
+
+
+
+
 
 
 
