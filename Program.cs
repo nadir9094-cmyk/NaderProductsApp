@@ -540,6 +540,7 @@ var __bindPort = Environment.GetEnvironmentVariable("PORT") ?? "5050";
 app.Urls.Clear();
 app.Urls.Add($"http://0.0.0.0:{__bindPort}");
 AuthApiV1.MapAuthApi(app);
+DiagDbApi.Map(app);
 SettingsApiV1.Map(app);
 CashiersApiV1.Map(app);
 ExpensesApiV1.Map(app);
@@ -547,6 +548,7 @@ EmployeesApiV1.MapEmployeesApi(app);
 ShiftsApiV1.MapShiftsApi(app);
 ShiftsApiV1.MapShiftListApi(app);
 app.Run();
+
 
 
 
