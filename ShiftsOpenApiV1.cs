@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using NaderProductsApp.Data;
 
 public static class ShiftsOpenApiV1
 {
@@ -10,6 +11,7 @@ public static class ShiftsOpenApiV1
             if (emp == null)
                 return Results.Unauthorized();
 
+            // لو عندك شفت مفتوح لا تفتح واحد جديد
             var openShift = await db.Shifts.FirstOrDefaultAsync(s => s.ClosedAt == null);
             if (openShift != null)
                 return Results.BadRequest(new { error = "SHIFT_ALREADY_OPEN", shiftId = openShift.Id });
@@ -17,6 +19,7 @@ public static class ShiftsOpenApiV1
             var shift = new Shift
             {
                 OpenedAt = DateTime.UtcNow,
+                ClosedAt = null,
                 EmployeeId = emp.Id,
                 EmployeeName = emp.FullName
             };
