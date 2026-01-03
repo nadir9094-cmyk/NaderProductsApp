@@ -139,6 +139,28 @@
       .printSheetA4{ width:210mm; margin:0 auto; }
     }
   </style>
+<script>
+function getToken(){
+  return localStorage.getItem("token")
+      || localStorage.getItem("authToken")
+      || localStorage.getItem("nader_token")
+      || localStorage.getItem("jwt")
+      || "";
+}
+async function api(url, opt){
+  opt = opt || {};
+  opt.headers = opt.headers || {};
+  const t = getToken();
+  if(t) opt.headers["Authorization"] = "Bearer " + t;
+  if(!opt.headers["Content-Type"] && opt.method && opt.method.toUpperCase()!=="GET"){
+    opt.headers["Content-Type"] = "application/json";
+  }
+  const r = await fetch(url, opt);
+  const text = await r.text();
+  if(!r.ok) throw new Error("HTTP " + r.status + " • " + text);
+  try { return JSON.parse(text); } catch { return text; }
+}
+</script>
 </head>
 <body>
 <header class="noPrint">
@@ -398,7 +420,12 @@ function setPill(el, text, cls){
 }
 
 async function getCurrentShift(){ return await api("/api/shifts/current"); }
-async function getShiftHistory(){ return await api("/api/shifts/list?days=60&take=200"); }
+async function getShiftHistory(){
+  const data = await api("/api/shifts/list?days=60&take=200");
+  // يدعم: {total,items} أو Array
+  if(Array.isArray(data)) return { total: data.length, items: data };
+  return data;
+}
 
 async function loadInvoicesForRange(fromIso, toIso){
   const from = encodeURIComponent(toApiIso(fromIso));
@@ -568,9 +595,11 @@ window.printShift = async function(id){
   window.print();
 };
 
-async function openShift(){
-  const openingCash = Number(document.getElementById("openingCash").value || 0);
-  await api("/api/shifts/open", { method:"POST", json:{ openingCash } });
+async async function openShift(){
+  const res = await api("/api/shifts/open", { method:"POST" });
+  await refresh();
+  return res;
+} });
   setMsg("تم فتح اليومية ✅");
   await refresh();
 }
@@ -583,18 +612,34 @@ async function closeShift(){
 }
 
 async function refresh(){
-  try{
-    const me = NaderAuth.me();
-    const who = me ? (me.fullName || me.username || "(مستخدم)") : "(مستخدم)";
-    document.getElementById("who").textContent = "المستخدم الحالي: " + who;
+  const curr = await api("/api/shifts/current");
+  const hist = await getShiftHistory();
 
-    const cur = await getCurrentShift();
-    if(cur?.hasShift){
-      const toIso = cur.closedAt ? toApiIso(cur.closedAt) : new Date().toISOString();
-      const totals = await calcTotals(cur.openedAt, toIso);
-      renderCurrent(cur, totals);
-      setMsg("تم التحديث ✅");
-    }else{
+  // عرض الحالة الحالية (لو عندك عنصر بالصفحة id="shiftStatus")
+  const el = document.getElementById("shiftStatus");
+  if(el){
+    el.textContent = curr && curr.open ? ("مفتوح • #" + curr.id) : "مغلق";
+  }
+
+  // تعبئة الجدول (لو عندك tbody id="shiftTableBody")
+  const tb = document.getElementById("shiftTableBody");
+  if(tb){
+    tb.innerHTML = "";
+    (hist.items || []).forEach(x=>{
+      const tr = document.createElement("tr");
+      const opened = x.openedAtUtc ? new Date(x.openedAtUtc).toLocaleString("ar-SA") : "";
+      const closed = x.closedAtUtc ? new Date(x.closedAtUtc).toLocaleString("ar-SA") : "";
+      tr.innerHTML = `
+        <td>${x.id ?? ""}</td>
+        <td>${opened}</td>
+        <td>${closed}</td>
+        <td>${x.cashierName ?? ""}</td>
+        <td>${x.status ?? ""}</td>
+      `;
+      tb.appendChild(tr);
+    });
+  }
+}else{
       renderCurrent(cur, {count:0, grand:0, vat:0, ret:0, cash:0, card:0, deferred:0});
       setMsg("لا توجد يومية مفتوحة الآن.");
     }
@@ -636,5 +681,428 @@ refresh();
 })();
 </script>
 
+<script>
+(function(){
+  // توكن: يدعم أكثر من اسم
+  function getToken(){
+    return localStorage.getItem("token")
+        || localStorage.getItem("authToken")
+        || localStorage.getItem("nader_token")
+        || localStorage.getItem("jwt")
+        || "";
+  }
+
+  async function api(url, opt){
+    opt = opt || {};
+    opt.headers = opt.headers || {};
+    const t = getToken();
+    if(t) opt.headers["Authorization"] = "Bearer " + t;
+    if(opt.method && opt.method.toUpperCase() !== "GET" && !opt.headers["Content-Type"]){
+      opt.headers["Content-Type"] = "application/json";
+    }
+    const r = await fetch(url, opt);
+    const text = await r.text();
+    if(!r.ok) throw new Error("HTTP " + r.status + " • " + text);
+    try { return JSON.parse(text); } catch { return text; }
+  }
+
+  function fmt(dt){
+    if(!dt) return "";
+    try { return new Date(dt).toLocaleString("ar-SA"); } catch { return String(dt); }
+  }
+
+  function escapeHtml(s){
+    if(s === null || s === undefined) return "";
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function renderHistory(list){
+    const tb = document.getElementById("historyBody");
+    if(!tb) return;
+
+    const items = (list && list.items) ? list.items : (Array.isArray(list) ? list : []);
+    if(!items.length){
+      tb.innerHTML = `<tr><td colspan="7">لا يوجد سجل حتى الآن.</td></tr>`;
+      return;
+    }
+
+    tb.innerHTML = "";
+    for(const x of items){
+      const id = x.id ?? "";
+      const status = x.status ?? (x.closedAtUtc ? "closed" : "open");
+      const statusAr = status === "open" ? "مفتوح" : (status === "closed" ? "مغلق" : status);
+
+      const opened = fmt(x.openedAtUtc);
+      const closed = fmt(x.closedAtUtc);
+
+      // مبيعات: لو ما عندنا رقم جاهز نخليها 0 (لين نربطها بتقرير لاحقاً)
+      const sales = (x.salesTotal ?? x.sales ?? x.total ?? 0);
+      const note  = x.note ?? x.notes ?? "";
+
+      tb.insertAdjacentHTML("beforeend", `
+        <tr>
+          <td>${escapeHtml(id)}</td>
+          <td>${escapeHtml(statusAr)}</td>
+          <td>${escapeHtml(opened)}</td>
+          <td>${escapeHtml(closed)}</td>
+          <td>${escapeHtml(sales)}</td>
+          <td>${escapeHtml(note)}</td>
+          <td class="noPrint"><button type="button" onclick="window.print()">طباعة</button></td>
+        </tr>
+      `);
+    }
+  }
+
+  async function refresh(){
+    // تاريخ الشفتات
+    const hist = await api("/api/shifts/list?days=60&take=200");
+    renderHistory(hist);
+
+    // (اختياري) حالة الشفت الحالي لو عندك مكان يعرضها
+    const el = document.getElementById("shiftStatus");
+    if(el){
+      const curr = await api("/api/shifts/current");
+      el.textContent = (curr && curr.open) ? ("مفتوح • #" + curr.id) : "مغلق";
+    }
+  }
+
+  // نعرّف دوال عامة لو الصفحة تناديها
+  window.openShift = async function(){
+    await api("/api/shifts/open", { method:"POST" });
+    await refresh();
+  };
+
+  window.closeShift = async function(){
+    await api("/api/shifts/close", { method:"POST" });
+    await refresh();
+  };
+
+  window.refresh = refresh;
+
+  // أول تحميل
+  document.addEventListener("DOMContentLoaded", function(){
+    refresh().catch(err => console.error(err));
+  });
+})();
+</script>
+<script>
+(function(){
+  // يحدد الـ API BASE: لو الصفحة محلية (file://) استخدم Railway
+  function apiBase(){
+    try{
+      if(location.protocol === "file:") return "https://naderproductsapp-production.up.railway.app";
+      return location.origin;
+    } catch { return "https://naderproductsapp-production.up.railway.app"; }
+  }
+
+  function getToken(){
+    return localStorage.getItem("token")
+        || localStorage.getItem("authToken")
+        || localStorage.getItem("nader_token")
+        || localStorage.getItem("jwt")
+        || "";
+  }
+
+  async function api(path, opt){
+    opt = opt || {};
+    opt.headers = opt.headers || {};
+    const t = getToken();
+    if(t) opt.headers["Authorization"] = "Bearer " + t;
+    if(opt.method && opt.method.toUpperCase() !== "GET" && !opt.headers["Content-Type"]){
+      opt.headers["Content-Type"] = "application/json";
+    }
+    const url = apiBase() + path;
+    const r = await fetch(url, opt);
+    const text = await r.text();
+    if(!r.ok) throw new Error("HTTP " + r.status + " • " + text);
+    try { return JSON.parse(text); } catch { return text; }
+  }
+
+  function fmt(dt){
+    if(!dt) return "";
+    try { return new Date(dt).toLocaleString("ar-SA"); } catch { return String(dt); }
+  }
+
+  function setAny(selectors, text){
+    for(const sel of selectors){
+      const el = document.querySelector(sel);
+      if(el){ el.textContent = text; return true; }
+    }
+    return false;
+  }
+
+  function replaceTextEverywhere(findText, newText){
+    // يستهدف عناصر نصية بسيطة بدون ما يعبث بالـHTML
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+    const nodes = [];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(n=>{
+      if((n.nodeValue||"").includes(findText)) n.nodeValue = n.nodeValue.replace(findText, newText);
+    });
+  }
+
+  function escapeHtml(s){
+    if(s === null || s === undefined) return "";
+    return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function renderHistory(list){
+    const tb = document.getElementById("historyBody");
+    if(!tb) return;
+
+    const items = (list && list.items) ? list.items : (Array.isArray(list) ? list : []);
+    if(!items.length){
+      tb.innerHTML = `<tr><td colspan="7">لا يوجد سجل حتى الآن.</td></tr>`;
+      return;
+    }
+
+    tb.innerHTML = "";
+    for(const x of items){
+      const status = x.status ?? (x.closedAtUtc ? "closed" : "open");
+      const statusAr = status === "open" ? "مفتوح" : (status === "closed" ? "مغلق" : status);
+
+      tb.insertAdjacentHTML("beforeend", `
+        <tr>
+          <td>${escapeHtml(x.id ?? "")}</td>
+          <td>${escapeHtml(statusAr)}</td>
+          <td>${escapeHtml(fmt(x.openedAtUtc))}</td>
+          <td>${escapeHtml(fmt(x.closedAtUtc))}</td>
+          <td>${escapeHtml(x.salesTotal ?? x.sales ?? 0)}</td>
+          <td>${escapeHtml(x.note ?? x.notes ?? "")}</td>
+          <td class="noPrint"><button type="button" onclick="window.print()">طباعة</button></td>
+        </tr>
+      `);
+    }
+  }
+
+  async function refreshHard(){
+    // 1) current
+    let curr = null;
+    try{ curr = await api("/api/shifts/current", { method:"GET" }); } catch(e){ console.error(e); }
+
+    if(curr && curr.open){
+      const msg = `يوجد يومية مفتوحة (#${curr.id}) • فتح: ${fmt(curr.openedAtUtc)}`;
+      // حدّث أي مكان محتمل يعرض الحالة
+      setAny(
+        ["#shiftStatus","#currentShift","#currentStatus","#shiftCurrent","#currState","#currStatus","[data-current-shift]"],
+        msg
+      );
+      // وبدّل النص الافتراضي لو كان موجود
+      replaceTextEverywhere("لا توجد يومية مفتوحة الآن.", msg);
+    } else {
+      // رجّع النص لو فعلاً مغلق
+      setAny(
+        ["#shiftStatus","#currentShift","#currentStatus","#shiftCurrent","#currState","#currStatus","[data-current-shift]"],
+        "لا توجد يومية مفتوحة الآن."
+      );
+    }
+
+    // 2) list
+    try{
+      const hist = await api("/api/shifts/list?days=60&take=200", { method:"GET" });
+      renderHistory(hist);
+    } catch(e){
+      console.error(e);
+    }
+  }
+
+  async function openShiftHard(){
+    const r = await api("/api/shifts/open", { method:"POST" });
+    console.log("OPEN_SHIFT_OK", r);
+    await refreshHard();
+  }
+
+  async function closeShiftHard(){
+    const r = await api("/api/shifts/close", { method:"POST" });
+    console.log("CLOSE_SHIFT_OK", r);
+    await refreshHard();
+  }
+
+  // 1) افرض دوالنا حتى لو سكربت الصفحة يعيد تعريفها
+  function enforce(){
+    window.openShift  = openShiftHard;
+    window.closeShift = closeShiftHard;
+    window.refresh    = refreshHard;
+
+    // 2) اخطف أي زر onclick فيه openShift/closeShift
+    document.querySelectorAll("button,[role='button'],a").forEach(el=>{
+      const oc = (el.getAttribute("onclick")||"");
+      if(/openShift\s*\(/i.test(oc)) el.onclick = (e)=>{ e.preventDefault(); openShiftHard().catch(err=>alert(err.message||err)); };
+      if(/closeShift\s*\(/i.test(oc)) el.onclick = (e)=>{ e.preventDefault(); closeShiftHard().catch(err=>alert(err.message||err)); };
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", ()=>{
+    enforce();
+    refreshHard().catch(console.error);
+    // كل 3 ثواني ثبت الدوال (عشان لو الصفحة تحاول “تخربط”)
+    setInterval(enforce, 3000);
+  });
+})();
+</script>
+<script>
+(function(){
+  const API_BASE = "https://naderproductsapp-production.up.railway.app";
+
+  function pickToken(){
+    const keys = ["token","authToken","jwt","nader_token","access_token","sessionToken"];
+    for (const k of keys){
+      const v = localStorage.getItem(k);
+      if (v && v.trim()) return v.trim();
+    }
+    // أحياناً يخزن كـ JSON
+    try {
+      const s = localStorage.getItem("auth");
+      if (s){
+        const o = JSON.parse(s);
+        if (o && o.token) return String(o.token).trim();
+      }
+    } catch {}
+    return "";
+  }
+
+  async function api(path, opt){
+    opt = opt || {};
+    opt.headers = opt.headers || {};
+    let t = pickToken();
+    if (t){
+      if (!/^bearer\s+/i.test(t)) t = "Bearer " + t;
+      opt.headers["Authorization"] = t;
+    }
+    if (opt.method && opt.method.toUpperCase() !== "GET" && !opt.headers["Content-Type"]){
+      opt.headers["Content-Type"] = "application/json";
+    }
+    const r = await fetch(API_BASE + path, opt);
+    const text = await r.text();
+    if(!r.ok) throw new Error("HTTP " + r.status + " • " + text);
+    try { return JSON.parse(text); } catch { return text; }
+  }
+
+  function fmt(dt){
+    if(!dt) return "";
+    try { return new Date(dt).toLocaleString("ar-SA"); } catch { return String(dt); }
+  }
+
+  function esc(s){
+    return String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function findButtonByText(words){
+    const btns = Array.from(document.querySelectorAll("button,a,[role='button']"));
+    return btns.find(b => {
+      const t = (b.textContent||"").trim();
+      return words.every(w => t.includes(w));
+    });
+  }
+
+  function setStatusText(msg){
+    // جرّب أكثر من مكان محتمل، ولو ما لقينا نكتفي بتغيير النص الموجود
+    const ids = ["shiftStatus","currentShift","currentStatus","shiftCurrent","currState","currStatus"];
+    for(const id of ids){
+      const el = document.getElementById(id);
+      if(el){ el.textContent = msg; return; }
+    }
+    // بدّل النص الافتراضي داخل الصفحة لو موجود
+    const needles = ["لا توجد يومية مفتوحة الآن.", "لا توجد يومية مفتوحة"];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    const nodes=[];
+    while(walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(n=>{
+      for(const nd of needles){
+        if((n.nodeValue||"").includes(nd)){
+          n.nodeValue = msg;
+          return;
+        }
+      }
+    });
+  }
+
+  function renderHistory(data){
+    const tb = document.getElementById("historyBody");
+    if(!tb) return;
+    const items = data?.items || [];
+    if(!items.length){
+      tb.innerHTML = `<tr><td colspan="7">لا يوجد سجل حتى الآن.</td></tr>`;
+      return;
+    }
+    tb.innerHTML = "";
+    for(const x of items){
+      const status = x.status || (x.closedAtUtc ? "closed" : "open");
+      const statusAr = status==="open" ? "مفتوح" : (status==="closed" ? "مغلق" : status);
+      tb.insertAdjacentHTML("beforeend", `
+        <tr>
+          <td>${esc(x.id)}</td>
+          <td>${esc(statusAr)}</td>
+          <td>${esc(fmt(x.openedAtUtc))}</td>
+          <td>${esc(fmt(x.closedAtUtc))}</td>
+          <td>${esc(x.salesTotal ?? 0)}</td>
+          <td>${esc(x.note ?? "")}</td>
+          <td class="noPrint"><button type="button" onclick="window.print()">طباعة</button></td>
+        </tr>
+      `);
+    }
+  }
+
+  async function refreshAll(){
+    // current
+    try{
+      const c = await api("/api/shifts/current", {method:"GET"});
+      if(c && c.open){
+        setStatusText(`يوجد يومية مفتوحة (#${c.id}) • فتح: ${fmt(c.openedAtUtc)}`);
+      } else {
+        setStatusText("لا توجد يومية مفتوحة الآن.");
+      }
+    } catch(e){
+      console.error(e);
+    }
+
+    // list
+    try{
+      const list = await api("/api/shifts/list?days=60&take=200", {method:"GET"});
+      renderHistory(list);
+    } catch(e){
+      console.error(e);
+      const tb = document.getElementById("historyBody");
+      if(tb) tb.innerHTML = `<tr><td colspan="7">تعذر جلب السجل (راجع Console).</td></tr>`;
+    }
+  }
+
+  async function openShift(){
+    await api("/api/shifts/open", {method:"POST"});
+    await refreshAll();
+  }
+  async function closeShift(){
+    await api("/api/shifts/close", {method:"POST"});
+    await refreshAll();
+  }
+
+  function wire(){
+    // اربط أزرار حسب النص (بدون ما نحتاج IDs)
+    const openBtn  = findButtonByText(["فتح","يومية"]) || findButtonByText(["فتح","اليومية"]);
+    const closeBtn = findButtonByText(["إقفال","يومية"]) || findButtonByText(["اقفال","يومية"]) || findButtonByText(["إغلاق","يومية"]);
+
+    if(openBtn){
+      openBtn.onclick = (e)=>{ e.preventDefault(); openShift().catch(err=>alert(err.message||err)); };
+    }
+    if(closeBtn){
+      closeBtn.onclick = (e)=>{ e.preventDefault(); closeShift().catch(err=>alert(err.message||err)); };
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", ()=>{
+    wire();
+    refreshAll();
+    // ثبت الربط كل شوي (لو سكربت الصفحة يعيد تعريف الأحداث)
+    setInterval(wire, 2000);
+  });
+
+  // expose for debugging
+  window.__shiftsRefresh = refreshAll;
+})();
+</script>
 </body>
 </html>
+
+
+
+
