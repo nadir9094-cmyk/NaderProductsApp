@@ -40,9 +40,19 @@ builder.Services.AddDbContext<AppDbContext>(o =>
         o.UseSqlite("Data Source=naderpos.db");
     }
 });
-
 var app = builder.Build();
 
+// DEBUG: رجّع تفاصيل أي خطأ 500 كنص (عشان ما تكون الأخطاء صامتة على Railway)
+app.Use(async (ctx, next) =>
+{
+    try { await next(); }
+    catch (Exception ex)
+    {
+        ctx.Response.StatusCode = 500;
+        ctx.Response.ContentType = "text/plain; charset=utf-8";
+        await ctx.Response.WriteAsync(ex.ToString());
+    }
+});
 AuthApiV1.EnsureDefaultAdmin(app.Services);
 
 using (var scope = app.Services.CreateScope())
@@ -530,12 +540,14 @@ var __bindPort = Environment.GetEnvironmentVariable("PORT") ?? "5050";
 app.Urls.Clear();
 app.Urls.Add($"http://0.0.0.0:{__bindPort}");
 AuthApiV1.MapAuthApi(app);
+SettingsApiV1.Map(app);
 CashiersApiV1.Map(app);
 ExpensesApiV1.Map(app);
 EmployeesApiV1.MapEmployeesApi(app);
 ShiftsApiV1.MapShiftsApi(app);
 ShiftsApiV1.MapShiftListApi(app);
 app.Run();
+
 
 
 
